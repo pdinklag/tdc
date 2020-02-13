@@ -25,5 +25,6 @@ endif()
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # subdirectories
+add_subdirectory(docs)
 add_subdirectory(src)
 add_subdirectory(test)

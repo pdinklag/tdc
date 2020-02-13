@@ -1,0 +1,79 @@
+/*
+    This is included by the HTML version of the Doxygen documentation
+    and can be used to override the default style.
+*/
+
+@import 'https://fonts.googleapis.com/css?family=Raleway:500|Roboto:400|Source+Code+Pro:500';
+
+tt, code, kbd, samp {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10pt;
+}
+
+.tabs, .tabs2, .tabs3, .title, table.directory, #MSearchField, #nav-tree .label {
+    font-family: 'Roboto', sans-serif;
+    font-size: 10pt;
+}
+
+.sm-dox a, .sm-dox a:focus, .sm-dox a:hover, .sm-dox a:active {
+    text-shadow: none;
+}
+
+.sm-dox a {
+    color: #242;
+}
+
+body, table, div, p, dl {
+    font-family: 'Roboto', sans-serif;
+    font-size: 10pt;
+}
+
+#titlearea {
+    background-color: #DDD;
+    padding-bottom: 0.5rem;
+}
+
+#titlearea table tbody tr {
+    height: 0;
+}
+
+#projectbrief, #projectnumber {
+    font-family: 'Raleway', sans-serif;
+    font-size: 100%;
+}
+
+#projectlogo img {
+    width: auto;
+    height: 2.5rem;
+    margin-left: 0.5rem;
+}
+
+#projectbrief {
+    font-size: 85%;
+}
+
+#projectname {
+    width: 100%;
+
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+
+    font-size: 150%;
+    font-weight: bold;
+}
+
+#projectnumber {
+    font-size: inherit;
+    font-weight: bold;
+
+    text-indent: 0;
+    white-space: normal;
+    overflow: auto;
+
+    display: block;
+    margin-top: -1rem;
+}
+
+#projectbrief {
+}
