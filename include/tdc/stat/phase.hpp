@@ -121,6 +121,7 @@ private:
 
 public:
     /// \brief Registers a \c PhaseExtension.
+    /// \tparam E the extension class type, which must inherit from \c PhaseExtension
     ///
     /// After registration, all phases will include data from the extension.
     template<typename E>

@@ -2,10 +2,10 @@
 
 using namespace tdc::rapl;
 
-PhaseExtension::PhaseExtension() : m_begin(Reader::read()) {
+RAPLPhaseExtension::RAPLPhaseExtension() : m_begin(Reader::read()) {
 }
 
-void PhaseExtension::write(stat::json& data) {
+void RAPLPhaseExtension::write(stat::json& data) {
     auto stats = (Reader::read() - m_begin).total();
 
     data["energy_package"] = stats.package;
