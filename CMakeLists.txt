@@ -32,6 +32,9 @@ include(InitSubmodules)
 add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx/tlx)
 
+# include json (no need to build anything)
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
+
 # include
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
