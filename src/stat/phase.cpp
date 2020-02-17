@@ -153,15 +153,13 @@ void Phase::split(std::string&& new_title) {
     }
 }
 
-json Phase::to_json() {
+json Phase::to_json() const {
     suppress_memory_tracking guard;
-    if (!m_disabled) {
-        m_time.end = time_millis();
-
+    if(!m_disabled) {
+        const double dt = time_millis() - m_time.start;
+        
         json obj;
         obj["title"] = m_title;
-
-        const double dt = m_time.end - m_time.start;
         obj["time"] = dt;
         obj["timePaused"] = m_time.paused;
         obj["memOff"] = m_mem.off;

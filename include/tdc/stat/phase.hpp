@@ -274,10 +274,8 @@ public:
 
     /// \brief Constructs the JSON representation of the measured data.
     ///
-    /// It contains the subtree of phases beneath this phase.
-    ///
-    /// \return the JSON representation of this phase
-    json to_json();
+    /// It also contains a subtree of sub-phase data.
+    json to_json() const;
 };
 
 }} // namespace tdc::stat
