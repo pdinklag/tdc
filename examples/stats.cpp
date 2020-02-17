@@ -16,5 +16,6 @@ int main(int argc, char** argv) {
     }
 
     std::cout << root.to_json().dump(4) << std::endl;
+    std::cout << "RESULT " << root.to_keyval() << std::endl;
     return 0;
 }

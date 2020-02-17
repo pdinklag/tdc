@@ -1,6 +1,8 @@
 #include <tdc/stat/time.hpp>
 #include <tdc/stat/phase.hpp>
 
+#include <sstream>
+
 using namespace tdc::stat;
 
 uint16_t Phase::s_suppress_memory_tracking_state = 0;
@@ -154,10 +156,10 @@ void Phase::split(std::string&& new_title) {
 }
 
 json Phase::to_json() const {
+    const double dt = time_millis() - m_time.start;
+    
     suppress_memory_tracking guard;
     if(!m_disabled) {
-        const double dt = time_millis() - m_time.start;
-        
         json obj;
         obj["title"] = m_title;
         obj["time"] = dt;
@@ -174,7 +176,6 @@ json Phase::to_json() const {
         }
 
         // write user stats
-        auto stats_array = json::array();
         for(auto it = m_stats->begin(); it != m_stats->end(); it++) {
             obj[it.key()] = *it;
         }
@@ -184,5 +185,43 @@ json Phase::to_json() const {
         return obj;
     } else {
         return json();
+    }
+}
+
+std::string Phase::to_keyval() const {
+    const double dt = time_millis() - m_time.start;
+    
+    suppress_memory_tracking guard;
+    if(!m_disabled) {
+        std::ostringstream ss;
+        ss << "time=" << dt
+            << " timePaused=" << m_time.paused
+            << " memOff=" << m_mem.off
+            << " memPeak=" << m_mem.peak
+            << " memFinal=" << m_mem.current
+            << " numAllocs=" << m_num_allocs
+            << " numFrees=" << m_num_frees;
+
+        // write extension data into temporary json objects
+        {
+            json obj;
+            for(auto& ext : *m_extensions) {
+                ext->write(obj);
+            }
+
+            // ... and then into result
+            for(auto it = obj.begin(); it != obj.end(); it++) {
+                ss << " " << it.key() << "=" << *it;
+            }
+        }
+
+        // finally, write user stats
+        for(auto it = m_stats->begin(); it != m_stats->end(); it++) {
+            ss << " " << it.key() << "=" << *it;
+        }
+
+        return ss.str();
+    } else {
+        return "";
     }
 }

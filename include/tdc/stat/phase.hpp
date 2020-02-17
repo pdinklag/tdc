@@ -276,6 +276,11 @@ public:
     ///
     /// It also contains a subtree of sub-phase data.
     json to_json() const;
+
+    /// \brief Constructs a key=value style string of the measured data.
+    ///
+    /// Note that this does not contain any sub-phase data.
+    std::string to_keyval() const;
 };
 
 }} // namespace tdc::stat
