@@ -25,8 +25,10 @@ namespace stat {
 /// use in the tdc charter for visualization, or in other formats for any third party applications.
 class Phase {
 private:
-    // Time
-    inline static void get_monotonic_time(struct timespec* ts){
+    //
+    // Time measurement statics
+    //
+    static inline void get_monotonic_time(struct timespec* ts){
     #ifdef __MACH__
         // OS X
         clock_serv_t cclock;
@@ -42,82 +44,62 @@ private:
     #endif
     }
 
-    //
-    // Memory and tracking suppression
-    //
+    static inline double current_time_millis() {
+        timespec t;
+        get_monotonic_time(&t);
 
+        return double(t.tv_sec * 1000L) + double(t.tv_nsec) / double(1000000L);
+    }
+
+    //
+    // Memory tracking and suppression statics
+    //
+    static bool s_init;
+    static void force_malloc_override_link();
+    
     static uint16_t s_suppress_memory_tracking_state;
     static uint16_t s_suppress_tracking_user_state;
 
-    static bool s_init;
-    static void force_malloc_override_link();
+    inline static bool is_tracking_memory() {
+        return s_suppress_memory_tracking_state == 0 && s_suppress_tracking_user_state == 0;
+    }
 
     struct suppress_memory_tracking {
         inline suppress_memory_tracking(suppress_memory_tracking const&) = delete;
+        inline suppress_memory_tracking(suppress_memory_tracking&&) = default;
+        
         inline suppress_memory_tracking() {
-            s_suppress_memory_tracking_state++;
+            ++s_suppress_memory_tracking_state;
         }
+        
         inline ~suppress_memory_tracking() {
-            s_suppress_memory_tracking_state--;
-        }
-        inline static bool is_paused() {
-            return s_suppress_memory_tracking_state != 0;
+            --s_suppress_memory_tracking_state;
         }
     };
 
     struct suppress_tracking_user {
-        inline static void inc() {
+        inline suppress_tracking_user(suppress_tracking_user const&) = delete;
+        inline suppress_tracking_user(suppress_tracking_user&&) = default;
+        
+        inline suppress_tracking_user() {
             if(s_suppress_tracking_user_state++ == 0) {
                 if(s_current) s_current->on_pause_tracking();
             }
         }
-        inline static void dec() {
+        
+        inline ~suppress_tracking_user() {
             if(s_suppress_tracking_user_state == 1) {
                 if(s_current) s_current->on_resume_tracking();
             }
             --s_suppress_tracking_user_state;
         }
-
-        inline suppress_tracking_user() {
-            inc();
-        }
-        inline suppress_tracking_user(suppress_memory_tracking const&) = delete;
-        inline suppress_tracking_user(suppress_tracking_user&&) {
-        }
-        inline ~suppress_tracking_user() {
-            dec();
-        }
-        inline static bool is_paused() {
-            return s_suppress_tracking_user_state != 0;
-        }
     };
-    
-    inline bool currently_tracking_memory() {
-        return !suppress_memory_tracking::is_paused()
-            && !suppress_tracking_user::is_paused();
-    }
 
-    inline void track_alloc_internal(size_t bytes) {
-        if(currently_tracking_memory()) {
-            m_mem.current += bytes;
-            m_mem.peak = std::max(m_mem.peak, m_mem.current);
-            if(m_parent) m_parent->track_alloc_internal(bytes);
-        }
-    }
-
-    inline void track_free_internal(size_t bytes) {
-        if(currently_tracking_memory()) {
-            m_mem.current -= bytes;
-            if(m_parent) m_parent->track_free_internal(bytes);
-        }
-    }
-
-    //////////////////////////////////////////
-    // Extensions
-    //////////////////////////////////////////
-
+    //
+    // Extension statics
+    //
     using ext_ptr_t = std::unique_ptr<PhaseExtension>;
-    static std::vector<std::function<ext_ptr_t()>> m_extension_registry;
+    static std::vector<std::function<ext_ptr_t()>> s_extension_registry;
 
 public:
     /// \brief Registers a \c PhaseExtension.
@@ -125,28 +107,29 @@ public:
     ///
     /// After registration, all phases will include data from the extension.
     template<typename E>
-    static inline void register_extension() {
+    static void register_extension() {
         if(s_current != nullptr) {
             throw std::runtime_error(
                 "Extensions must be registered outside of any "
                 "stat measurements!");
         } else {
-            m_extension_registry.emplace_back([](){
+            s_extension_registry.emplace_back([](){
                 return std::make_unique<E>();
             });
         }
     }
 
 private:
-    std::unique_ptr<std::vector<ext_ptr_t>> m_extensions;
-
-    //////////////////////////////////////////
-    // Other StatPhase state
-    //////////////////////////////////////////
-
+    //
+    // Current phase
+    //
     static Phase* s_current;
-    Phase* m_parent = nullptr;
 
+    //
+    // Members
+    //
+    std::unique_ptr<std::vector<ext_ptr_t>> m_extensions;
+    Phase* m_parent = nullptr;
     double m_pause_time;
 
     struct {
@@ -157,102 +140,28 @@ private:
         ssize_t off, current, peak;
     } m_mem;
 
+    size_t m_num_allocs;
+    size_t m_num_frees;
+
     std::string m_title;
     std::unique_ptr<json> m_sub;
     std::unique_ptr<json> m_stats;
 
     bool m_disabled = false;
 
-    inline static double current_time_millis() {
-        timespec t;
-        get_monotonic_time(&t);
+    // Initialize a phase
+    void init(std::string&& title);
 
-        return double(t.tv_sec * 1000L) + double(t.tv_nsec) / double(1000000L);
-    }
+    // Finish the current Phase
+    void finish();
 
-    inline void init(std::string&& title) {
-        suppress_memory_tracking guard;
+    // Pause / resume
+    void on_pause_tracking();
+    void on_resume_tracking();
 
-        if(!s_init) {
-            force_malloc_override_link();
-            s_init = true;
-        }
-
-        m_parent = s_current;
-
-        m_title = std::move(title);
-
-        // managed allocation of complex members
-        m_extensions = std::make_unique<std::vector<ext_ptr_t>>();
-        m_sub = std::make_unique<json>(json::array());
-        m_stats = std::make_unique<json>();
-
-        // initialize extensions
-        for(auto ctor : m_extension_registry) {
-            m_extensions->emplace_back(ctor());
-        }
-
-        // initialize basic data as the very last thing
-        m_mem.off = m_parent ? m_parent->m_mem.current : 0;
-        m_mem.current = 0;
-        m_mem.peak = 0;
-
-        m_time.end = 0;
-        m_time.start = current_time_millis();
-        m_time.paused = 0;
-
-        // set as current
-        s_current = this;
-    }
-
-    /// Finish the current Phase
-    inline void finish() {
-        suppress_memory_tracking guard;
-
-        m_time.end = current_time_millis();
-
-        // let extensions write data
-        for(auto& ext : *m_extensions) {
-            ext->write(*m_stats);
-        }
-
-        if(m_parent) {
-            // propagate extensions to parent
-            for(size_t i = 0; i < m_extensions->size(); i++) {
-                (*(m_parent->m_extensions))[i]->propagate(*(*m_extensions)[i]);
-            }
-
-            // add data to parent's data
-            m_parent->m_time.paused += m_time.paused;
-            m_parent->m_sub->push_back(to_json());
-        }
-
-        // managed release of complex members
-        m_extensions.release();
-        m_sub.release();
-        m_stats.release();
-
-        // pop parent
-        s_current = m_parent;
-    }
-
-    inline void on_pause_tracking() {
-        m_pause_time = current_time_millis();
-
-        // notify extensions
-        for(auto& ext : *m_extensions) {
-            ext->pause();
-        }
-    }
-
-    inline void on_resume_tracking() {
-        // notify extensions
-        for(auto& ext : *m_extensions) {
-            ext->resume();
-        }
-
-        m_time.paused += current_time_millis() - m_pause_time;
-    }
+    // Memory tracking internals
+    void track_alloc_internal(size_t bytes);
+    void track_free_internal(size_t bytes);
 
 public:
     /// \brief Executes a lambda as a single statistics phase.
@@ -354,9 +263,7 @@ public:
     }
 
     /// \brief Creates an inert statistics phase without any effect.
-    inline Phase() {
-        m_disabled = true;
-    }
+    Phase();
 
     /// \brief Creates a new statistics phase.
     ///
@@ -364,18 +271,12 @@ public:
     /// immediately become the current phase.
     ///
     /// \param title the phase title
-    inline Phase(std::string&& title) {
-        init(std::move(title));
-    }
-
+    Phase(std::string&& title);
+    
     /// \brief Destroys and ends the phase.
     ///
     /// The phase's parent phase, if any, will become the current phase.
-    inline ~Phase() {
-        if (!m_disabled) {
-            finish();
-        }
-    }
+    ~Phase();
 
     /// \brief Starts a new phase as a sibling, reusing the same object.
     ///
@@ -383,14 +284,7 @@ public:
     /// a new phases was started immediately after.
     ///
     /// \param new_title the new phase title
-    inline void split(std::string&& new_title) {
-        if (!m_disabled) {
-            const ssize_t offs = m_mem.off + m_mem.current;
-            finish();
-            init(std::move(new_title));
-            m_mem.off = offs;
-        }
-    }
+    void split(std::string&& new_title);
 
     /// \brief Logs a user statistic for this phase.
     ///
@@ -400,7 +294,7 @@ public:
     /// \param key the statistic key or name
     /// \param value the value to log (will be converted to a string)
     template<typename T>
-    inline void log(std::string&& key, const T& value) {
+    void log(std::string&& key, const T& value) {
         if (!m_disabled) {
             suppress_memory_tracking guard;
             (*m_stats)[std::move(key)] = value;
@@ -416,44 +310,7 @@ public:
     /// It contains the subtree of phases beneath this phase.
     ///
     /// \return the JSON representation of this phase
-    inline json to_json() {
-        suppress_memory_tracking guard;
-        if (!m_disabled) {
-            m_time.end = current_time_millis();
-
-            // let extensions write data
-            for(auto& ext : *m_extensions) {
-                ext->write(*m_stats);
-            }
-
-            json obj;
-            obj["title"] = m_title;
-            obj["timeStart"] = m_time.start;
-            obj["timeEnd"] = m_time.end;
-            obj["timePaused"] = m_time.paused;
-
-            const double dt = m_time.end - m_time.start;
-            obj["timeDelta"] = dt;
-            obj["timeRun"] = dt - m_time.paused;
-            obj["memOff"] = m_mem.off;
-            obj["memPeak"] = m_mem.peak;
-            obj["memFinal"] = m_mem.current;
-            obj["sub"] = *m_sub;
-
-            auto stats_array = json::array();
-            for(auto it = m_stats->begin(); it != m_stats->end(); it++) {
-                stats_array.push_back(json({
-                    {"key", it.key()},
-                    {"value", *it}
-                }));
-            }
-            obj["stats"] = stats_array;
-
-            return obj;
-        } else {
-            return json();
-        }
-    }
+    json to_json();
 };
 
 }} // namespace tdc::stat

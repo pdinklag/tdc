@@ -1,2 +1,1 @@
-add_library(tdc-stat STATIC mem_tracking.cpp)
-add_dependencies(tdc-stat tdc-malloc)
+add_library(tdc-stat STATIC malloc.cpp mem_tracking.cpp phase.cpp)

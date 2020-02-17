@@ -7,7 +7,6 @@ if(DOXYGEN_FOUND)
         ${CMAKE_SOURCE_DIR}/README.md
         ${CMAKE_SOURCE_DIR}/include
         # additional special pages go here
-        ${CMAKE_CURRENT_SOURCE_DIR}/namespaces.hpp
     )
 
     string (REPLACE ";" " " TDC_DOXYGEN_INPUT "${TDC_DOXYGEN_INPUT}")

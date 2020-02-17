@@ -1,4 +1,4 @@
-#include <tdc/malloc/malloc_callback.hpp>
+#include <tdc/stat/malloc_callback.hpp>
 
 #include <cstring>
 
@@ -23,7 +23,7 @@ extern "C" void* malloc(size_t size) {
     block->magic = MEMBLOCK_MAGIC;
     block->size = size;
 
-    tdc::malloc_callback::on_alloc(size);
+    tdc::stat::on_alloc(size);
 
     return (char*)ptr + sizeof(block_header_t);
 }
@@ -33,7 +33,7 @@ extern "C" void free(void* ptr) {
 
     auto block = (block_header_t*)((char*)ptr - sizeof(block_header_t));
     if(is_managed(block)) {
-        tdc::malloc_callback::on_free(block->size);
+        tdc::stat::on_free(block->size);
         __libc_free(block);
     } else {
         __libc_free(ptr);
@@ -56,8 +56,8 @@ extern "C" void* realloc(void* ptr, size_t size) {
             new_block->magic = MEMBLOCK_MAGIC; // just making sure
             new_block->size = size;
 
-            tdc::malloc_callback::on_free(old_size);
-            tdc::malloc_callback::on_alloc(size);
+            tdc::stat::on_free(old_size);
+            tdc::stat::on_alloc(size);
 
             return (char*)new_ptr + sizeof(block_header_t);
         } else {

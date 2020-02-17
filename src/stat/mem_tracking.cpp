@@ -1,13 +1,13 @@
-#include <tdc/malloc/malloc_callback.hpp>
+#include <tdc/stat/malloc_callback.hpp>
 #include <tdc/stat/phase.hpp>
 
 namespace tdc {
-namespace malloc_callback {
+namespace stat {
     void on_alloc(size_t bytes) {
-        stat::Phase::track_mem_alloc(bytes);
+        Phase::track_mem_alloc(bytes);
     }
     
     void on_free(size_t bytes) {
-        stat::Phase::track_mem_free(bytes);
+        Phase::track_mem_free(bytes);
     }
 }}

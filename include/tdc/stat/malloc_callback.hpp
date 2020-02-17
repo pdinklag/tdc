@@ -7,7 +7,7 @@
 #include <cstdlib>
 
 namespace tdc {
-namespace malloc_callback {
+namespace stat {
     /// \brief Called when memory is allocated.
     /// \param bytes the number of bytes being allocated
     void on_alloc(size_t bytes);
