@@ -34,10 +34,8 @@ public:
     };
 
 private:
-    static uint32_t m_num_packages;
-
 #ifdef TDC_RAPL_AVAILABLE
-    static std::array<powercap_rapl_pkg, NUM_RAPL_PACKAGES> m_pkg;
+    static std::array<powercap_rapl_pkg, num_packages> m_pkg;
 #endif
 
     static Reader m_singleton;
@@ -46,18 +44,15 @@ private:
     ~Reader();
 
 public:
-    /// \brief The number of RAPL packages available on this system, as reported by RAPL itself.
-    static const uint32_t& num_packages;
-
     /// \brief Returns the zones supported by the specified package.
-    /// \param package the package in question
+    /// \param package the package in question, must be less than \c tdc::rapl::num_packages
     static zone_support supported_zones(uint32_t package);
 
     /// \brief Returns the zones supported by all packages.
     static zone_support supported_zones();
 
     /// \brief Reads the current energy counter for the specified package.
-    /// \param package the package in question
+    /// \param package the package in question, must be less than \c tdc::rapl::num_packages
     static energy read(uint32_t package);
 
     /// \brief Reads the current energy counter for all packages.

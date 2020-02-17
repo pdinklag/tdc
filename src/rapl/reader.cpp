@@ -5,8 +5,7 @@ using namespace tdc::rapl;
 
 #ifdef TDC_RAPL_AVAILABLE
 
-uint32_t Reader::m_num_packages = powercap_rapl_get_num_packages();
-std::array<powercap_rapl_pkg, NUM_RAPL_PACKAGES> Reader::m_pkg;
+std::array<powercap_rapl_pkg, num_packages> Reader::m_pkg;
 
 Reader::zone_support Reader::supported_zones(uint32_t package) {
     zone_support s;
@@ -21,7 +20,7 @@ Reader::zone_support Reader::supported_zones(uint32_t package) {
 Reader::zone_support Reader::supported_zones() {
     zone_support s = supported_zones(0);
     zone_support spkg;
-    for(uint32_t i = 1; i < m_num_packages; i++) {
+    for(uint32_t i = 1; i < num_packages; i++) {
         spkg = supported_zones(i);
         s.package = s.package && spkg.package;
         s.core    = s.core    && spkg.core;
@@ -44,30 +43,20 @@ energy Reader::read(uint32_t package) {
 
 energy_buffer Reader::read() {
     energy_buffer buf;
-    for(uint32_t i = 0; i < m_num_packages; i++) {
+    for(uint32_t i = 0; i < num_packages; i++) {
         buf[i] = read(i);
     }
     return buf;
 }
 
 Reader::Reader() {
-    if(NUM_RAPL_PACKAGES < m_num_packages) {
-        std::cerr
-            << "WARNING: There are more RAPL packages available (" << m_num_packages
-            << ") than configured by the NUM_RAPL_PACKAGES macro (" << NUM_RAPL_PACKAGES
-            << "). RAPL read results may be incomplete!"
-            << std::endl;
-
-        m_num_packages = NUM_RAPL_PACKAGES;
-    }
-
-    for(uint32_t i = 0; i < m_num_packages; i++) {
+    for(uint32_t i = 0; i < num_packages; i++) {
         powercap_rapl_init(i, &m_pkg[i], true);
     }
 }
 
 Reader::~Reader() {
-    for(uint32_t i = 0; i < m_num_packages; i++) {
+    for(uint32_t i = 0; i < num_packages; i++) {
         powercap_rapl_destroy(&m_pkg[i]);
     }
 }
@@ -98,5 +87,3 @@ energy Reader::read() {
 
 // instantiate singleton
 Reader Reader::m_singleton;
-
-const uint32_t& Reader::num_packages = Reader::m_num_packages;
