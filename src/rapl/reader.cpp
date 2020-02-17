@@ -3,9 +3,9 @@
 
 using namespace tdc::rapl;
 
-uint32_t Reader::m_num_packages = powercap_rapl_get_num_packages();
-const uint32_t& Reader::num_packages = Reader::m_num_packages;
+#ifdef TDC_RAPL_AVAILABLE
 
+uint32_t Reader::m_num_packages = powercap_rapl_get_num_packages();
 std::array<powercap_rapl_pkg, NUM_RAPL_PACKAGES> Reader::m_pkg;
 
 Reader::zone_support Reader::supported_zones(uint32_t package) {
@@ -72,5 +72,31 @@ Reader::~Reader() {
     }
 }
 
+#else
+
+// RAPL not available - provide stubs
+
+uint32_t Reader::m_num_packages = 0;
+
+Reader::zone_support Reader::supported_zones(uint32_t package) {
+    return zone_support{ false, false, false, false, false };
+}
+
+Reader::zone_support Reader::supported_zones() {
+    return zone_support{ false, false, false, false, false };
+}
+
+energy Reader::read(uint32_t package) {
+    return energy();
+}
+
+energy Reader::read() {
+    return energy();
+}
+
+#endif
+
 // instantiate singleton
 Reader Reader::m_singleton;
+
+const uint32_t& Reader::num_packages = Reader::m_num_packages;

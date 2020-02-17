@@ -5,6 +5,7 @@
 #include "energy_buffer.hpp"
 
 #ifdef POWERCAP_FOUND
+#define TDC_RAPL_AVAILABLE
 #include <powercap/powercap-rapl.h>
 #endif
 
@@ -35,7 +36,7 @@ public:
 private:
     static uint32_t m_num_packages;
 
-#ifdef POWERCAP_FOUND
+#ifdef TDC_RAPL_AVAILABLE
     static std::array<powercap_rapl_pkg, NUM_RAPL_PACKAGES> m_pkg;
 #endif
 
