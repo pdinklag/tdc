@@ -72,7 +72,7 @@ struct energy {
 
 #include <ostream>
 
-std::ostream& operator<<(std::ostream& os, const tdc::rapl::energy& e) {
+inline std::ostream& operator<<(std::ostream& os, const tdc::rapl::energy& e) {
     os << "(" << e.package << "," << e.core << "," << e.uncore << "," << e.dram << "," << e.psys << ")";
     return os;
 }
