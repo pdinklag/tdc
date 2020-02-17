@@ -8,13 +8,6 @@
 #include "phase_extension.hpp"
 #include "json.hpp"
 
-#include <sys/time.h>
-
-#ifdef __MACH__
-    #include <mach/clock.h>
-    #include <mach/mach.h>
-#endif
-
 namespace tdc {
 namespace stat {
 
@@ -25,32 +18,6 @@ namespace stat {
 /// use in the tdc charter for visualization, or in other formats for any third party applications.
 class Phase {
 private:
-    //
-    // Time measurement statics
-    //
-    static inline void get_monotonic_time(struct timespec* ts){
-    #ifdef __MACH__
-        // OS X
-        clock_serv_t cclock;
-        mach_timespec_t mts;
-        host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
-        clock_get_time(cclock, &mts);
-        mach_port_deallocate(mach_task_self(), cclock);
-        ts->tv_sec = mts.tv_sec;
-        ts->tv_nsec = mts.tv_nsec;
-    #else
-        // Linux
-        clock_gettime(CLOCK_MONOTONIC, ts);
-    #endif
-    }
-
-    static inline double current_time_millis() {
-        timespec t;
-        get_monotonic_time(&t);
-
-        return double(t.tv_sec * 1000L) + double(t.tv_nsec) / double(1000000L);
-    }
-
     //
     // Memory tracking and suppression statics
     //

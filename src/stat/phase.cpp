@@ -1,3 +1,4 @@
+#include <tdc/stat/time.hpp>
 #include <tdc/stat/phase.hpp>
 
 using namespace tdc::stat;
@@ -58,7 +59,7 @@ void Phase::init(std::string&& title) {
     m_mem.peak = 0;
 
     m_time.end = 0;
-    m_time.start = current_time_millis();
+    m_time.start = time_millis();
     m_time.paused = 0;
 
     // set as current
@@ -68,7 +69,7 @@ void Phase::init(std::string&& title) {
 void Phase::finish() {
     suppress_memory_tracking guard;
 
-    m_time.end = current_time_millis();
+    m_time.end = time_millis();
 
     // let extensions write data
     for(auto& ext : *m_extensions) {
@@ -96,7 +97,7 @@ void Phase::finish() {
 }
 
 void Phase::on_pause_tracking() {
-    m_pause_time = current_time_millis();
+    m_pause_time = time_millis();
 
     // notify extensions
     for(auto& ext : *m_extensions) {
@@ -110,7 +111,7 @@ void Phase::on_resume_tracking() {
         ext->resume();
     }
 
-    m_time.paused += current_time_millis() - m_pause_time;
+    m_time.paused += time_millis() - m_pause_time;
 }
 
 void Phase::track_alloc_internal(size_t bytes) {
@@ -155,7 +156,7 @@ void Phase::split(std::string&& new_title) {
 json Phase::to_json() {
     suppress_memory_tracking guard;
     if (!m_disabled) {
-        m_time.end = current_time_millis();
+        m_time.end = time_millis();
 
         json obj;
         obj["title"] = m_title;
