@@ -157,11 +157,6 @@ json Phase::to_json() {
     if (!m_disabled) {
         m_time.end = current_time_millis();
 
-        // let extensions write data
-        for(auto& ext : *m_extensions) {
-            ext->write(*m_stats);
-        }
-
         json obj;
         obj["title"] = m_title;
 
@@ -173,17 +168,20 @@ json Phase::to_json() {
         obj["memFinal"] = m_mem.current;
         obj["numAllocs"] = m_num_allocs;
         obj["numFrees"] = m_num_frees;
-        obj["sub"] = *m_sub;
 
+        // let extensions write data
+        for(auto& ext : *m_extensions) {
+            ext->write(obj);
+        }
+
+        // write user stats
         auto stats_array = json::array();
         for(auto it = m_stats->begin(); it != m_stats->end(); it++) {
-            stats_array.push_back(json({
-                {"key", it.key()},
-                {"value", *it}
-            }));
+            obj[it.key()] = *it;
         }
-        obj["stats"] = stats_array;
 
+        // sub-phases
+        obj["sub"] = *m_sub;
         return obj;
     } else {
         return json();
