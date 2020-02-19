@@ -16,20 +16,15 @@ namespace vec {
 /// Bit vectors are static, i.e., bits cannot be inserted or deleted.
 class BitVector {
 private:
-    inline static constexpr size_t block(size_t i) {
+    inline static constexpr size_t block(const size_t i) {
         return i >> 6ULL; // divide by 64
     }
 
-    inline static constexpr size_t offset(size_t i) {
+    inline static constexpr size_t offset(const size_t i) {
         return i & 63ULL; // mod 64
     }
 
-    inline static std::unique_ptr<uint64_t[]> allocate(size_t num_bits) {
-        const size_t num64 = div64_ceil(num_bits);
-        uint64_t* p = new uint64_t[num64];
-        memset(p, 0, num64 * sizeof(uint64_t));
-        return std::unique_ptr<uint64_t[]>(p);
-    }
+    static std::unique_ptr<uint64_t[]> allocate(const size_t num_bits);
 
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_bits;
