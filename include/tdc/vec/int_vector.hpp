@@ -96,17 +96,17 @@ public:
         return *this;
     }
 
-    /// \brief Rebuilds the integer vector with the specified new length and width.
+    /// \brief Resizes the integer vector with the specified new length and width.
     ///
     /// \param size the new number of integers
     /// \param width the new width of each integer in bits
-    void rebuild(const size_t size, const size_t width);
+    void resize(const size_t size, const size_t width);
 
-    /// \brief Rebuilds the integer vector with the specified new length and current bit width.
+    /// \brief Resizes the integer vector with the specified new length and current bit width.
     ///
     /// \param size the new number of integers
-    inline void rebuild(size_t size) {
-        rebuild(size, m_width);
+    inline void resize(size_t size) {
+        resize(size, m_width);
     }
 
     /// \brief Reads the specified integer.

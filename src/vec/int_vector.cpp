@@ -65,7 +65,7 @@ void IntVector::set(const size_t i, const uint64_t v_) {
     }
 }
 
-void IntVector::rebuild(const size_t size, const size_t width) {
+void IntVector::resize(const size_t size, const size_t width) {
     IntVector new_iv(size, width);
     for(size_t i = 0; i < size; i++) {
         new_iv.set(i, get(i));
