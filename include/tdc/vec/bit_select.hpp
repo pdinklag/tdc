@@ -8,7 +8,8 @@
 #include "int_vector.hpp"
 #include "rank_u64.hpp"
 #include "select_u64.hpp"
-#include "util.hpp"
+
+#include <tdc/math/imath.hpp>
 
 namespace tdc {
 namespace vec {
@@ -49,15 +50,15 @@ public:
     /// \param bv the bit vector
     BitSelect(std::shared_ptr<const BitVector> bv) : m_bv(bv) {
         const size_t n = m_bv->size();
-        const size_t log_n = log2_ceil(n - 1);
+        const size_t log_n = math::ilog2_ceil(n - 1);
 
         // construct
         m_block_size    = log_n;
         m_supblock_size = log_n * log_n;
         m_blocks_per_supblock = log_n;
 
-        m_supblocks = IntVector(idiv_ceil(n, m_supblock_size), log_n);
-        m_blocks = IntVector(idiv_ceil(n, m_block_size), log_n);
+        m_supblocks = IntVector(math::idiv_ceil(n, m_supblock_size), log_n);
+        m_blocks = IntVector(math::idiv_ceil(n, m_block_size), log_n);
 
         m_max = 0;
         size_t r_sb = 0; // current bit count in superblock
@@ -137,7 +138,7 @@ public:
         }
 
         longest_sb = std::max(longest_sb, n - cur_sb_offset);
-        const size_t w_block = log2_ceil(longest_sb);
+        const size_t w_block = math::ilog2_ceil(longest_sb);
 
         m_supblocks.resize(cur_sb, log_n);
         m_blocks.resize(cur_b, w_block);

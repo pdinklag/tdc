@@ -4,7 +4,7 @@
 #include <memory>
 #include <utility>
 
-#include "util.hpp"
+#include <tdc/math/imath.hpp>
 
 namespace tdc {
 namespace vec {
@@ -82,7 +82,7 @@ public:
         m_width = other.m_width;
         m_mask = other.m_mask;
         m_data = allocate(m_size, m_width);
-        memcpy(m_data.get(), other.m_data.get(), div64_ceil(m_size * m_width));
+        memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL));
         return *this;
     }
 

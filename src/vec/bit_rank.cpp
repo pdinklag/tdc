@@ -1,6 +1,5 @@
 #include <tdc/vec/bit_rank.hpp>
 #include <tdc/vec/rank_u64.hpp>
-#include <tdc/vec/util.hpp>
 
 using namespace tdc::vec;
 
@@ -8,7 +7,7 @@ BitRank::BitRank(std::shared_ptr<const BitVector> bv) : m_bv(bv) {
     const size_t n = m_bv->size();
 
     // determine number of superblocks and superblock entry width
-    const size_t sw = log2_ceil(n-1);
+    const size_t sw = math::ilog2_ceil(n-1);
     const size_t sq = n >> SUP_W;
     const size_t sm = n & SUP_MSK;
     m_supblocks.resize(sm ? sq + 1 : sq, sw);

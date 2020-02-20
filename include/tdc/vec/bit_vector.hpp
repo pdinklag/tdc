@@ -6,7 +6,7 @@
 #include <vector>
 #include <utility>
 
-#include "util.hpp"
+#include <tdc/math/imath.hpp>
 
 namespace tdc {
 namespace vec {
@@ -93,7 +93,7 @@ public:
     inline BitVector& operator=(const BitVector& other) {
         m_size = other.m_size;
         m_bits = allocate(m_size);
-        std::memcpy(m_bits.get(), other.m_bits.get(), div64_ceil(m_size));
+        std::memcpy(m_bits.get(), other.m_bits.get(), math::idiv_ceil(m_size, 64ULL));
         return *this;
     }
 
@@ -113,7 +113,7 @@ public:
 
     /// \brief The number of 64-bit blocks contained in this bit vector.
     inline size_t num_blocks() const {
-        return div64_ceil(m_size);
+        return math::idiv_ceil(m_size, 64ULL);
     }
 
     /// \brief Reads the specified bit.
