@@ -45,14 +45,14 @@ private:
 
 public:
     /// \brief Returns the zones supported by the specified package.
-    /// \param package the package in question, must be less than \c tdc::rapl::num_packages
+    /// \param package the package in question, must be less than \ref num_packages
     static zone_support supported_zones(uint32_t package);
 
     /// \brief Returns the zones supported by all packages.
     static zone_support supported_zones();
 
     /// \brief Reads the current energy counter for the specified package.
-    /// \param package the package in question, must be less than \c tdc::rapl::num_packages
+    /// \param package the package in question, must be less than \ref num_packages
     static energy read(uint32_t package);
 
     /// \brief Reads the current energy counter for all packages.

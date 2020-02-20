@@ -69,8 +69,8 @@ private:
     static std::vector<std::function<ext_ptr_t()>> s_extension_registry;
 
 public:
-    /// \brief Registers a \c PhaseExtension.
-    /// \tparam E the extension class type, which must inherit from \c PhaseExtension
+    /// \brief Registers a \ref PhaseExtension.
+    /// \tparam E the extension class type, which must inherit from \ref PhaseExtension.
     ///
     /// After registration, all phases will include data from the extension.
     template<typename E>
@@ -136,7 +136,7 @@ public:
     /// The new phase is started as a sub phase of the current phase and will
     /// immediately become the current phase.
     ///
-    /// In case the given lambda accepts a \c StatPhase reference parameter,
+    /// In case the given lambda accepts a \ref Phase reference parameter,
     /// the phase object will be passed to it for use during execution.
     ///
     /// \param title the phase title
@@ -155,7 +155,7 @@ public:
     /// The new phase is started as a sub phase of the current phase and will
     /// immediately become the current phase.
     ///
-    /// In case the given lambda accepts a \c StatPhase reference parameter,
+    /// In case the given lambda accepts a \ref Phase reference parameter,
     /// the phase object will be passed to it for use during execution.
     ///
     /// \param title the phase title

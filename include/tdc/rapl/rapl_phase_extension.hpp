@@ -8,7 +8,7 @@ namespace rapl {
 
 /// \brief Stat phase extension for measuring energy using the RAPL interface.
 ///
-/// Use \c tdc::stat::Phase::register_extension to activate.
+/// Use \ref stat::Phase::register_extension to activate.
 class RAPLPhaseExtension : public stat::PhaseExtension {
 private:
     energy_buffer m_begin;

@@ -7,12 +7,12 @@ namespace stat {
 
 /// \brief Virtual interface for statistics phase extensions.
 ///
-/// An extension can be used to add additional measurement features when a \c Phase is started,
+/// An extension can be used to add additional measurement features when a ref Phase is started,
 /// e.g., energy or I/O operations.
-/// Extensions are activated by registering them via \c Phase::register_extension.
+/// Extensions are activated by registering them via ref Phase::register_extension.
 ///
 /// When constructed, measurement shall start.
-/// During the extension's lifetime, multiple calls to \c PhaseExtension::write may occur.
+/// During the extension's lifetime, multiple calls to ref PhaseExtension::write may occur.
 class PhaseExtension {
 public:
     /// \brief Writes phase data to a JSON object.

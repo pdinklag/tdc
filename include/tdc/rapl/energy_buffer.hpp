@@ -16,13 +16,13 @@ namespace rapl {
         }
 
         /// \brief Gets the energy measurement for the specified package.
-        /// \param i the package in question, must be less than \c tdc::rapl::num_packages
+        /// \param i the package in question, must be less than \ref num_packages
         inline energy& operator[](size_t i) {
             return packages[i];
         }
         
         /// \brief Gets the read-only energy measurement for the specified package.
-        /// \param i the package in question, must be less than \c tdc::rapl::num_packages
+        /// \param i the package in question, must be less than \ref num_packages
         inline const energy& operator[](size_t i) const {
             return packages[i];
         }
