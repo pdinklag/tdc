@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.4.1 FATAL_ERROR)
 project(tdc)
 
+# enable tests
+enable_testing()
+
 # include CMake modules
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules")
 
