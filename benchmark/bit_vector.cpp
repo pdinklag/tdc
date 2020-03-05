@@ -27,9 +27,9 @@ stat::Phase benchmark_phase(std::string&& title) {
     return phase;
 }
 
-template<typename bit_vector_t>
-void bench() {
-    bit_vector_t bv(options.num);
+template<typename C>
+void bench(C constructor) {
+    auto bv = constructor(options.num);
     
     stat::Phase::wrap("set_seq", [&bv](){
         for(size_t i = 0; i < options.num; i++) {
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     // tdc::vec::BitVector
     {
         auto result = benchmark_phase("tdc");
-        bench<vec::BitVector>();
+        bench([](const size_t sz){ return vec::BitVector(sz); });
         
         result.suppress([&](){
             std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     // std::vector<bool>
     {
         auto result = benchmark_phase("std");
-        bench<std::vector<bool>>();
+        bench([](const size_t sz){ return std::vector<bool>(sz); });
         
         result.suppress([&](){
             std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
