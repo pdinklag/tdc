@@ -103,6 +103,8 @@ private:
         double start, end, paused;
     } m_time;
 
+    double time_run() const;
+
     struct {
         ssize_t off, current, peak;
     } m_mem;

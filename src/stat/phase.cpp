@@ -173,15 +173,18 @@ void Phase::split(std::string&& new_title) {
     }
 }
 
+double Phase::time_run() const {
+    return time_millis() - m_time.start - m_time.paused;
+}
+
 json Phase::to_json() const {
-    const double dt = time_millis() - m_time.start;
+    const double dt = time_run();
     
     suppress_memory_tracking guard;
     if(!m_disabled) {
         json obj;
         obj["title"] = m_title;
         obj["time"] = dt;
-        obj["timePaused"] = m_time.paused;
         obj["memOff"] = m_mem.off;
         obj["memPeak"] = m_mem.peak;
         obj["memFinal"] = m_mem.current;
@@ -207,13 +210,12 @@ json Phase::to_json() const {
 }
 
 std::string Phase::to_keyval() const {
-    const double dt = time_millis() - m_time.start;
+    const double dt = time_run();
     
     suppress_memory_tracking guard;
     if(!m_disabled) {
         std::ostringstream ss;
-        ss << "time=" << dt
-            << " timePaused=" << m_time.paused
+        ss << "time=" << dt - m_time.paused
             << " memOff=" << m_mem.off
             << " memPeak=" << m_mem.peak
             << " memFinal=" << m_mem.current
@@ -245,8 +247,6 @@ std::string Phase::to_keyval() const {
 }
 
 std::string Phase::subphases_time_keyval() const {
-    const double dt = time_millis() - m_time.start;
-    
     suppress_memory_tracking guard;
     if(!m_disabled) {
         std::ostringstream ss;
