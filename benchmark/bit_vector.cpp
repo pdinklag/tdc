@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
         bench<vec::BitVector>();
         
         auto guard = result.suppress_tracking();
-        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
+        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
     }
     // std::vector<bool>
     {
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         bench<std::vector<bool>>();
         
         auto guard = result.suppress_tracking();
-        std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
+        std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
     }
     
     return 0;
