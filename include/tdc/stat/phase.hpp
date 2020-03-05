@@ -17,6 +17,22 @@ namespace stat {
 /// The measured data is held as JSON objects and can be exported as such, e.g., for
 /// use in the tdc charter for visualization, or in other formats for any third party applications.
 class Phase {
+public:
+    /// \brief The stat key used for a phase's title.
+    static const std::string STAT_TITLE;
+    /// \brief The stat key used for a phase's running time.
+    static const std::string STAT_TIME;
+    /// \brief The stat key used for a phase's memory offset.
+    static const std::string STAT_MEM_OFF;
+    /// \brief The stat key used for a phase's memory peak.
+    static const std::string STAT_MEM_PEAK;
+    /// \brief The stat key used for a phase's final memory counter.
+    static const std::string STAT_MEM_FINAL;
+    /// \brief The stat key used for a phase's number of allocations.
+    static const std::string STAT_NUM_ALLOC;
+    /// \brief The stat key used for a phase's number of frees.
+    static const std::string STAT_NUM_FREE;
+
 private:
     //
     // Memory tracking and suppression statics
@@ -295,11 +311,10 @@ public:
     /// Note that this does not contain any sub-phase data.
     std::string to_keyval() const;
 
-    /// \brief Constructs a key=value style strings of the subphase times.
+    /// \brief Constructs a key=value style strings for phase's subphases.
     ///
-    /// The exact format is <tt>time_[title]=[time]</tt>.
-    /// The string will only include direct subphases and not delve deeper into their subphases.
-    std::string subphases_time_keyval() const;
+    /// The exact format will be <tt>[value_stat]_[title]=[value]</tt>.
+    std::string subphases_keyval(const std::string& value_stat = STAT_TIME, const std::string& key_stat = STAT_TITLE) const;
 };
 
 }} // namespace tdc::stat

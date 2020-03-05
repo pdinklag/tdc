@@ -6,6 +6,14 @@
 
 using namespace tdc::stat;
 
+const std::string Phase::STAT_TITLE = "title";
+const std::string Phase::STAT_TIME = "time";
+const std::string Phase::STAT_MEM_OFF = "memOff";
+const std::string Phase::STAT_MEM_PEAK = "memPeak";
+const std::string Phase::STAT_MEM_FINAL = "memFinal";
+const std::string Phase::STAT_NUM_ALLOC = "numAlloc";
+const std::string Phase::STAT_NUM_FREE = "numFree";
+
 uint16_t Phase::s_suppress_memory_tracking_state = 0;
 uint16_t Phase::s_suppress_tracking_user_state = 0;
 
@@ -183,13 +191,13 @@ json Phase::to_json() const {
     suppress_memory_tracking guard;
     if(!m_disabled) {
         json obj;
-        obj["title"] = m_title;
-        obj["time"] = dt;
-        obj["memOff"] = m_mem.off;
-        obj["memPeak"] = m_mem.peak;
-        obj["memFinal"] = m_mem.current;
-        obj["numAllocs"] = m_num_allocs;
-        obj["numFrees"] = m_num_frees;
+        obj[STAT_TITLE] = m_title;
+        obj[STAT_TIME] = dt;
+        obj[STAT_MEM_OFF] = m_mem.off;
+        obj[STAT_MEM_PEAK] = m_mem.peak;
+        obj[STAT_MEM_FINAL] = m_mem.current;
+        obj[STAT_NUM_ALLOC] = m_num_allocs;
+        obj[STAT_NUM_FREE] = m_num_frees;
 
         // let extensions write data
         for(auto& ext : *m_extensions) {
@@ -215,12 +223,12 @@ std::string Phase::to_keyval() const {
     suppress_memory_tracking guard;
     if(!m_disabled) {
         std::ostringstream ss;
-        ss << "time=" << dt - m_time.paused
-            << " memOff=" << m_mem.off
-            << " memPeak=" << m_mem.peak
-            << " memFinal=" << m_mem.current
-            << " numAllocs=" << m_num_allocs
-            << " numFrees=" << m_num_frees;
+        ss << STAT_TIME << "=" << dt - m_time.paused
+            << " " << STAT_MEM_OFF << "=" << m_mem.off
+            << " " << STAT_MEM_PEAK << "=" << m_mem.peak
+            << " " << STAT_MEM_FINAL << "=" << m_mem.current
+            << " " << STAT_NUM_ALLOC << "=" << m_num_allocs
+            << " " << STAT_NUM_FREE << "=" << m_num_frees;
 
         // write extension data into temporary json objects
         {
@@ -246,7 +254,7 @@ std::string Phase::to_keyval() const {
     }
 }
 
-std::string Phase::subphases_time_keyval() const {
+std::string Phase::subphases_keyval(const std::string& value_stat, const std::string& key_stat) const {
     suppress_memory_tracking guard;
     if(!m_disabled) {
         std::ostringstream ss;
@@ -254,7 +262,7 @@ std::string Phase::subphases_time_keyval() const {
         size_t i = 0;
         for(auto& obj : *m_sub) {
             if(i++) ss << " ";
-            ss << "time_" << std::string(obj["title"]) << "=" << obj["time"];
+            ss << value_stat << "_" << std::string(obj[key_stat]) << "=" << obj[value_stat];
         }
 
         return ss.str();
