@@ -314,6 +314,9 @@ public:
     /// \brief Constructs a key=value style strings for phase's subphases.
     ///
     /// The exact format will be <tt>[value_stat]_[title]=[value]</tt>.
+    ///
+    /// \param value_stat the statistic used as values in the pairs
+    /// \param key_stat the statistic used as keys in the pairs, typically \ref STAT_TITLE, must support casting to \c std::string
     std::string subphases_keyval(const std::string& value_stat = STAT_TIME, const std::string& key_stat = STAT_TITLE) const;
 };
 
