@@ -2,6 +2,7 @@
 #include <tdc/stat/phase.hpp>
 
 #include <sstream>
+#include <utility>
 
 using namespace tdc::stat;
 
@@ -136,6 +137,10 @@ void Phase::track_free_internal(size_t bytes) {
 Phase::Phase() : m_disabled(true) {
 }
 
+Phase::Phase(Phase&& other) {
+    *this = std::move(other);
+}
+
 Phase::Phase(std::string&& title) {
     init(std::move(title));
 }
@@ -144,6 +149,19 @@ Phase::~Phase() {
     if (!m_disabled) {
         finish();
     }
+}
+
+Phase& Phase::operator=(Phase&& other) {
+    m_parent = other.m_parent;
+    m_pause_time = other.m_pause_time;
+    m_time = other.m_time;
+    m_mem = other.m_mem;
+    m_num_allocs = other.m_num_allocs;
+    m_num_frees = other.m_num_frees;
+    m_title = std::move(other.m_title);
+    m_sub = std::move(other.m_sub);
+    m_stats = std::move(other.m_stats);
+    m_disabled = other.m_disabled;
 }
 
 void Phase::split(std::string&& new_title) {
