@@ -29,11 +29,8 @@ stat::Phase benchmark_phase(std::string&& title) {
 
 template<typename bit_vector_t>
 void bench() {
-    bit_vector_t bv;
+    bit_vector_t bv(options.num);
     
-    stat::Phase::wrap("construct", [&bv](){
-        bv = bit_vector_t(options.num);
-    });
     stat::Phase::wrap("set_seq", [&bv](){
         for(size_t i = 0; i < options.num; i++) {
             bv[i] = options.data[i];
@@ -81,12 +78,16 @@ int main(int argc, char** argv) {
     {
         auto result = benchmark_phase("tdc");
         bench<vec::BitVector>();
+        
+        auto guard = result.suppress_tracking();
         std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_time_keyval() << std::endl;
     }
     // std::vector<bool>
     {
         auto result = benchmark_phase("std");
         bench<std::vector<bool>>();
+        
+        auto guard = result.suppress_tracking();
         std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_time_keyval() << std::endl;
     }
     
