@@ -243,3 +243,22 @@ std::string Phase::to_keyval() const {
         return "";
     }
 }
+
+std::string Phase::subphases_time_keyval() const {
+    const double dt = time_millis() - m_time.start;
+    
+    suppress_memory_tracking guard;
+    if(!m_disabled) {
+        std::ostringstream ss;
+
+        size_t i = 0;
+        for(auto& obj : *m_sub) {
+            if(i++) ss << " ";
+            ss << "time_" << std::string(obj["title"]) << "=" << obj["time"];
+        }
+
+        return ss.str();
+    } else {
+        return "";
+    }
+}

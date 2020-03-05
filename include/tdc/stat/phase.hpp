@@ -292,6 +292,12 @@ public:
     ///
     /// Note that this does not contain any sub-phase data.
     std::string to_keyval() const;
+
+    /// \brief Constructs a key=value style strings of the subphase times.
+    ///
+    /// The exact format is <tt>time_[title]=[time]</tt>.
+    /// The string will only include direct subphases and not delve deeper into their subphases.
+    std::string subphases_time_keyval() const;
 };
 
 }} // namespace tdc::stat

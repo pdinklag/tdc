@@ -81,13 +81,13 @@ int main(int argc, char** argv) {
     {
         auto result = benchmark_phase("tdc");
         bench<vec::BitVector>();
-        std::cout << result.to_json().dump(4) << std::endl;
+        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_time_keyval() << std::endl;
     }
     // std::vector<bool>
     {
         auto result = benchmark_phase("std");
         bench<std::vector<bool>>();
-        std::cout << result.to_json().dump(4) << std::endl;
+        std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_time_keyval() << std::endl;
     }
     
     return 0;
