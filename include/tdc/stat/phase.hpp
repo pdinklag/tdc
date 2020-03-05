@@ -216,7 +216,7 @@ public:
     ///
     /// This should be used during more complex logging activity in order
     /// for it to not count against memory measures.
-    inline static auto suppress_tracking() {
+    inline static auto suppress() {
         return suppress_tracking_user();
     }
 
@@ -228,7 +228,7 @@ public:
     /// \param func  the lambda to execute
     /// \return the return value of the lambda
     template<typename F>
-    inline static auto suppress_tracking(F func) ->
+    inline static auto suppress(F func) ->
         typename std::result_of<F()>::type {
 
         suppress_tracking_user guard;

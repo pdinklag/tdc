@@ -79,16 +79,18 @@ int main(int argc, char** argv) {
         auto result = benchmark_phase("tdc");
         bench<vec::BitVector>();
         
-        auto guard = result.suppress_tracking();
-        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        result.suppress([&](){
+            std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        });
     }
     // std::vector<bool>
     {
         auto result = benchmark_phase("std");
         bench<std::vector<bool>>();
         
-        auto guard = result.suppress_tracking();
-        std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        result.suppress([&](){
+            std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        });
     }
     
     return 0;
