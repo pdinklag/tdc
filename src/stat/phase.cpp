@@ -91,9 +91,9 @@ void Phase::finish() {
     }
 
     // managed release of complex members
-    m_extensions.release();
-    m_sub.release();
-    m_stats.release();
+    m_extensions.reset();
+    m_sub.reset();
+    m_stats.reset();
 
     // pop parent
     s_current = m_parent;
