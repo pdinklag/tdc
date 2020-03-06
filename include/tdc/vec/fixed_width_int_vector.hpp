@@ -125,7 +125,7 @@ public:
 
     /// \brief Constructs an integer vector with the specified length.
     /// \param size the number of integers
-    inline FixedWidthIntVector_(size_t size) {
+    inline FixedWidthIntVector_(const size_t size) {
         m_size = size;
         m_data = allocate(size);
     }

@@ -32,7 +32,7 @@ private:
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_bits;
 
-    inline bool get(size_t i) const {
+    inline bool get(const size_t i) const {
         //~ const size_t q = block(i);
         //~ const size_t k = offset(i);
         //~ const uint64_t mask = (1ULL << k);
@@ -42,7 +42,7 @@ private:
         return bool(m_bits[i >> 6ULL] & (1ULL << (i & 63ULL)));
     }
 
-    inline void set(size_t i, bool b) {
+    inline void set(const size_t i, const bool b) {
         const size_t q = block(i);
         const size_t mask = (1ULL << offset(i));
         m_bits[q] = (m_bits[q] & ~mask) | (-b & mask);
@@ -70,7 +70,7 @@ public:
 
     /// \brief Constructs a bit vector of the specified length with all bits initialized to zero.
     /// \param size the number of bits in the bit vector
-    inline BitVector(size_t size) : m_size(size) {
+    inline BitVector(const size_t size) : m_size(size) {
         m_bits = allocate(m_size);
     }
 
@@ -93,7 +93,7 @@ public:
 
     /// \brief Gets all bits in the interval <tt>[64i,64i+63]</tt> packed in a 64-bit integer, with the least significant bit representing bit <tt>64i</tt>.
     /// \param i the block index.
-    inline uint64_t block64(size_t i) const {
+    inline uint64_t block64(const size_t i) const {
         return m_bits[i];
     }
 
@@ -104,13 +104,13 @@ public:
 
     /// \brief Reads the specified bit.
     /// \param i the number of the bit to read.
-    inline bool operator[](size_t i) const {
+    inline bool operator[](const size_t i) const {
         return get(i);
     }
 
     /// \brief Access to the specified bit.
     /// \param i the number of the bit to access.
-    inline BitRef operator[](size_t i) {
+    inline BitRef operator[](const size_t i) {
         return BitRef(*this, i);
     }
 

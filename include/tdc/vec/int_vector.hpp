@@ -54,7 +54,7 @@ public:
     /// \brief Constructs an integer vector with the specified length and width.
     /// \param size the number of integers
     /// \param width the width of each integer in bits
-    inline IntVector(size_t size, size_t width) {
+    inline IntVector(const size_t size, const size_t width) {
         m_size = size;
         m_width = width;
         m_mask = bit_mask(width);
@@ -91,19 +91,19 @@ public:
     /// \brief Resizes the integer vector with the specified new length and current bit width.
     ///
     /// \param size the new number of integers
-    inline void resize(size_t size) {
+    inline void resize(const size_t size) {
         resize(size, m_width);
     }
 
     /// \brief Reads the specified integer.
     /// \param i the number of the integer to read
-    inline uint64_t operator[](size_t i) const {
+    inline uint64_t operator[](const size_t i) const {
         return get(i);
     }
 
     /// \brief Accesses the specified integer.
     /// \param i the number of the integer to access
-    inline IntRef operator[](size_t i) {
+    inline IntRef operator[](const size_t i) {
         return IntRef(*this, i);
     }
 
