@@ -26,9 +26,13 @@ private:
 
 	static constexpr size_t s_item_size = sizeof(T);
 	
-    static std::unique_ptr<T[]> allocate(const size_t num) {
+    static std::unique_ptr<T[]> allocate(const size_t num, const bool initialize = true) {
 		T* p = new T[num];
-		memset(p, T(), num * s_item_size);
+		
+		if(initialize) {
+			memset(p, T(), num * s_item_size);
+		}
+		
 		return std::unique_ptr<T[]>(p);
 	}
 
@@ -65,16 +69,17 @@ public:
 
     /// \brief Constructs a vector with the specified length.
     /// \param size the number of items
-    inline StaticVector(const size_t size) {
+	/// \param initialize if \c true, the items will be initialized using their default constructor
+    inline StaticVector(const size_t size, const bool initialize = true) {
         m_size = size;
-        m_data = allocate(size);
+        m_data = allocate(size, initialize);
     }
 
     /// \brief Copy assignment.
     /// \param other the vector to copy
     inline StaticVector& operator=(const StaticVector& other) {
         m_size = other.m_size;
-        m_data = allocate(m_size);
+        m_data = allocate(m_size, false);
         memcpy(m_data.get(), other.m_data.get(), m_size * s_item_size);
         return *this;
     }
@@ -91,7 +96,7 @@ public:
     ///
     /// \param size the new number of items
     inline void resize(const size_t size) {
-		StaticVector<T> new_v(size);
+		StaticVector<T> new_v(size, size >= m_size); // no init if new size is smaller
 		for(size_t i = 0; i < m_size; i++) {
 			new_v.set(i, get(i));
 		}

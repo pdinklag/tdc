@@ -3,10 +3,11 @@
 #include <cstring>
 #include <memory>
 #include <utility>
-#include <vector>
 
+#include "allocate.hpp"
 #include "item_ref.hpp"
 #include "bit_vector.hpp"
+#include "static_vector.hpp"
 #include <tdc/math/imath.hpp>
 
 namespace tdc {
@@ -36,13 +37,6 @@ private:
     }
 	
 	static constexpr uint64_t m_mask = bit_mask(m_width);
-
-    static std::unique_ptr<uint64_t[]> allocate(const size_t num) {
-		const size_t num64 = math::idiv_ceil(num * m_width, 64ULL);
-		uint64_t* p = new uint64_t[num64];
-		memset(p, 0, num64 * sizeof(uint64_t));
-		return std::unique_ptr<uint64_t[]>(p);
-	}
 
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_data;
@@ -125,16 +119,17 @@ public:
 
     /// \brief Constructs an integer vector with the specified length.
     /// \param size the number of integers
-    inline FixedWidthIntVector_(const size_t size) {
+	/// \param initialize if \c true, the integers will be initialized with zero
+    inline FixedWidthIntVector_(const size_t size, const bool initialize = true) {
         m_size = size;
-        m_data = allocate(size);
+        m_data = allocate_integers(size, m_width, initialize);
     }
 
     /// \brief Copy assignment.
     /// \param other the integer vector to copy
     inline FixedWidthIntVector_& operator=(const FixedWidthIntVector_<m_width>& other) {
         m_size = other.m_size;
-        m_data = allocate(m_size);
+        m_data = allocate_integers(m_size, m_width, false);
         memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL));
         return *this;
     }
@@ -151,7 +146,7 @@ public:
     ///
     /// \param size the new number of integers
     inline void resize(const size_t size) {
-		FixedWidthIntVector_<m_width> new_iv(size);
+		FixedWidthIntVector_<m_width> new_iv(size, size >= m_size); // no init needed if new size is smaller
 		for(size_t i = 0; i < m_size; i++) {
 			new_iv.set(i, get(i));
 		}

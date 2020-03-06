@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 
+#include "allocate.hpp"
 #include "item_ref.hpp"
 #include <tdc/math/imath.hpp>
 
@@ -20,8 +21,6 @@ private:
     inline static constexpr uint64_t bit_mask(const uint64_t bits) {
         return (1ULL << bits) - 1ULL;
     }
-
-    static std::unique_ptr<uint64_t[]> allocate(const size_t num, const size_t w);
 
     size_t m_size;
     size_t m_width;
@@ -54,11 +53,12 @@ public:
     /// \brief Constructs an integer vector with the specified length and width.
     /// \param size the number of integers
     /// \param width the width of each integer in bits
-    inline IntVector(const size_t size, const size_t width) {
+	/// \param initialize if \c true, all values will be initialized with zero
+    inline IntVector(const size_t size, const size_t width, const bool initialize = true) {
         m_size = size;
         m_width = width;
         m_mask = bit_mask(width);
-        m_data = allocate(size, width);
+        m_data = allocate_integers(size, width, initialize);
     }
 
     /// \brief Copy assignment.
@@ -67,7 +67,7 @@ public:
         m_size = other.m_size;
         m_width = other.m_width;
         m_mask = other.m_mask;
-        m_data = allocate(m_size, m_width);
+        m_data = allocate_integers(m_size, m_width, false);
         memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL));
         return *this;
     }

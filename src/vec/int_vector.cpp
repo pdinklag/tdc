@@ -2,13 +2,6 @@
 
 using namespace tdc::vec;
 
-std::unique_ptr<uint64_t[]> IntVector::allocate(const size_t num, const size_t w) {
-    const size_t num64 = math::idiv_ceil(num * w, 64ULL);
-    uint64_t* p = new uint64_t[num64];
-    memset(p, 0, num64 * sizeof(uint64_t));
-    return std::unique_ptr<uint64_t[]>(p);
-}
-
 uint64_t IntVector::get(const size_t i) const {
     const size_t j = i * m_width;
     const size_t a = j >> 6ULL;                    // left border
@@ -66,7 +59,7 @@ void IntVector::set(const size_t i, const uint64_t v_) {
 }
 
 void IntVector::resize(const size_t size, const size_t width) {
-    IntVector new_iv(size, width);
+    IntVector new_iv(size, width, size * width >= m_size * m_width); // no initialization needed if new size is smaller
     for(size_t i = 0; i < m_size; i++) {
         new_iv.set(i, get(i));
     }

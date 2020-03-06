@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 
+#include "allocate.hpp"
 #include "item_ref.hpp"
 #include <tdc/math/imath.hpp>
 
@@ -26,8 +27,6 @@ private:
     inline static constexpr size_t offset(const size_t i) {
         return i & 63ULL; // mod 64
     }
-
-    static std::unique_ptr<uint64_t[]> allocate(const size_t num_bits);
 
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_bits;
@@ -70,15 +69,16 @@ public:
 
     /// \brief Constructs a bit vector of the specified length with all bits initialized to zero.
     /// \param size the number of bits in the bit vector
-    inline BitVector(const size_t size) : m_size(size) {
-        m_bits = allocate(m_size);
+	/// \param initialize if \c true, the bits will be initialized with zero
+    inline BitVector(const size_t size, const bool initialize = true) : m_size(size) {
+        m_bits = allocate_integers(m_size, 1, initialize);
     }
 
     /// \brief Copy assignment.
     /// \param other the bit vector to copy.
     inline BitVector& operator=(const BitVector& other) {
         m_size = other.m_size;
-        m_bits = allocate(m_size);
+        m_bits = allocate_integers(m_size, 1, false);
         std::memcpy(m_bits.get(), other.m_bits.get(), math::idiv_ceil(m_size, 64ULL));
         return *this;
     }
