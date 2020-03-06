@@ -181,16 +181,16 @@ public:
 /// \cond INTERNAL
 template<size_t m_width> struct FixedWidthIntVector_Selector { using type = FixedWidthIntVector_<m_width>; };
 template<> struct FixedWidthIntVector_Selector<1> { using type = BitVector; };
-template<> struct FixedWidthIntVector_Selector<8> { using type = std::vector<uint8_t>; };
-template<> struct FixedWidthIntVector_Selector<16> { using type = std::vector<uint16_t>; };
-template<> struct FixedWidthIntVector_Selector<32> { using type = std::vector<uint32_t>; };
-template<> struct FixedWidthIntVector_Selector<64> { using type = std::vector<uint64_t>; };
+template<> struct FixedWidthIntVector_Selector<8> { using type = StaticVector<uint8_t>; };
+template<> struct FixedWidthIntVector_Selector<16> { using type = StaticVector<uint16_t>; };
+template<> struct FixedWidthIntVector_Selector<32> { using type = StaticVector<uint32_t>; };
+template<> struct FixedWidthIntVector_Selector<64> { using type = StaticVector<uint64_t>; };
 /// \endcond INTERNAL
 
 /// \brief Alias for vectors of fixed width integers.
 ///
 /// Generally, this delegates to \ref FixedWidthIntVector_ with the given width.
-/// However, for widths that are multiples of eight, the corresponding version of \c std::vector will be chosen for performance reasons.
+/// However, for widths that are multiples of eight, the corresponding version of \ref StaticVector will be chosen for performance reasons.
 /// Furthermore, should the width equal one, \ref BitVector will selected.
 ///
 /// \tparam m_width the bit width of stored integers
