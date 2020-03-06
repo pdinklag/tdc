@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "item_ref.hpp"
 #include "bit_vector.hpp"
 #include <tdc/math/imath.hpp>
 
@@ -27,6 +28,8 @@ private:
 	static_assert(m_width <= 64ULL, "Maximum width of 63 bits exceeded.");
 	static_assert(m_width != 8 && m_width != 16 && m_width != 32 && m_width != 64,
 		"Integers of the selected bit width can be represented by primitive types. You really don't want to use this class for this case, please use the FixedWidthIntVector alias instead.");
+
+	friend class ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
 
     inline static constexpr uint64_t bit_mask(const uint64_t bits) {
         return (1ULL << bits) - 1ULL;
@@ -102,24 +105,7 @@ private:
 
 public:
     /// \brief Proxy for reading and writing a single integer.
-    struct IntRef {
-        /// \brief The integer vector this proxy belongs to.
-        FixedWidthIntVector_* iv;
-
-        /// \brief The number of the referred integer.
-        size_t i;
-
-        /// \brief Reads the referred integer.
-        inline operator uint64_t() const {
-            return iv->get(i);
-        }
-
-        /// \brief Writes the referred integer.
-        /// \param v the value to write
-        inline void operator=(uint64_t v) {
-            iv->set(i, v);
-        }
-    };
+	using IntRef = ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
 
     /// \brief Constructs an empty integer vector of zero length.
     inline FixedWidthIntVector_() : m_size(0) {
@@ -183,7 +169,7 @@ public:
     /// \brief Accesses the specified integer.
     /// \param i the number of the integer to access
     inline IntRef operator[](const size_t i) {
-        return IntRef { this, i };
+        return IntRef(*this, i);
     }
 
     /// \brief The width of each integer in bits.

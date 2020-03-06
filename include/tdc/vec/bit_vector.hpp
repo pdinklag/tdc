@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 
+#include "item_ref.hpp"
 #include <tdc/math/imath.hpp>
 
 namespace tdc {
@@ -16,6 +17,8 @@ namespace vec {
 /// Bit vectors are static, i.e., bits cannot be inserted or deleted.
 class BitVector {
 private:
+	friend class ItemRef<BitVector, bool>;
+
     inline static constexpr size_t block(const size_t i) {
         return i >> 6ULL; // divide by 64
     }
@@ -29,7 +32,7 @@ private:
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_bits;
 
-    inline bool bitread(size_t i) const {
+    inline bool get(size_t i) const {
         //~ const size_t q = block(i);
         //~ const size_t k = offset(i);
         //~ const uint64_t mask = (1ULL << k);
@@ -39,7 +42,7 @@ private:
         return bool(m_bits[i >> 6ULL] & (1ULL << (i & 63ULL)));
     }
 
-    inline void bitset(size_t i, bool b) {
+    inline void set(size_t i, bool b) {
         const size_t q = block(i);
         const size_t mask = (1ULL << offset(i));
         m_bits[q] = (m_bits[q] & ~mask) | (-b & mask);
@@ -47,24 +50,7 @@ private:
 
 public:
     /// \brief Proxy for reading and writing a single bit.
-    struct BitRef {
-        /// \brief The bit vector this proxy belongs to.
-        BitVector* bv;
-        
-        /// \brief The number of the referred bit.
-        size_t i;
-
-        /// \brief Reads the referred bit.
-        inline operator bool() const {
-            return bv->bitread(i);
-        }
-
-        /// \brief Writes the referred bit.
-        /// \param b the bit to write
-        inline void operator=(bool b) {
-            bv->bitset(i, b);
-        }
-    };
+	using BitRef = ItemRef<BitVector, bool>;
 
     /// \brief Constructs an empty bit vector of zero length.
     inline BitVector() : m_size(0) {
@@ -119,13 +105,13 @@ public:
     /// \brief Reads the specified bit.
     /// \param i the number of the bit to read.
     inline bool operator[](size_t i) const {
-        return bitread(i);
+        return get(i);
     }
 
     /// \brief Access to the specified bit.
     /// \param i the number of the bit to access.
     inline BitRef operator[](size_t i) {
-        return BitRef { this, i };
+        return BitRef(*this, i);
     }
 
     /// \brief The number of bits contained in this bit vector.
