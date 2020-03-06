@@ -74,6 +74,9 @@ public:
         m_bits = allocate_integers(m_size, 1, initialize);
     }
 
+    /// \brief Constructs a bit vector from the given \c std bit vector
+	BitVector(const std::vector<bool>& bits);
+
     /// \brief Copy assignment.
     /// \param other the bit vector to copy.
     inline BitVector& operator=(const BitVector& other) {
