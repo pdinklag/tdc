@@ -92,8 +92,13 @@ private:
 			
 			const uint64_t xa = m_data[a];
 			const uint64_t lo = xa & bit_mask(dl);
-			const uint64_t hi = xa >> dvl;
-			m_data[a] = lo | (v << dl) | (hi << dvl);
+
+            if(dvl == 64ULL) {        
+                m_data[a] = lo | (v << dl);
+            } else {
+                const uint64_t hi = xa >> dvl;
+                m_data[a] = lo | (v << dl) | (hi << dvl);
+            }
 		}
 	}
 
