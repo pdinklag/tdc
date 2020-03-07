@@ -19,7 +19,7 @@ inline constexpr uint64_t idiv_ceil(const uint64_t a, const uint64_t b) {
 ///
 /// \param x the number in question
 inline constexpr uint64_t ilog2_ceil(const uint64_t x) {
-    return 64ULL - (__builtin_clzll(x) & 64ULL);
+    return 64ULL - __builtin_clzll(x);
 }
 
 }}
