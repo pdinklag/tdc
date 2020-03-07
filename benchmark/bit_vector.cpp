@@ -41,8 +41,8 @@ void bench(C constructor) {
         for(size_t i = 0; i < options.num; i++) {
             chk += bv[i];
         }
-		
-		auto guard = phase.suppress();
+        
+        auto guard = phase.suppress();
         phase.log("chk", chk);
     });
     stat::Phase::wrap("get_rnd", [&bv](stat::Phase& phase){
@@ -51,8 +51,8 @@ void bench(C constructor) {
             const size_t i = options.queries[j];
             chk += bv[i];
         }
-		
-		auto guard = phase.suppress();
+        
+        auto guard = phase.suppress();
         phase.log("chk", chk);
     });
     stat::Phase::wrap("set_rnd", [&bv](){

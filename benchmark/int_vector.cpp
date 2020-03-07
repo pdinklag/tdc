@@ -42,8 +42,8 @@ void bench(C constructor) {
         for(size_t i = 0; i < options.num; i++) {
             chk += iv[i];
         }
-		
-		auto guard = phase.suppress();
+        
+        auto guard = phase.suppress();
         phase.log("chk", chk);
     });
     stat::Phase::wrap("get_rnd", [&iv](stat::Phase& phase){
@@ -52,8 +52,8 @@ void bench(C constructor) {
             const size_t i = options.queries[j];
             chk += iv[i];
         }
-		
-		auto guard = phase.suppress();
+        
+        auto guard = phase.suppress();
         phase.log("chk", chk);
     });
     stat::Phase::wrap("set_rnd", [&iv](){
@@ -66,34 +66,34 @@ void bench(C constructor) {
 
 template<typename T>
 void bench_std_vector(const std::string& name) {
-	auto result = benchmark_phase("std");
-	
-	bench([](const size_t sz){ return std::vector<T>(sz); });
-	
-	result.suppress([&](){
-		std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-	});
+    auto result = benchmark_phase("std");
+    
+    bench([](const size_t sz){ return std::vector<T>(sz); });
+    
+    result.suppress([&](){
+        std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+    });
 }
 
 template<size_t w>
 void bench_fwint_vector() {
-	auto result = benchmark_phase("FixedWidthIntVector");
-	
-	bench([](const size_t sz){ return vec::FixedWidthIntVector<w>(sz); });
-	
-	result.suppress([&](){
-		std::cout << "RESULT algo=FixedWidthIntVector<" << w << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-	});
+    auto result = benchmark_phase("FixedWidthIntVector");
+    
+    bench([](const size_t sz){ return vec::FixedWidthIntVector<w>(sz); });
+    
+    result.suppress([&](){
+        std::cout << "RESULT algo=FixedWidthIntVector<" << w << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+    });
 }
 
 void bench_int_vector(const size_t w) {
-	auto result = benchmark_phase("IntVector");
-	
-	bench([w](const size_t sz){ return vec::IntVector(sz, w); });
-	
-	result.suppress([&](){
-		std::cout << "RESULT algo=IntVector(" << w << ") " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-	});
+    auto result = benchmark_phase("IntVector");
+    
+    bench([w](const size_t sz){ return vec::IntVector(sz, w); });
+    
+    result.suppress([&](){
+        std::cout << "RESULT algo=IntVector(" << w << ") " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+    });
 }
 
 int main(int argc, char** argv) {
@@ -111,57 +111,57 @@ int main(int argc, char** argv) {
     // generate queries
     options.queries = random::vector<size_t>(options.num_queries, options.num - 1, options.seed);
     
-	// std::vector
-	bench_std_vector<uint8_t>("std<8>");
-	bench_std_vector<uint16_t>("std<16>");
-	bench_std_vector<uint32_t>("std<32>");
-	bench_std_vector<uint64_t>("std<64>");
+    // std::vector
+    bench_std_vector<uint8_t>("std<8>");
+    bench_std_vector<uint16_t>("std<16>");
+    bench_std_vector<uint32_t>("std<32>");
+    bench_std_vector<uint64_t>("std<64>");
 
-	// tdc::vec::FixedWidthIntVector
-	bench_fwint_vector<2>();
-	bench_fwint_vector<3>();
-	bench_fwint_vector<4>();
-	bench_fwint_vector<5>();
-	bench_fwint_vector<6>();
-	bench_fwint_vector<7>();
-	bench_fwint_vector<8>();
-	bench_fwint_vector<9>();
-	bench_fwint_vector<10>();
-	bench_fwint_vector<11>();
-	bench_fwint_vector<12>();
-	bench_fwint_vector<13>();
-	bench_fwint_vector<14>();
-	bench_fwint_vector<15>();
-	bench_fwint_vector<16>();
-	bench_fwint_vector<24>();
-	bench_fwint_vector<32>();
-	bench_fwint_vector<40>();
-	bench_fwint_vector<48>();
-	bench_fwint_vector<56>();
-	bench_fwint_vector<63>();
+    // tdc::vec::FixedWidthIntVector
+    bench_fwint_vector<2>();
+    bench_fwint_vector<3>();
+    bench_fwint_vector<4>();
+    bench_fwint_vector<5>();
+    bench_fwint_vector<6>();
+    bench_fwint_vector<7>();
+    bench_fwint_vector<8>();
+    bench_fwint_vector<9>();
+    bench_fwint_vector<10>();
+    bench_fwint_vector<11>();
+    bench_fwint_vector<12>();
+    bench_fwint_vector<13>();
+    bench_fwint_vector<14>();
+    bench_fwint_vector<15>();
+    bench_fwint_vector<16>();
+    bench_fwint_vector<24>();
+    bench_fwint_vector<32>();
+    bench_fwint_vector<40>();
+    bench_fwint_vector<48>();
+    bench_fwint_vector<56>();
+    bench_fwint_vector<63>();
     
     // tdc::vec::IntVector
-	bench_int_vector(2);
-	bench_int_vector(3);
-	bench_int_vector(4);
-	bench_int_vector(5);
-	bench_int_vector(6);
-	bench_int_vector(7);
-	bench_int_vector(8);
-	bench_int_vector(9);
-	bench_int_vector(10);
-	bench_int_vector(11);
-	bench_int_vector(12);
-	bench_int_vector(13);
-	bench_int_vector(14);
-	bench_int_vector(15);
-	bench_int_vector(16);
-	bench_int_vector(24);
-	bench_int_vector(32);
-	bench_int_vector(40);
-	bench_int_vector(48);
-	bench_int_vector(56);
-	bench_int_vector(63);
+    bench_int_vector(2);
+    bench_int_vector(3);
+    bench_int_vector(4);
+    bench_int_vector(5);
+    bench_int_vector(6);
+    bench_int_vector(7);
+    bench_int_vector(8);
+    bench_int_vector(9);
+    bench_int_vector(10);
+    bench_int_vector(11);
+    bench_int_vector(12);
+    bench_int_vector(13);
+    bench_int_vector(14);
+    bench_int_vector(15);
+    bench_int_vector(16);
+    bench_int_vector(24);
+    bench_int_vector(32);
+    bench_int_vector(40);
+    bench_int_vector(48);
+    bench_int_vector(56);
+    bench_int_vector(63);
     
     return 0;
 }
