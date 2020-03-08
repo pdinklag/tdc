@@ -68,7 +68,7 @@ public:
         m_width = other.m_width;
         m_mask = other.m_mask;
         m_data = allocate_integers(m_size, m_width, false);
-        memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL));
+        memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL) * sizeof(uint64_t));
         return *this;
     }
 

@@ -82,7 +82,7 @@ public:
     inline BitVector& operator=(const BitVector& other) {
         m_size = other.m_size;
         m_bits = allocate_integers(m_size, 1, false);
-        std::memcpy(m_bits.get(), other.m_bits.get(), math::idiv_ceil(m_size, 64ULL));
+        std::memcpy(m_bits.get(), other.m_bits.get(), math::idiv_ceil(m_size, 64ULL) * sizeof(uint64_t));
         return *this;
     }
 
