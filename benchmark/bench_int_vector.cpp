@@ -112,10 +112,10 @@ int main(int argc, char** argv) {
     options.queries = random::vector<size_t>(options.num_queries, options.num - 1, options.seed);
     
     // std::vector
-    bench_std_vector<uint8_t>("std<8>");
-    bench_std_vector<uint16_t>("std<16>");
-    bench_std_vector<uint32_t>("std<32>");
-    bench_std_vector<uint64_t>("std<64>");
+    bench_std_vector<uint8_t>("std_uint8");
+    bench_std_vector<uint16_t>("std_uint16");
+    bench_std_vector<uint32_t>("std_uint32");
+    bench_std_vector<uint64_t>("std_uint64");
 
     // tdc::vec::FixedWidthIntVector
     bench_fwint_vector<2>();

@@ -72,7 +72,7 @@ void bench_tdc() {
     bench([](std::shared_ptr<const vec::BitVector> bv){ return vec::BitRank<supblock_width>(bv); }, result);
     
     result.suppress([&](){
-        std::cout << "RESULT algo=tdc<" << supblock_width << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        std::cout << "RESULT algo=BitRank<" << supblock_width << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
     });
 }
 

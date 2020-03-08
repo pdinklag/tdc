@@ -80,20 +80,20 @@ int main(int argc, char** argv) {
 
     // tdc::vec::BitVector
     {
-        auto result = benchmark_phase("tdc");
+        auto result = benchmark_phase("BitVector");
         bench([](const size_t sz){ return vec::BitVector(sz); });
         
         result.suppress([&](){
-            std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+            std::cout << "RESULT algo=BitVector " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
         });
     }
     // std::vector<bool>
     {
-        auto result = benchmark_phase("std");
+        auto result = benchmark_phase("std_bool");
         bench([](const size_t sz){ return std::vector<bool>(sz); });
         
         result.suppress([&](){
-            std::cout << "RESULT algo=std " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+            std::cout << "RESULT algo=std_bool " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
         });
     }
     
