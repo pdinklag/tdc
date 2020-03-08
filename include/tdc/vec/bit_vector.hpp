@@ -18,7 +18,7 @@ namespace vec {
 /// Bit vectors are static, i.e., bits cannot be inserted or deleted.
 class BitVector {
 private:
-	friend class ItemRef<BitVector, bool>;
+    friend class ItemRef<BitVector, bool>;
 
     inline static constexpr size_t block(const size_t i) {
         return i >> 6ULL; // divide by 64
@@ -49,7 +49,7 @@ private:
 
 public:
     /// \brief Proxy for reading and writing a single bit.
-	using BitRef = ItemRef<BitVector, bool>;
+    using BitRef = ItemRef<BitVector, bool>;
 
     /// \brief Constructs an empty bit vector of zero length.
     inline BitVector() : m_size(0) {
@@ -69,13 +69,13 @@ public:
 
     /// \brief Constructs a bit vector of the specified length with all bits initialized to zero.
     /// \param size the number of bits in the bit vector
-	/// \param initialize if \c true, the bits will be initialized with zero
+    /// \param initialize if \c true, the bits will be initialized with zero
     inline BitVector(const size_t size, const bool initialize = true) : m_size(size) {
         m_bits = allocate_integers(m_size, 1, initialize);
     }
 
     /// \brief Constructs a bit vector from the given \c std bit vector
-	BitVector(const std::vector<bool>& bits);
+    BitVector(const std::vector<bool>& bits);
 
     /// \brief Copy assignment.
     /// \param other the bit vector to copy.

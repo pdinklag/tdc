@@ -20,41 +20,41 @@ namespace vec {
 template<typename T>
 class StaticVector {
 private:
-	static_assert(!std::is_same<T, bool>::value, "A StaticVector of boolean values is not supported. You'll want to use a BitVector instead.");
+    static_assert(!std::is_same<T, bool>::value, "A StaticVector of boolean values is not supported. You'll want to use a BitVector instead.");
 
-	friend class ItemRef<StaticVector<T>, T>;
+    friend class ItemRef<StaticVector<T>, T>;
 
-	static constexpr size_t s_item_size = sizeof(T);
-	
+    static constexpr size_t s_item_size = sizeof(T);
+    
     static std::unique_ptr<T[]> allocate(const size_t num, const bool initialize = true) {
-		T* p = new T[num];
-		
-		if(initialize) {
-			memset(p, T(), num * s_item_size);
-		}
-		
-		return std::unique_ptr<T[]>(p);
-	}
+        T* p = new T[num];
+        
+        if(initialize) {
+            memset(p, T(), num * s_item_size);
+        }
+        
+        return std::unique_ptr<T[]>(p);
+    }
 
     size_t m_size;
     std::unique_ptr<T[]> m_data;
 
     uint64_t get(const size_t i) const {
-		return m_data[i];
-	}
-	
+        return m_data[i];
+    }
+    
     void set(const size_t i, const T v) {
-		m_data[i] = v;
-	}
-	
+        m_data[i] = v;
+    }
+    
 public:
-	/// \brief Proxy for reading and writing a single integer.
-	using ItemRef_ = ItemRef<StaticVector<T>, T>;
+    /// \brief Proxy for reading and writing a single integer.
+    using ItemRef_ = ItemRef<StaticVector<T>, T>;
 
     /// \brief Constructs an empty vector.
     inline StaticVector() : m_size(0) {
     }
-	
+    
     /// \brief Copy constructor.
     /// \param other the vector to copy
     inline StaticVector(const StaticVector& other) {
@@ -69,7 +69,7 @@ public:
 
     /// \brief Constructs a vector with the specified length.
     /// \param size the number of items
-	/// \param initialize if \c true, the items will be initialized using their default constructor
+    /// \param initialize if \c true, the items will be initialized using their default constructor
     inline StaticVector(const size_t size, const bool initialize = true) {
         m_size = size;
         m_data = allocate(size, initialize);
@@ -91,18 +91,18 @@ public:
         m_data = std::move(other.m_data);
         return *this;
     }
-	
+    
     /// \brief Resizes the vector with the specified new length.
     ///
     /// \param size the new number of items
     inline void resize(const size_t size) {
-		StaticVector<T> new_v(size, size >= m_size); // no init if new size is smaller
-		for(size_t i = 0; i < m_size; i++) {
-			new_v.set(i, get(i));
-		}
-		
-		m_size = new_v.m_size;
-		m_data = std::move(new_v.m_data);
+        StaticVector<T> new_v(size, size >= m_size); // no init if new size is smaller
+        for(size_t i = 0; i < m_size; i++) {
+            new_v.set(i, get(i));
+        }
+        
+        m_size = new_v.m_size;
+        m_data = std::move(new_v.m_data);
     }
 
     /// \brief Reads the specified item.

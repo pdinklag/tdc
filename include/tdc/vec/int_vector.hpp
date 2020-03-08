@@ -16,7 +16,7 @@ namespace vec {
 /// Int vectors are static, i.e., integers cannot be inserted or deleted.
 class IntVector {
 private:
-	friend class ItemRef<IntVector, uint64_t>;
+    friend class ItemRef<IntVector, uint64_t>;
 
     inline static constexpr uint64_t bit_mask(const uint64_t bits) {
         return (1ULL << bits) - 1ULL;
@@ -31,8 +31,8 @@ private:
     void set(const size_t i, const uint64_t v);
 
 public:
-	/// \brief Proxy for reading and writing a single integer.
-	using IntRef = ItemRef<IntVector, uint64_t>;
+    /// \brief Proxy for reading and writing a single integer.
+    using IntRef = ItemRef<IntVector, uint64_t>;
 
     /// \brief Constructs an empty integer vector of zero length and width.
     inline IntVector() : m_size(0), m_width(0), m_mask(0) {
@@ -53,7 +53,7 @@ public:
     /// \brief Constructs an integer vector with the specified length and width.
     /// \param size the number of integers
     /// \param width the width of each integer in bits
-	/// \param initialize if \c true, all values will be initialized with zero
+    /// \param initialize if \c true, all values will be initialized with zero
     inline IntVector(const size_t size, const size_t width, const bool initialize = true) {
         m_size = size;
         m_width = width;
