@@ -66,13 +66,14 @@ void bench(C constructor, stat::Phase& result) {
     }
 }
 
+template<size_t block_w, size_t supblock_w = block_w * block_w>
 void bench_tdc() {
     auto result = benchmark_phase("result");
  
-    bench([](std::shared_ptr<const vec::BitVector> bv){ return vec::BitSelect1(bv); }, result);
+    bench([](std::shared_ptr<const vec::BitVector> bv){ return vec::BitSelect<1, block_w, supblock_w>(bv); }, result);
     
     result.suppress([&](){
-        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << " " << result.subphases_keyval(stat::Phase::STAT_MEM_FINAL) << std::endl;
+        std::cout << "RESULT algo=BitSelect<" <<  block_w << ", " << supblock_w << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << " " << result.subphases_keyval(stat::Phase::STAT_MEM_FINAL) << std::endl;
     });
 }
 
@@ -112,6 +113,18 @@ int main(int argc, char** argv) {
     }
     
     // benchmark
-    bench_tdc();
+    bench_tdc<4>();
+    bench_tdc<6>();
+    bench_tdc<8>();
+    bench_tdc<10>();
+    bench_tdc<12>();
+    bench_tdc<14>();
+    bench_tdc<16>();
+    bench_tdc<24>();
+    bench_tdc<32>();
+    bench_tdc<40>();
+    bench_tdc<48>();
+    bench_tdc<56>();
+    bench_tdc<64>();
     return 0;
 }
