@@ -227,23 +227,24 @@ public:
         size_t offs  = pos & 63ULL; // mod 64
 
         uint64_t block = m_bv->block64(i);
-        uint8_t s = basic_select(block, offs, x);
-        if(s != SELECT_U64_FAIL) {
-            // found in first data segment
-            return pos + s - offs;
-        } else {
-            // linearly search in the next segments
-            x -= basic_rank(block, offs, 63ULL);
-            while(s == SELECT_U64_FAIL) {
-                ++i;
-                pos = i << 6ULL; // mul 64
-                block = m_bv->block64(i);
-                s = basic_select(block, x);
-                if(s == SELECT_U64_FAIL) x -= basic_rank(block);
-            };
-
-            return pos + s;
+        
+        // scan blocks linearly
+        size_t rank = basic_rank(block, offs, 63ULL);
+        if(rank < x) {
+            size_t rank_prev = rank;
+            offs = 0;
+            while(rank < x)
+            {
+                block = m_bv->block64(++i);
+                rank_prev = basic_rank(block);
+                rank += rank_prev;
+            }
+            pos = i << 6ULL;
+            x -= (rank - rank_prev);
         }
+        
+        // we know that the desired bit is in the current block
+        return pos + basic_select(block, offs, x) - offs;
     }
 
     /// \brief Finds the x-th occurence of \c m_bit in the bit vetor.
