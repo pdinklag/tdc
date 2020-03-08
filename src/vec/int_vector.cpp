@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <tdc/vec/int_vector.hpp>
 
 using namespace tdc::vec;
@@ -65,13 +66,11 @@ void IntVector::set(const size_t i, const uint64_t v_) {
 
 void IntVector::resize(const size_t size, const size_t width) {
     IntVector new_iv(size, width, size * width >= m_size * m_width); // no initialization needed if new size is smaller
-    for(size_t i = 0; i < m_size; i++) {
+    
+    const size_t num_to_copy = std::min(size, m_size);
+    for(size_t i = 0; i < num_to_copy; i++) {
         new_iv.set(i, get(i));
     }
-    
-    m_size = new_iv.m_size;
-    m_width = new_iv.m_width;
-    m_mask = new_iv.m_mask;
-    m_data = std::move(new_iv.m_data);
+    *this = std::move(new_iv);
 }
 

@@ -1,5 +1,6 @@
 #pragma once
-    
+
+#include <algorithm>    
 #include <cstring>
 #include <memory>
 #include <type_traits>
@@ -97,12 +98,13 @@ public:
     /// \param size the new number of items
     inline void resize(const size_t size) {
         StaticVector<T> new_v(size, size >= m_size); // no init if new size is smaller
-        for(size_t i = 0; i < m_size; i++) {
+        
+        const size_t num_to_copy = std::min(size, m_size);
+        for(size_t i = 0; i < num_to_copy; i++) {
             new_v.set(i, get(i));
         }
         
-        m_size = new_v.m_size;
-        m_data = std::move(new_v.m_data);
+        *this = std::move(new_v);
     }
 
     /// \brief Reads the specified item.
