@@ -40,7 +40,6 @@ private:
     size_t m_max;
     size_t m_block_size;
     size_t m_supblock_size;
-    size_t m_blocks_per_supblock;
 
     IntVector m_blocks;
     IntVector m_supblocks;
@@ -55,7 +54,6 @@ public:
         // construct
         m_block_size    = log_n;
         m_supblock_size = log_n * log_n;
-        m_blocks_per_supblock = log_n;
 
         m_supblocks = IntVector(math::idiv_ceil(n, m_supblock_size), log_n);
         m_blocks = IntVector(math::idiv_ceil(n, m_block_size), log_n);
@@ -64,11 +62,11 @@ public:
         size_t r_sb = 0; // current bit count in superblock
         size_t r_b = 0;  // current bit count in block
 
-        size_t cur_sb = 0;        // current superblock
+        size_t cur_sb = 1;        // current superblock
         size_t cur_sb_offset = 0; // starting position of current superblock
         size_t longest_sb = 0;    // length of longest superblock
 
-        size_t cur_b = 0; // current block
+        size_t cur_b = 1; // current block
 
         const size_t num_blocks = m_bv->num_blocks();
         
@@ -149,8 +147,7 @@ public:
         : m_bv(nullptr),
           m_max(0),
           m_block_size(0),
-          m_supblock_size(0),
-          m_blocks_per_supblock(0) {
+          m_supblock_size(0) {
     }
 
     /// \brief Copy constructor.
@@ -172,7 +169,6 @@ public:
         m_max = other.m_max;
         m_block_size = other.m_block_size;
         m_supblock_size = other.m_supblock_size;
-        m_blocks_per_supblock = other.m_blocks_per_supblock;
         m_blocks = other.m_blocks;
         m_supblocks = other.m_supblocks;
         return *this;
@@ -185,7 +181,6 @@ public:
         m_max = other.m_max;
         m_block_size = other.m_block_size;
         m_supblock_size = other.m_supblock_size;
-        m_blocks_per_supblock = other.m_blocks_per_supblock;
         m_blocks = std::move(other.m_blocks);
         m_supblocks = std::move(other.m_supblocks);
         return *this;
@@ -197,38 +192,31 @@ public:
     inline size_t select(size_t x) const {
         assert(x > 0);
         if(x > m_max) return m_bv->size();
-
-        size_t pos = 0;
-
+ 
+        size_t pos;
+        
         //narrow down to block
         {
             const size_t i = x / m_supblock_size;
             const size_t j = x / m_block_size;
+            
+            pos = m_supblocks[i];
+            if(x == i * m_supblock_size) return pos; // superblock border
 
-            if(i > 0) {
-                pos += m_supblocks[i-1];
-                x -= i * m_supblock_size;
-            }
-            if(x == 0) return pos;
+            pos += m_blocks[j];
+            if(x == j * m_block_size) return pos; // block border
 
-            // block j is the k-th block within the i-th superblock
-            size_t k = j - i * m_blocks_per_supblock;
-            if(k > 0) {
-                pos += m_blocks[j-1];
-                x   -= k * m_block_size;
-            }
-            if(x == 0) return pos;
-
-            if(i > 0 || k > 0) ++pos; // offset from block boundary
+            pos += (j > 0); // offset from block border
+            x -= j * m_block_size;
         }
 
         // from this point forward, search directly in the bit vector
-        size_t i = pos >> 6ULL; // div 64
-        size_t offs  = pos & 63ULL; // mod 64
+        size_t i = pos / 64ULL;
+        size_t offs  = pos % 64ULL;
 
         uint64_t block = m_bv->block64(i);
         
-        // scan blocks linearly
+        // scan blocks of 64 bits linearly
         size_t rank = basic_rank(block, offs, 63ULL);
         if(rank < x) {
             size_t rank_prev = rank;
@@ -239,7 +227,7 @@ public:
                 rank_prev = basic_rank(block);
                 rank += rank_prev;
             }
-            pos = i << 6ULL;
+            pos = i * 64ULL;
             x -= (rank - rank_prev);
         }
         
