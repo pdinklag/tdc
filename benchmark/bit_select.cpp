@@ -72,7 +72,7 @@ void bench_tdc() {
     bench([](std::shared_ptr<const vec::BitVector> bv){ return vec::BitSelect1(bv); }, result);
     
     result.suppress([&](){
-        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        std::cout << "RESULT algo=tdc " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << " " << result.subphases_keyval(stat::Phase::STAT_MEM_FINAL) << std::endl;
     });
 }
 
