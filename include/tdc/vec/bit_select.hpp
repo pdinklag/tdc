@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "bit_vector.hpp"
+#include "fixed_width_int_vector.hpp"
 #include "int_vector.hpp"
 #include "rank_u64.hpp"
 #include "select_u64.hpp"
@@ -34,15 +35,18 @@ private:
     static constexpr uint8_t basic_rank(uint64_t v, uint8_t a, uint8_t b);
     static constexpr uint8_t basic_select(uint64_t v, uint8_t k);
     static constexpr uint8_t basic_select(uint64_t v, uint8_t l, uint8_t k);
+    
+    static constexpr size_t m_block_size = 32ULL;
+    static constexpr size_t m_supblock_size = 1024ULL;
+    
+    static_assert(m_supblock_size % m_block_size == 0, "Superblock size must be a multiple of the block size.");
 
     std::shared_ptr<const BitVector> m_bv;
 
     size_t m_max;
-    size_t m_block_size;
-    size_t m_supblock_size;
 
     IntVector m_blocks;
-    IntVector m_supblocks;
+    FixedWidthIntVector<64> m_supblocks;
 
 public:
     /// \brief Constructs the rank data structure for the given bit vector.
@@ -52,10 +56,7 @@ public:
         const size_t log_n = math::ilog2_ceil(n - 1);
 
         // construct
-        m_block_size    = log_n;
-        m_supblock_size = log_n * log_n;
-
-        m_supblocks = IntVector(math::idiv_ceil(n, m_supblock_size), log_n);
+        m_supblocks = FixedWidthIntVector<64>(math::idiv_ceil(n, m_supblock_size));
         m_blocks = IntVector(math::idiv_ceil(n, m_block_size), log_n);
 
         m_max = 0;
@@ -138,16 +139,14 @@ public:
         longest_sb = std::max(longest_sb, n - cur_sb_offset);
         const size_t w_block = math::ilog2_ceil(longest_sb);
 
-        m_supblocks.resize(cur_sb, log_n);
+        m_supblocks.resize(cur_sb);
         m_blocks.resize(cur_b, w_block);
     }
 
     /// \brief Constructs an empty, uninitialized select data structure.
     inline BitSelect()
         : m_bv(nullptr),
-          m_max(0),
-          m_block_size(0),
-          m_supblock_size(0) {
+          m_max(0) {
     }
 
     /// \brief Copy constructor.
@@ -167,8 +166,6 @@ public:
     inline BitSelect& operator=(const BitSelect& other) {
         m_bv = other.m_bv;
         m_max = other.m_max;
-        m_block_size = other.m_block_size;
-        m_supblock_size = other.m_supblock_size;
         m_blocks = other.m_blocks;
         m_supblocks = other.m_supblocks;
         return *this;
@@ -179,8 +176,6 @@ public:
     inline BitSelect& operator=(BitSelect&& other) {
         m_bv = std::move(other.m_bv);
         m_max = other.m_max;
-        m_block_size = other.m_block_size;
-        m_supblock_size = other.m_supblock_size;
         m_blocks = std::move(other.m_blocks);
         m_supblocks = std::move(other.m_supblocks);
         return *this;
