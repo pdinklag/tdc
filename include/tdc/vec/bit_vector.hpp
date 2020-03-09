@@ -8,6 +8,7 @@
 
 #include "allocate.hpp"
 #include "item_ref.hpp"
+#include "vector_builder.hpp"
 
 #include <tdc/math/imath.hpp>
 
@@ -18,6 +19,13 @@ namespace vec {
 ///
 /// Bit vectors are static, i.e., bits cannot be inserted or deleted.
 class BitVector {
+public:
+    /// \brief Gets a \ref VectorBuilder for a bit vector.
+    /// \param capacity the initial capacity
+    inline static VectorBuilder<BitVector> builder(const size_t capacity) {
+        return VectorBuilder<BitVector>(capacity);
+    }
+
 private:
     friend class ItemRef<BitVector, bool>;
 

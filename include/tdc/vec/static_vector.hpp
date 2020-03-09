@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "item_ref.hpp"
+#include "vector_builder.hpp"
 #include <tdc/math/imath.hpp>
 
 namespace tdc {
@@ -20,6 +21,13 @@ namespace vec {
 /// This vector should therefore only be used for non-complex types that have no background allocations or similar.
 template<typename T>
 class StaticVector {
+public:
+    /// \brief Gets a \ref VectorBuilder for a static vector.
+    /// \param capacity the initial capacity
+    inline static VectorBuilder<StaticVector<T>> builder(const size_t capacity) {
+        return VectorBuilder<StaticVector<T>>(capacity);
+    }
+    
 private:
     static_assert(!std::is_same<T, bool>::value, "A StaticVector of boolean values is not supported. You'll want to use a BitVector instead.");
 

@@ -3,6 +3,14 @@
 
 using namespace tdc::vec;
 
+IntVectorBuilder::IntVectorBuilder(const size_t width, const size_t capacity) {
+    m_vector.resize(capacity, width);
+}
+
+IntVectorBuilder IntVector::builder(const size_t width, const size_t capacity) {
+    return IntVectorBuilder(width, capacity);
+}
+
 uint64_t IntVector::get(const size_t i) const {
     const size_t j = i * m_width;
     const size_t a = j >> 6ULL;                    // left border
@@ -73,4 +81,3 @@ void IntVector::resize(const size_t size, const size_t width) {
     }
     *this = std::move(new_iv);
 }
-

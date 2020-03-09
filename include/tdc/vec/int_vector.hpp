@@ -6,15 +6,25 @@
 
 #include "allocate.hpp"
 #include "item_ref.hpp"
+#include "vector_builder.hpp"
+
 #include <tdc/math/imath.hpp>
 
 namespace tdc {
 namespace vec {
 
+class IntVectorBuilder; // fwd
+
 /// \brief A vector of integers of arbitrary bit width, using bit packing to minimize the required space.
 ///
 /// Int vectors are static, i.e., integers cannot be inserted or deleted.
 class IntVector {
+public:
+    /// \brief Gets a \ref VectorBuilder for an integer vector.
+    /// \param width the width of each integer in bits
+    /// \param capacity the initial capacity
+    static IntVectorBuilder builder(const size_t width, const size_t capacity);
+
 private:
     friend class ItemRef<IntVector, uint64_t>;
 
@@ -116,6 +126,14 @@ public:
     inline size_t size() const {
         return m_size;
     }
+};
+
+/// \brief Specialization of vector builders for \ref IntVector.
+class IntVectorBuilder : public VectorBuilder<IntVector> {
+public:
+    IntVectorBuilder(const size_t width, const size_t capacity = 0);
+
+    using VectorBuilder::VectorBuilder;
 };
 
 }} // namespace tdc::vec
