@@ -11,7 +11,7 @@
 namespace tdc {
 namespace vec {
 
-/// \brief Space efficient representation of a sorted sequence.
+/// \brief Space efficient representation of a sorted sequence using gap encoding.
 ///
 /// Items in the sequence are stored as their difference from the respective previous item in unary encoding,
 /// requiring <tt>D+n</tt> bits with \c D the difference between minimum and maximum and \c n the number of items in the sequence.
@@ -21,7 +21,7 @@ private:
     uint64_t                   m_first;
     size_t                     m_size;
     std::shared_ptr<BitVector> m_bits;
-    BitRank                    m_rank;
+    BitRank<>                  m_rank;
     BitSelect0                 m_sel0;
 
     template<typename T>
@@ -45,7 +45,7 @@ public:
     /// \param array the array, items must be in ascending order
     /// \param size the number of items in the array
     template<typename array_t>
-    inline SortedSequence(const array_t& array, const size_t size) : m_size(size) {
+    SortedSequence(const array_t& array, const size_t size) : m_size(size) {
         assert_sorted_ascending(array, size);
 
         if(m_size > 0) {
@@ -88,6 +88,7 @@ public:
     /// \param other the object to copy
     inline SortedSequence& operator=(const SortedSequence& other) {
         m_size = other.m_size;
+        m_first = other.m_first;
         m_bits = other.m_bits;
         m_rank = other.m_rank;
         m_sel0 = other.m_sel0;
@@ -98,6 +99,7 @@ public:
     /// \param other the object to move
     inline SortedSequence& operator=(SortedSequence&& other) {
         m_size = other.m_size;
+        m_first = other.m_first;
         m_bits = std::move(other.m_bits);
         m_rank = std::move(other.m_rank);
         m_sel0 = std::move(other.m_sel0);
