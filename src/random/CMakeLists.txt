@@ -1,1 +1,1 @@
-add_library(tdc-random INTERFACE)
+add_library(tdc-random permutation.cpp)
