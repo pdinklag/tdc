@@ -47,6 +47,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # subdirectories
 add_subdirectory(benchmark)
 add_subdirectory(docs)
+add_subdirectory(examples)
 add_subdirectory(src)
 add_subdirectory(test)
-add_subdirectory(examples)
+add_subdirectory(tools)
