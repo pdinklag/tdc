@@ -8,6 +8,7 @@
 
 #include "allocate.hpp"
 #include "item_ref.hpp"
+
 #include <tdc/math/imath.hpp>
 
 namespace tdc {
@@ -116,6 +117,10 @@ public:
     inline BitRef operator[](const size_t i) {
         return BitRef(*this, i);
     }
+
+    /// \brief Resizes the bit vector.
+    /// \param size the new size
+    void resize(const size_t size);
 
     /// \brief The number of bits contained in this bit vector.
     inline size_t size() const {
