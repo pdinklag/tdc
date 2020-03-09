@@ -1,1 +1,1 @@
-add_library(tdc-math INTERFACE)
+add_library(tdc-math isqrt.cpp prime.cpp)
