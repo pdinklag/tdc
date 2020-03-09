@@ -74,8 +74,8 @@ public:
     /// \brief Decodes the binary encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     /// \param bits the number of bits to read; defaults to the byte-aligned size of the value type
-    template<class T = uint64_t>
-    inline T read_binary(size_t bits = sizeof(T) * CHAR_BIT) {
+    template<typename T = uint64_t>
+    T read_binary(size_t bits = sizeof(T) * CHAR_BIT) {
         assert(bits <= 64ULL);
 
         const size_t bits_left_in_current = m_cursor + 1ULL;
@@ -147,7 +147,7 @@ public:
     /// \brief Decodes the unary encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     template<typename T = uint64_t>
-    inline T read_unary() {
+    T read_unary() {
         T v = 0;
         while(!read_bit()) ++v;
         return v;
@@ -156,7 +156,7 @@ public:
     /// \brief Decodes the Elias gamma encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     template<typename T = uint64_t>
-    inline T read_gamma() {
+    T read_gamma() {
         auto m = read_unary<>();
         if(m > 0) {
             return T((1ULL << m) | read_binary<uint64_t>(m));
@@ -168,7 +168,7 @@ public:
     /// \brief Decodes the Elias delta encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     template<typename T = uint64_t>
-    inline T read_delta() {
+    T read_delta() {
         auto m = read_gamma<>() - 1;
         if(m > 0) {
             return T((1ULL << m) | read_binary<uint64_t>(m));
@@ -181,7 +181,7 @@ public:
     /// \tparam T the type of the value to read
     /// \param p the exponent of the Golomb code divisor, which will be <tt>2^p</tt>
     template<typename T = uint64_t>
-    inline T read_rice(uint8_t p) {
+    T read_rice(uint8_t p) {
         const auto q = read_gamma<>() - 1;
         const auto r = read_binary<>(p);
         return T(q * (1ULL << p) + r);

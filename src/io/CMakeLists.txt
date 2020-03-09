@@ -1,1 +1,1 @@
-add_library(tdc-io bit_ostream.cpp)
+add_library(tdc-io bit_istream.cpp bit_ostream.cpp)

@@ -42,3 +42,28 @@ void BitOStream::write_bit(const bool b) {
 
     ++m_bits_written;
 }
+
+template void BitOStream::write_binary<uint8_t>(const uint8_t, size_t bits);
+template void BitOStream::write_binary<uint16_t>(const uint16_t, size_t bits);
+template void BitOStream::write_binary<uint32_t>(const uint32_t, size_t bits);
+template void BitOStream::write_binary<uint64_t>(const uint64_t, size_t bits);
+
+template void BitOStream::write_unary<uint8_t>(const uint8_t);
+template void BitOStream::write_unary<uint16_t>(const uint16_t);
+template void BitOStream::write_unary<uint32_t>(const uint32_t);
+template void BitOStream::write_unary<uint64_t>(const uint64_t);
+
+template void BitOStream::write_gamma<uint8_t>(const uint8_t);
+template void BitOStream::write_gamma<uint16_t>(const uint16_t);
+template void BitOStream::write_gamma<uint32_t>(const uint32_t);
+template void BitOStream::write_gamma<uint64_t>(const uint64_t);
+
+template void BitOStream::write_delta<uint8_t>(const uint8_t);
+template void BitOStream::write_delta<uint16_t>(const uint16_t);
+template void BitOStream::write_delta<uint32_t>(const uint32_t);
+template void BitOStream::write_delta<uint64_t>(const uint64_t);
+
+template void BitOStream::write_rice<uint8_t>(const uint8_t, const uint8_t);
+template void BitOStream::write_rice<uint16_t>(const uint16_t, const uint8_t);
+template void BitOStream::write_rice<uint32_t>(const uint32_t, const uint8_t);
+template void BitOStream::write_rice<uint64_t>(const uint64_t, const uint8_t);

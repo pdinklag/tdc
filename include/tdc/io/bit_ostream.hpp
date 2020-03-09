@@ -78,8 +78,8 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write
     /// \param bits the number of bits to write; defaults to the byte-aligned size of the value type
-    template<class T>
-    inline void write_binary(const T value, size_t bits = sizeof(T) * CHAR_BIT) {
+    template<typename T>
+    void write_binary(const T value, size_t bits = sizeof(T) * CHAR_BIT) {
         assert(bits <= 64ULL);
         assert(m_cursor >= 0);
         const size_t bits_left_in_next = size_t(m_cursor + 1);
@@ -145,7 +145,7 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write
     template<typename T>
-    inline void write_unary(T value) {
+    void write_unary(T value) {
         while(value--) {
             write_bit(0);
         }
@@ -157,10 +157,10 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write, must be greater than zero
     template<typename T>
-    inline void write_gamma(T value) {
+    void write_gamma(T value) {
         assert(value > T(0));
 
-        const auto m = ilog2_floor(value);
+        const auto m = math::ilog2_floor(value);
         write_unary(m);
         if(m > 0) write_binary(value, m); // cut off leading 1
     }
@@ -170,10 +170,10 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write, must be greater than zero
     template<typename T>
-    inline void write_delta(T value) {
+    void write_delta(T value) {
         assert(value > T(0));
 
-        auto m = ilog2_floor(value);
+        auto m = math::ilog2_floor(value);
         write_gamma(m+1); // cannot encode zero
         if(m > 0) write_binary(value, m); // cut off leading 1
     }
@@ -185,7 +185,7 @@ public:
     /// \param value the value to write
     /// \param p the exponent of the Golomb code divisor, which will be <tt>2^p</tt>
     template<typename T>
-    inline void write_rice(T value, uint8_t p) {
+    void write_rice(T value, const uint8_t p) {
         const uint64_t q = uint64_t(value) >> p;
 
         write_gamma(q + 1);
