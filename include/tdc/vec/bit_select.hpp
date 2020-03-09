@@ -10,7 +10,8 @@
 #include "rank_u64.hpp"
 #include "select_u64.hpp"
 
-#include <tdc/math/imath.hpp>
+#include <tdc/math/idiv.hpp>
+#include <tdc/math/ilog2.hpp>
 
 namespace tdc {
 namespace vec {

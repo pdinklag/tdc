@@ -3,7 +3,7 @@
 #include <memory>
 #include <utility>
 
-#include <tdc/math/imath.hpp>
+#include <tdc/math/idiv.hpp>
 
 #include "bit_vector.hpp"
 #include "fixed_width_int_vector.hpp"

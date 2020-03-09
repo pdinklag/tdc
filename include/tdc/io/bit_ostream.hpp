@@ -5,7 +5,7 @@
 #include <iostream>
 #include <utility>
 
-#include <tdc/math/imath.hpp>
+#include <tdc/math/ilog2.hpp>
 
 namespace tdc {
 namespace io {
@@ -160,7 +160,7 @@ public:
     inline void write_gamma(T value) {
         assert(value > T(0));
 
-        const auto m = log2_floor(value);
+        const auto m = ilog2_floor(value);
         write_unary(m);
         if(m > 0) write_binary(value, m); // cut off leading 1
     }
@@ -173,7 +173,7 @@ public:
     inline void write_delta(T value) {
         assert(value > T(0));
 
-        auto m = log2_floor(value);
+        auto m = ilog2_floor(value);
         write_gamma(m+1); // cannot encode zero
         if(m > 0) write_binary(value, m); // cut off leading 1
     }

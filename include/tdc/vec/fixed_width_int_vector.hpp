@@ -11,7 +11,7 @@
 #include "static_vector.hpp"
 #include "vector_builder.hpp"
 
-#include <tdc/math/imath.hpp>
+#include <tdc/math/idiv.hpp>
 
 namespace tdc {
 namespace vec {

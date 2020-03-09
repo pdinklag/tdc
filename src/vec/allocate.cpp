@@ -1,5 +1,5 @@
 #include <tdc/vec/allocate.hpp>
-#include <tdc/math/imath.hpp>
+#include <tdc/math/idiv.hpp>
 
 std::unique_ptr<uint64_t[]> tdc::vec::allocate_integers(const size_t num, const size_t width, const bool initialize) {
     const size_t num64 = math::idiv_ceil(num * width, 64ULL);
