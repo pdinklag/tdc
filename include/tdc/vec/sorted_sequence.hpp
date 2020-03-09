@@ -24,17 +24,8 @@ private:
     BitRank<>                  m_rank;
     BitSelect0                 m_sel0;
 
-    template<typename T>
-    size_t encode_unary(size_t pos, T value) {
-        auto& bits = *m_bits;
-        while(value) {
-            bits[pos++] = 1;
-            --value;
-        }
-        bits[pos++] = 0;
-        return pos;
-    }
-
+    size_t encode_unary(size_t pos, uint64_t value);
+    
 public:
     /// \brief Construct an empty sequence.
     inline SortedSequence() : m_size(0) {
@@ -59,7 +50,7 @@ public:
                 size_t pos = encode_unary(0, 0);
                 for(size_t i = 1; i < m_size; i++) {
                     const auto v = array[i];
-                    pos = encode_unary(pos, v - prev);
+                    pos = encode_unary(pos, (uint64_t)(v - prev));
                     prev = v;
                 }
 
