@@ -35,26 +35,10 @@ public:
     /// \param stream the wrapped stream
     BitIStream(std::istream& stream);
 
-    /// \brief Copying is not supported.
     BitIStream(const BitIStream&) = delete;
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline BitIStream(BitIStream&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Move assignment.
-    /// \param other the object to move
-    inline BitIStream& operator=(BitIStream&& other) {
-        m_stream     = other.m_stream;
-        m_current    = other.m_current;
-        m_next       = other.m_next;
-        m_is_final   = other.m_is_final;
-        m_final_bits = other.m_final_bits;
-        m_cursor     = other.m_cursor;
-        m_bits_read  = other.m_bits_read;
-    }
+    BitIStream(BitIStream&& other) = default;
+    BitIStream& operator=(const BitIStream& other) = delete;
+    BitIStream& operator=(BitIStream&& other) = default;
 
     /// \brief Tests whether the end of the input stream has been reached.
     ///

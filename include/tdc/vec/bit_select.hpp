@@ -165,37 +165,10 @@ public:
           m_max(0) {
     }
 
-    /// \brief Copy constructor.
-    /// \param other the object to copy
-    inline BitSelect(const BitSelect& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline BitSelect(BitSelect&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Copy assignment.
-    /// \param other the object to copy
-    inline BitSelect& operator=(const BitSelect& other) {
-        m_bv = other.m_bv;
-        m_max = other.m_max;
-        m_blocks = other.m_blocks;
-        m_supblocks = other.m_supblocks;
-        return *this;
-    }
-
-    /// \brief Move assignment.
-    /// \param other the object to move
-    inline BitSelect& operator=(BitSelect&& other) {
-        m_bv = std::move(other.m_bv);
-        m_max = other.m_max;
-        m_blocks = std::move(other.m_blocks);
-        m_supblocks = std::move(other.m_supblocks);
-        return *this;
-    }
+    BitSelect(const BitSelect& other) = default;
+    BitSelect(BitSelect&& other) = default;
+    BitSelect& operator=(const BitSelect& other) = default;
+    BitSelect& operator=(BitSelect&& other) = default;
 
     /// \brief Finds the x-th occurence of \c t_bit in the bit vetor.
     /// \param x the rank of the occurence to find, must be greater than zero

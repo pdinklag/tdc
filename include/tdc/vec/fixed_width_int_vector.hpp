@@ -121,18 +121,6 @@ public:
     inline FixedWidthIntVector_() : m_size(0) {
     }
 
-    /// \brief Copy constructor.
-    /// \param other the integer vector to copy
-    inline FixedWidthIntVector_(const FixedWidthIntVector_<m_width>& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the integer vector to move
-    inline FixedWidthIntVector_(FixedWidthIntVector_<m_width>&& other) {
-        *this = std::move(other);
-    }
-
     /// \brief Constructs an integer vector with the specified length.
     /// \param size the number of integers
     /// \param initialize if \c true, the integers will be initialized with zero
@@ -141,22 +129,17 @@ public:
         m_data = allocate_integers(size, m_width, initialize);
     }
 
-    /// \brief Copy assignment.
-    /// \param other the integer vector to copy
-    inline FixedWidthIntVector_& operator=(const FixedWidthIntVector_<m_width>& other) {
+    inline FixedWidthIntVector_(const FixedWidthIntVector_& other) { *this = other; }
+    FixedWidthIntVector_(FixedWidthIntVector_<m_width>&& other) = default;
+
+    inline FixedWidthIntVector_& operator=(const FixedWidthIntVector_& other) {
         m_size = other.m_size;
         m_data = allocate_integers(m_size, m_width, false);
         memcpy(m_data.get(), other.m_data.get(), math::idiv_ceil(m_size * m_width, 64ULL) * sizeof(uint64_t));
         return *this;
     }
 
-    /// \brief Move assignment.
-    /// \param other the integer vector to move
-    inline FixedWidthIntVector_& operator=(FixedWidthIntVector_&& other) {
-        m_size = other.m_size;
-        m_data = std::move(other.m_data);
-        return *this;
-    }
+    FixedWidthIntVector_& operator=(FixedWidthIntVector_&& other) = default;
 
     /// \brief Resizes the integer vector with the specified new length and current bit width.
     ///

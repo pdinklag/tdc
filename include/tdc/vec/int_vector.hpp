@@ -48,18 +48,6 @@ public:
     inline IntVector() : m_size(0), m_width(0), m_mask(0) {
     }
 
-    /// \brief Copy constructor.
-    /// \param other the integer vector to copy
-    inline IntVector(const IntVector& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the integer vector to move
-    inline IntVector(IntVector&& other) {
-        *this = std::move(other);
-    }
-
     /// \brief Constructs an integer vector with the specified length and width.
     /// \param size the number of integers
     /// \param width the width of each integer in bits
@@ -71,8 +59,9 @@ public:
         m_data = allocate_integers(size, width, initialize);
     }
 
-    /// \brief Copy assignment.
-    /// \param other the integer vector to copy
+    inline IntVector(const IntVector& other) { *this = other; }
+    IntVector(IntVector&& other) = default;
+
     inline IntVector& operator=(const IntVector& other) {
         m_size = other.m_size;
         m_width = other.m_width;
@@ -82,15 +71,7 @@ public:
         return *this;
     }
 
-    /// \brief Move assignment.
-    /// \param other the integer vector to move
-    inline IntVector& operator=(IntVector&& other) {
-        m_size = other.m_size;
-        m_width = other.m_width;
-        m_mask = other.m_mask;
-        m_data = std::move(other.m_data);
-        return *this;
-    }
+    IntVector& operator=(IntVector&& other) = default;
 
     /// \brief Resizes the integer vector with the specified new length and width.
     ///

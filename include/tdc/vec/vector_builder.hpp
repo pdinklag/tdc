@@ -34,33 +34,10 @@ public:
         }
     }
 
-    /// \brief Copy constructor.
-    /// \param other the object to copy
-    inline VectorBuilder(const VectorBuilder& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline VectorBuilder(VectorBuilder&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Copy assignment.
-    /// \param other the object to copy
-    inline VectorBuilder& operator=(const VectorBuilder& other) {
-        m_vector = other.m_vector;
-        m_size = other.m_size;
-        return *this;
-    }
-
-    /// \brief Move assignment.
-    /// \param other the object to move
-    inline VectorBuilder& operator=(VectorBuilder&& other) {
-        m_vector = std::move(other.m_vector);
-        m_size = other.m_size;
-        return *this;
-    }
+    VectorBuilder(const VectorBuilder& other) = default;
+    VectorBuilder(VectorBuilder&& other) = default;
+    VectorBuilder& operator=(const VectorBuilder& other) = default;
+    VectorBuilder& operator=(VectorBuilder&& other) = default;
 
     /// \brief Appends an item to the end of the vector.
     /// \tparam item_t the item type

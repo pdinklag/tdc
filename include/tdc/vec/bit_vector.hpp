@@ -64,18 +64,6 @@ public:
     inline BitVector() : m_size(0) {
     }
 
-    /// \brief Copy constructor.
-    /// \param other the bit vector to copy.
-    inline BitVector(const BitVector& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the bit vector to move.
-    inline BitVector(BitVector&& other) {
-        *this = std::move(other);
-    }
-
     /// \brief Constructs a bit vector of the specified length with all bits initialized to zero.
     /// \param size the number of bits in the bit vector
     /// \param initialize if \c true, the bits will be initialized with zero
@@ -85,9 +73,10 @@ public:
 
     /// \brief Constructs a bit vector from the given \c std bit vector
     BitVector(const std::vector<bool>& bits);
+    
+    inline BitVector(const BitVector& other) { *this = other; }
+    BitVector(BitVector&& other) = default;
 
-    /// \brief Copy assignment.
-    /// \param other the bit vector to copy.
     inline BitVector& operator=(const BitVector& other) {
         m_size = other.m_size;
         m_bits = allocate_integers(m_size, 1, false);
@@ -95,13 +84,7 @@ public:
         return *this;
     }
 
-    /// \brief Move assignment.
-    /// \param other the bit vector to move.
-    inline BitVector& operator=(BitVector&& other) {
-        m_size = std::move(other.m_size);
-        m_bits = std::move(other.m_bits);
-        return *this;
-    }
+    BitVector& operator=(BitVector&& other) = default;
 
     /// \brief Gets all bits in the interval <tt>[64i,64i+63]</tt> packed in a 64-bit integer, with the least significant bit representing bit <tt>64i</tt>.
     /// \param i the block index.

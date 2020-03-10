@@ -41,24 +41,10 @@ public:
     /// the destructor writes at most two additional lead-out bytes which contain that information.
     ~BitOStream();
 
-    /// \brief Copying is not supported.
     BitOStream(const BitOStream&) = delete;
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline BitOStream(BitOStream&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Move assignment.
-    /// \param other the object to move
-    inline BitOStream& operator=(BitOStream&& other) {
-        m_stream       = other.m_stream;
-        m_next         = other.m_next;
-        m_cursor       = other.m_cursor;
-        m_bits_written = other.m_bits_written;
-        return *this;
-    }
+    BitOStream(BitOStream&& other) = default;
+    BitOStream& operator=(const BitOStream& other) = delete;
+    BitOStream& operator=(BitOStream&& other) = default;
 
     /// \brief Gets the underlying output stream.
     inline std::ostream& stream() {

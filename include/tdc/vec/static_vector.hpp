@@ -63,18 +63,6 @@ public:
     /// \brief Constructs an empty vector.
     inline StaticVector() : m_size(0) {
     }
-    
-    /// \brief Copy constructor.
-    /// \param other the vector to copy
-    inline StaticVector(const StaticVector& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the vector to move
-    inline StaticVector(StaticVector&& other) {
-        *this = std::move(other);
-    }
 
     /// \brief Constructs a vector with the specified length.
     /// \param size the number of items
@@ -84,8 +72,9 @@ public:
         m_data = allocate(size, initialize);
     }
 
-    /// \brief Copy assignment.
-    /// \param other the vector to copy
+    inline StaticVector(const StaticVector& other) { *this = other; }
+    StaticVector(StaticVector&& other) = default;
+
     inline StaticVector& operator=(const StaticVector& other) {
         m_size = other.m_size;
         m_data = allocate(m_size, false);
@@ -93,13 +82,7 @@ public:
         return *this;
     }
 
-    /// \brief Move assignment.
-    /// \param other the vector to move
-    inline StaticVector& operator=(StaticVector&& other) {
-        m_size = other.m_size;
-        m_data = std::move(other.m_data);
-        return *this;
-    }
+    StaticVector& operator=(StaticVector&& other) = default;
     
     /// \brief Resizes the vector with the specified new length.
     ///

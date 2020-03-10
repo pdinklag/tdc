@@ -250,13 +250,6 @@ public:
     /// \brief Creates an inert statistics phase without any effect.
     Phase();
 
-    /// \brief Move constructor.
-    /// \param other the phase to move
-    Phase(Phase&& other);
-
-    /// \brief Copy constructors are unavailable.
-    Phase(const Phase&) = delete;
-
     /// \brief Creates a new statistics phase.
     ///
     /// The new phase is started as a sub phase of the current phase and will
@@ -270,9 +263,10 @@ public:
     /// The phase's parent phase, if any, will become the current phase.
     ~Phase();
 
-    /// \brief Move assignment.
-    /// \param other the phase to move
+    Phase(Phase&& other);
+    Phase(const Phase&) = delete;
     Phase& operator=(Phase&& other);
+    Phase& operator=(const Phase& other) = delete;
 
     /// \brief Starts a new phase as a sibling, reusing the same object.
     ///

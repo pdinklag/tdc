@@ -63,39 +63,10 @@ public:
         }
     }
 
-    /// \brief Copy constructor.
-    /// \param other the object to copy
-    inline SortedSequence(const SortedSequence& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline SortedSequence(SortedSequence&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Copy assignment.
-    /// \param other the object to copy
-    inline SortedSequence& operator=(const SortedSequence& other) {
-        m_size = other.m_size;
-        m_first = other.m_first;
-        m_bits = other.m_bits;
-        m_rank = other.m_rank;
-        m_sel0 = other.m_sel0;
-        return *this;
-    }
-
-    /// \brief Move assignment.
-    /// \param other the object to move
-    inline SortedSequence& operator=(SortedSequence&& other) {
-        m_size = other.m_size;
-        m_first = other.m_first;
-        m_bits = std::move(other.m_bits);
-        m_rank = std::move(other.m_rank);
-        m_sel0 = std::move(other.m_sel0);
-        return *this;
-    }
+    SortedSequence(const SortedSequence& other) = default;
+    SortedSequence(SortedSequence&& other) = default;
+    SortedSequence& operator=(const SortedSequence& other) = default;
+    SortedSequence& operator=(SortedSequence&& other) = default;
 
     /// \brief Returns an element from the sequence.
     /// \param i the index of the element to return

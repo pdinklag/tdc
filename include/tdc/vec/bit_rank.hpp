@@ -75,35 +75,10 @@ public:
     inline BitRank() {
     }
 
-    /// \brief Copy constructor.
-    /// \param other the object to copy
-    inline BitRank(const BitRank& other) {
-        *this = other;
-    }
-
-    /// \brief Move constructor.
-    /// \param other the object to move
-    inline BitRank(BitRank&& other) {
-        *this = std::move(other);
-    }
-
-    /// \brief Copy assigment.
-    /// \param other the object to copy
-    inline BitRank& operator=(const BitRank& other) {
-        m_bv = other.m_bv;
-        m_blocks = other.m_blocks;
-        m_supblocks = other.m_supblocks;
-        return *this;
-    }
-
-    /// \brief Move assigment.
-    /// \param other the object to move
-    inline BitRank& operator=(BitRank&& other) {
-        m_bv = std::move(other.m_bv);
-        m_blocks = std::move(other.m_blocks);
-        m_supblocks = std::move(other.m_supblocks);
-        return *this;
-    }
+    BitRank(const BitRank& other) = default;
+    BitRank(BitRank&& other) = default;
+    BitRank& operator=(const BitRank& other) = default;
+    BitRank& operator=(BitRank&& other) = default;
 
     /// \brief Counts the number of set bit (1-bits) from the beginning of the bit vector up to (and including) position \c x.
     /// \param x the position until which to count
