@@ -1,1 +1,1 @@
-add_library(tdc-code binary_coder.cpp)
+add_library(tdc-code instances.cpp)

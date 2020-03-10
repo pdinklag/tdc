@@ -5,12 +5,25 @@
 namespace tdc {
 namespace code {
 
-/// \brief Binary code using a fixed number of bits for each integer.
-/// \tparam the default bit width of integer codes
-template<size_t m_bits = 64>
+/// \brief Binary code.
 class BinaryCoder : public Coder {
+private:
+    size_t m_bits;
+
 public:
-    using Coder::Coder;
+    /// \brief Default constructor, defaulting the coder to 64 bits per integer.
+    inline BinaryCoder() : BinaryCoder(64ULL) {
+    }
+
+    /// \brief Constructs a binary coder with a given default bit count.
+    /// \param bits the default number of bits per integer
+    inline BinaryCoder(const size_t bits) : m_bits(bits) {
+    }
+
+    BinaryCoder(const BinaryCoder& other) = default;
+    BinaryCoder(BinaryCoder&& other) = default;
+    BinaryCoder& operator=(const BinaryCoder& other) = default;
+    BinaryCoder& operator=(BinaryCoder&& other) = default;
 
     /// \brief Encodes an integer to the given output stream using \c m_bits.
     /// \tparam T the integer type
