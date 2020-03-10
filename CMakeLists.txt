@@ -33,7 +33,7 @@ include(InitSubmodules)
 
 # use tlx
 add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
-include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx/tlx)
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 
 # include json (no need to build anything)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
