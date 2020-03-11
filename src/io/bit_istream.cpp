@@ -1,6 +1,8 @@
 #include <tdc/io/bit_istream.hpp>
+#include <tdc/util/uint40.hpp>
 
 using namespace tdc::io;
+using tdc::uint40_t;
 
 void BitIStream::read_next_from_stream() {
     char c;
@@ -72,24 +74,29 @@ bool BitIStream::read_bit() {
 template uint8_t BitIStream::read_binary<uint8_t>(size_t);
 template uint16_t BitIStream::read_binary<uint16_t>(size_t);
 template uint32_t BitIStream::read_binary<uint32_t>(size_t);
+template uint40_t BitIStream::read_binary<uint40_t>(size_t);
 template uint64_t BitIStream::read_binary<uint64_t>(size_t);
 
 template uint8_t BitIStream::read_unary<uint8_t>();
 template uint16_t BitIStream::read_unary<uint16_t>();
 template uint32_t BitIStream::read_unary<uint32_t>();
+template uint40_t BitIStream::read_unary<uint40_t>();
 template uint64_t BitIStream::read_unary<uint64_t>();
 
 template uint8_t BitIStream::read_gamma<uint8_t>();
 template uint16_t BitIStream::read_gamma<uint16_t>();
 template uint32_t BitIStream::read_gamma<uint32_t>();
+template uint40_t BitIStream::read_gamma<uint40_t>();
 template uint64_t BitIStream::read_gamma<uint64_t>();
 
 template uint8_t BitIStream::read_delta<uint8_t>();
 template uint16_t BitIStream::read_delta<uint16_t>();
 template uint32_t BitIStream::read_delta<uint32_t>();
+template uint40_t BitIStream::read_delta<uint40_t>();
 template uint64_t BitIStream::read_delta<uint64_t>();
 
 template uint8_t BitIStream::read_rice<uint8_t>(uint8_t);
 template uint16_t BitIStream::read_rice<uint16_t>(uint8_t);
 template uint32_t BitIStream::read_rice<uint32_t>(uint8_t);
+template uint40_t BitIStream::read_rice<uint40_t>(uint8_t);
 template uint64_t BitIStream::read_rice<uint64_t>(uint8_t);
