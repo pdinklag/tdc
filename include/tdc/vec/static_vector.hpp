@@ -22,12 +22,9 @@ namespace vec {
 template<typename T>
 class StaticVector {
 public:
-    /// \brief Gets a \ref VectorBuilder for a static vector.
-    /// \param capacity the initial capacity
-    inline static VectorBuilder<StaticVector<T>> builder(const size_t capacity) {
-        return VectorBuilder<StaticVector<T>>(capacity);
-    }
-    
+    /// \brief The \ref VectorBuilder type for static vectors.
+    using builder_type = VectorBuilder<StaticVector<T>>;
+
 private:
     static_assert(!std::is_same<T, bool>::value, "A StaticVector of boolean values is not supported. You'll want to use a BitVector instead.");
 

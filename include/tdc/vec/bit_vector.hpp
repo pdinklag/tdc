@@ -20,11 +20,8 @@ namespace vec {
 /// Bit vectors are static, i.e., bits cannot be inserted or deleted.
 class BitVector {
 public:
-    /// \brief Gets a \ref VectorBuilder for a bit vector.
-    /// \param capacity the initial capacity
-    inline static VectorBuilder<BitVector> builder(const size_t capacity) {
-        return VectorBuilder<BitVector>(capacity);
-    }
+    /// \brief The \ref VectorBuilder type for fixed integer vectors.
+    using builder_type = VectorBuilder<BitVector>;
 
 private:
     friend class ItemRef<BitVector, bool>;

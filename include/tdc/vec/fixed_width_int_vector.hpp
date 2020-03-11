@@ -35,11 +35,8 @@ private:
         "Integers of the selected bit width can be represented by primitive types. You really don't want to use this class for this case, please use the FixedWidthIntVector alias instead.");
 
 public:
-    /// \brief Gets a \ref VectorBuilder for a fixed width integer vector.
-    /// \param capacity the initial capacity
-    inline static VectorBuilder<FixedWidthIntVector_<m_width>> builder(const size_t capacity) {
-        return VectorBuilder<FixedWidthIntVector_<m_width>>(capacity);
-    }
+    /// \brief The \ref VectorBuilder type for fixed integer vectors.
+    using builder_type = VectorBuilder<FixedWidthIntVector_<m_width>>;
     
 private:
     friend class ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
@@ -198,14 +195,12 @@ template<> struct FixedWidthIntVector_Selector<64> { using type = StaticVector<u
 /// \tparam m_width the bit width of stored integers
 template<size_t m_width>
 class FixedWidthIntVector : public FixedWidthIntVector_Selector<m_width>::type {
-public:
+private:
     using base_t = typename FixedWidthIntVector_Selector<m_width>::type;
 
-    /// \brief Gets a \ref VectorBuilder for a fixed width integer vector.
-    /// \param capacity the initial capacity
-    inline static VectorBuilder<base_t> builder(const size_t capacity) {
-        return VectorBuilder<base_t>(capacity);
-    }
+public:
+    /// \brief The \ref tdc::vec::VectorBuilder type for fixed width integer vectors.
+    using builder_type = typename base_t::builder_type;
 
     using base_t::base_t;
 };

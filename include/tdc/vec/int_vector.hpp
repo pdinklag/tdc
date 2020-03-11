@@ -20,10 +20,8 @@ class IntVectorBuilder; // fwd
 /// Int vectors are static, i.e., integers cannot be inserted or deleted.
 class IntVector {
 public:
-    /// \brief Gets a \ref VectorBuilder for an integer vector.
-    /// \param width the width of each integer in bits
-    /// \param capacity the initial capacity
-    static IntVectorBuilder builder(const size_t width, const size_t capacity);
+    /// \brief The \ref VectorBuilder type for integer vectors.
+    using builder_type = IntVectorBuilder;
 
 private:
     friend class ItemRef<IntVector, uint64_t>;

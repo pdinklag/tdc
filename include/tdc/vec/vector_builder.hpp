@@ -14,7 +14,7 @@ namespace vec {
 /// This class adds the ability to push items to the back of the vector, growing it using the capacity doubling strategy.
 /// Once the vector is fully built up, \ref finalize should be used to drop the appending functionality.
 ///
-/// Usually, you do not construct an object of this directly but use static providers from the vector types that support it.
+/// Usually, you do not construct an object of this directly but use the \c builder_type that supporting vector types define.
 ///
 /// \tparam vector_t the underlying vector type
 template<typename vector_t>
