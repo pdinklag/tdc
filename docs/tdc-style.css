@@ -52,17 +52,6 @@ body, table, div, p, dl {
     font-size: 85%;
 }
 
-#projectname {
-    width: 100%;
-
-    text-indent: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-
-    font-size: 150%;
-    font-weight: bold;
-}
-
 #projectnumber {
     font-size: inherit;
     font-weight: bold;
