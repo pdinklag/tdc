@@ -16,22 +16,22 @@ template<> struct map_type<bool> { using value = uint8_t; };
 /// \endcond
 
 /// \brief Generates a vector of random numbers between 0 and the given maximum (inclusive).
-/// \tparam the number type
+/// \tparam item_t the number type
+/// \tparam vector_t the vector type
 /// \param num the number of numbers to generate
 /// \param max the maximum possible number to be generated
 /// \param seed the random seed
-template<typename T>
-std::vector<T> vector(const size_t num, const T max, const uint64_t seed = DEFAULT_SEED) {
-    std::vector<T> v;
-    v.reserve(num);
+template<typename item_t, typename vector_t = std::vector<item_t>>
+vector_t vector(const size_t num, const item_t max, const uint64_t seed = DEFAULT_SEED) {
+    vector_t v(num);
 
     // seed
     std::default_random_engine gen(seed);
-    std::uniform_int_distribution<typename map_type<T>::value> dist(0, max);
+    std::uniform_int_distribution<typename map_type<item_t>::value> dist(0, max);
 
     // generate
     for(size_t i = 0; i < num; i++) {
-        v.push_back(dist(gen));
+        v[i] = (item_t)dist(gen);
     }
 
     return v;
