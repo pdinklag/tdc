@@ -75,7 +75,7 @@ public:
             // we are writing only few bits
             // simply use the bit-by-bit method
             for (int i = bits - 1; i >= 0; i--) {
-                write_bit((value & T(T(1) << i)) != T(0));
+                write_bit((value & T(1ULL << i)) != T(0));
             }
         } else {
             // we are at least finishing the next byte

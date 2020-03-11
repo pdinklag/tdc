@@ -12,6 +12,7 @@
 #include "vector_builder.hpp"
 
 #include <tdc/math/idiv.hpp>
+#include <tdc/util/uint40.hpp>
 
 namespace tdc {
 namespace vec {
@@ -30,7 +31,7 @@ template<size_t m_width>
 class FixedWidthIntVector_ {
 private:
     static_assert(m_width <= 64ULL, "Maximum width of 63 bits exceeded.");
-    static_assert(m_width != 8 && m_width != 16 && m_width != 32 && m_width != 64,
+    static_assert(m_width != 8 && m_width != 16 && m_width != 32 && m_width != 40 && m_width != 64,
         "Integers of the selected bit width can be represented by primitive types. You really don't want to use this class for this case, please use the FixedWidthIntVector alias instead.");
 
 public:
@@ -184,6 +185,7 @@ template<> struct FixedWidthIntVector_Selector<1> { using type = BitVector; };
 template<> struct FixedWidthIntVector_Selector<8> { using type = StaticVector<uint8_t>; };
 template<> struct FixedWidthIntVector_Selector<16> { using type = StaticVector<uint16_t>; };
 template<> struct FixedWidthIntVector_Selector<32> { using type = StaticVector<uint32_t>; };
+template<> struct FixedWidthIntVector_Selector<40> { using type = StaticVector<uint40_t>; };
 template<> struct FixedWidthIntVector_Selector<64> { using type = StaticVector<uint64_t>; };
 /// \endcond INTERNAL
 
