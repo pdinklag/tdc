@@ -272,7 +272,7 @@ namespace tdc {
         /// \brief Support for \c std::istream input.
         friend std::istream& operator>>(std::istream&, uint40_t&);
         
-    } __attribute__ ((packed));
+    } /** \cond INTERNAL */ __attribute__ ((packed)) /** \endcond */;
     #if defined(_MSC_VER)
     #pragma pack(pop)
     #endif

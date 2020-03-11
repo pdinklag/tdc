@@ -22,4 +22,4 @@ inline void assert_sorted_ascending(const array_t& a, const size_t size) {
     #endif
 }
 
-}
+} // namespace tdc
