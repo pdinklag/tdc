@@ -33,7 +33,7 @@ inline out_vector_t load_file_as_vector(
         size_t left = num_items;
         while(left) {
             const size_t num = std::min(bufsize, left);
-            f.read((char*)buffer, num * CHAR_BIT * sizeof(in_t));
+            f.read((char*)buffer, num * sizeof(in_t));
 
             for(size_t i = 0; i < num; i++) {
                 v[i++] = (out_t)buffer[i];
