@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 
@@ -5,6 +6,7 @@
 #include <tdc/io/bit_ostream.hpp>
 #include <tdc/io/bit_istream.hpp>
 #include <tdc/io/load_file.hpp>
+#include <tdc/math/idiv.hpp>
 #include <tdc/stat/phase.hpp>
 
 #include <tdc/code/binary_coder.hpp>
@@ -35,6 +37,7 @@ void bench(C constructor, stat::Phase& result) {
     std::string enc;
     {
         auto coder = constructor();
+
         std::ostringstream oss;
         io::BitOStream out(oss);
         
@@ -48,10 +51,10 @@ void bench(C constructor, stat::Phase& result) {
             }
         });
 
-        enc = oss.str();
-    }
-    result.log("output_size", enc.length());
-    result.log("ratio", (double)enc.length() / (double)(options.input.size() * sizeof(char_type)));
+        result.log("bits_written", out.bits_written());
+        result.log("output_size", math::idiv_ceil(out.bits_written(), CHAR_BIT));
+        result.log("ratio", (double)out.bits_written() / (double)(options.input.size() * CHAR_BIT * sizeof(char_type)));
+    }    
 }
 
 int main(int argc, char** argv) {
@@ -85,7 +88,7 @@ int main(int argc, char** argv) {
         });
     }
 
-    for(size_t e = 2; e <= 8; e++) {
+    for(size_t e = 1; e <= 8; e++) {
         auto result = benchmark_phase("RiceCoder");
      
         bench([e](){ return code::RiceCoder(e); }, result);
