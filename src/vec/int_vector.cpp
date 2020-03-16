@@ -44,8 +44,8 @@ void IntVector::set(const size_t i, const uint64_t v_) {
         const size_t db = 64ULL - wb;
 
         // combine the da lowest bits from a and the wa lowest bits of v
-        const uint64_t a_lo = m_data[a] & bit_mask(da);
-        const uint64_t v_lo = v & bit_mask(wa);
+        const uint64_t a_lo = m_data[a] & math::bit_mask(da);
+        const uint64_t v_lo = v & math::bit_mask(wa);
         m_data[a] = (v_lo << da) | a_lo;
 
         // combine the db highest bits of b and the wb highest bits of v
@@ -57,7 +57,7 @@ void IntVector::set(const size_t i, const uint64_t v_) {
         const size_t dvl = dl + m_width;
         
         const uint64_t xa = m_data[a];
-        const uint64_t lo = xa & bit_mask(dl);
+        const uint64_t lo = xa & math::bit_mask(dl);
         
         if(dvl == 64ULL) {        
             m_data[a] = lo | (v << dl);

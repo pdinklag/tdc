@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <iostream>
 
+#include <tdc/math/bit_mask.hpp>
+
 namespace tdc {
 namespace io {
 
@@ -41,7 +43,7 @@ public:
     BitIStream& operator=(BitIStream&& other) = default;
 
     /// \brief Tests whether the end of the input stream has been reached.
-    ///
+    ///iostream
     /// If the underlying stream was not written by a \ref BitOStream, the result may be incorrect and must be replaced by manual handling.
     inline bool eof() const {
         // If there are no more bytes, and all bits from the current buffer are read,
@@ -77,7 +79,7 @@ public:
             const size_t in_bits = bits;
 
             bits -= bits_left_in_current;
-            size_t v = m_current & ((1ULL << bits_left_in_current) - 1ULL);
+            uint64_t v = uint64_t(m_current) & math::bit_mask(bits_left_in_current);
             v <<= bits;
 
             // read as many full bytes as possible
@@ -89,7 +91,7 @@ public:
 
                     const size_t off = sizeof(size_t) - n;
 
-                    size_t v_bytes = 0;
+                    uint64_t v_bytes = 0;
                     m_stream->read(((char*)&v_bytes) + off, n);
 
                     // convert full bytes into LITTLE ENDIAN (!) representation
@@ -97,7 +99,7 @@ public:
                         v_bytes = __builtin_bswap64(v_bytes);
                     #endif
 
-                    v_bytes |= size_t(m_next) << (n * 8ULL);
+                    v_bytes |= uint64_t(m_next) << (n * 8ULL);
                     v |= (v_bytes) << bits;
 
                     // keep data consistency
@@ -107,7 +109,7 @@ public:
                     bits -= 8ULL;
                     assert(!eof());
                     read_next();
-                    v |= size_t(m_current) << bits;
+                    v |= uint64_t(m_current) << bits;
                 }
             }
 

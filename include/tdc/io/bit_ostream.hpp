@@ -5,6 +5,7 @@
 #include <iostream>
 #include <utility>
 
+#include <tdc/math/bit_mask.hpp>
 #include <tdc/math/ilog2.hpp>
 
 namespace tdc {
@@ -82,15 +83,14 @@ public:
             const size_t in_bits = bits;
 
             // mask low bits of value
-            size_t v = (bits < 64ULL) ?
-                (size_t(value) & ((1ULL << bits) - 1ULL)) : size_t(value);
+            uint64_t v = uint64_t(value) & math::bit_mask(bits);
 
             // fill it up next byte and continue with remaining bits
             bits -= bits_left_in_next;
             m_next |= (v >> bits);
             write_next();
 
-            v &= (1ULL << bits) - 1ULL; // mask remaining bits
+            v &= math::bit_mask(bits); // mask remaining bits
 
             // write as many full bytes as possible
             if(bits >= 8ULL) {
@@ -107,7 +107,7 @@ public:
                 const size_t off  = sizeof(size_t) - n;
                 m_stream->write(((const char*)&v_bytes) + off, n);
 
-                v &= (1ULL << bits) - 1ULL; // mask remaining bits
+                v &= math::bit_mask(bits); // mask remaining bits
             }
 
             if(bits) {

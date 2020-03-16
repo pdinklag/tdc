@@ -8,6 +8,7 @@
 #include "item_ref.hpp"
 #include "vector_builder.hpp"
 
+#include <tdc/math/bit_mask.hpp>
 #include <tdc/math/idiv.hpp>
 
 namespace tdc {
@@ -25,10 +26,6 @@ public:
 
 private:
     friend class ItemRef<IntVector, uint64_t>;
-
-    inline static constexpr uint64_t bit_mask(const uint64_t bits) {
-        return (1ULL << bits) - 1ULL;
-    }
 
     size_t m_size;
     size_t m_width;
@@ -53,7 +50,7 @@ public:
     inline IntVector(const size_t size, const size_t width, const bool initialize = true) {
         m_size = size;
         m_width = width;
-        m_mask = bit_mask(width);
+        m_mask = math::bit_mask(width);
         m_data = allocate_integers(size, width, initialize);
     }
 
