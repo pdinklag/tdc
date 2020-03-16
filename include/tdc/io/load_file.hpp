@@ -13,7 +13,7 @@ namespace io {
 /// \brief Loads a binary file into an integer vector.
 /// \tparam in_t the input type, which determines the number of bytes read for each integer
 /// \tparam out_t the output type
-/// \tparam out_vector_t the output vector type
+/// \tparam out_vector_t the output vector type, must support a constructor accepting the size
 /// \param path the path to the file to read
 /// \param bufsize the read buffer size
 template<typename in_t, typename out_t = in_t, typename out_vector_t = std::vector<out_t>>
@@ -44,6 +44,24 @@ inline out_vector_t load_file_as_vector(
     }
     
     delete[] buffer;
+    return v;
+}
+
+/// \brief Loads a text file into an integer vector by parsing each line as an integer value.
+/// \tparam out_t the output type
+/// \tparam out_vector_t the output vector type, must support \c push_back
+/// \param path the path to the file to read
+template<typename out_t, typename out_vector_t = std::vector<out_t>>
+inline out_vector_t load_file_lines_as_vector(const std::filesystem::path& path) {
+    out_vector_t v;
+    std::ifstream f(path);
+
+    // 2^64 has 20 decimal digits, so a buffer of size 24 should be safe
+    for(std::array<char, 24> linebuf; f.getline(&linebuf[0], 24);) {
+        if(linebuf[0]) {
+            v.push_back((out_t)uint64_t(std::atoll(&linebuf[0])));
+        }
+    }
     return v;
 }
 
