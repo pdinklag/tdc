@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
     {
         auto result = benchmark_phase("BinaryCoder");
      
-        bench([](){ return code::BinaryCoder(sizeof(char_type)); }, result);
+        bench([](){ return code::BinaryCoder(CHAR_BIT * sizeof(char_type)); }, result);
         
         result.suppress([&](){
             std::cout << "RESULT algo=BinaryCoder " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
