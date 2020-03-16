@@ -7,6 +7,9 @@ target_link_libraries(bench_bit_rank tlx tdc-stat tdc-vec)
 add_executable(bench_bit_select bench_bit_select.cpp)
 target_link_libraries(bench_bit_select tlx tdc-stat tdc-vec)
 
+add_executable(bench_coders bench_coders.cpp)
+target_link_libraries(bench_coders tlx tdc-code tdc-io tdc-stat tdc-vec)
+
 add_executable(bench_int_vector bench_int_vector.cpp)
 target_link_libraries(bench_int_vector tlx tdc-stat tdc-vec)
 
