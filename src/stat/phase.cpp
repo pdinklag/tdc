@@ -170,6 +170,7 @@ Phase& Phase::operator=(Phase&& other) {
     m_sub = std::move(other.m_sub);
     m_stats = std::move(other.m_stats);
     m_disabled = other.m_disabled;
+    return *this;
 }
 
 void Phase::split(std::string&& new_title) {
