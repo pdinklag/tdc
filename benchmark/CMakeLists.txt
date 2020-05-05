@@ -13,5 +13,8 @@ target_link_libraries(bench_coders tlx tdc-code tdc-io tdc-stat tdc-vec)
 add_executable(bench_int_vector bench_int_vector.cpp)
 target_link_libraries(bench_int_vector tlx tdc-stat tdc-vec)
 
+add_executable(bench_predecessor bench_predecessor.cpp)
+target_link_libraries(bench_predecessor tlx tdc-stat tdc-random tdc-math tdc-pred tdc-vec)
+
 add_executable(bench_sorted_sequence bench_sorted_sequence.cpp)
 target_link_libraries(bench_sorted_sequence tlx tdc-stat tdc-random tdc-math tdc-vec)

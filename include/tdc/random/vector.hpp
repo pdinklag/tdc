@@ -15,6 +15,29 @@ template<typename T> struct map_type { using value = T; };
 template<> struct map_type<bool> { using value = uint8_t; };
 /// \endcond
 
+/// \brief Generates a vector of random numbers between the given minimum and maximum (each inclusive).
+/// \tparam item_t the number type
+/// \tparam vector_t the vector type
+/// \param num the number of numbers to generate
+/// \param min the minimum possible number to be generated
+/// \param max the maximum possible number to be generated
+/// \param seed the random seed
+template<typename item_t, typename vector_t = std::vector<item_t>>
+vector_t vector_range(const size_t num, const item_t min, const item_t max, const uint64_t seed = DEFAULT_SEED) {
+    vector_t v(num);
+
+    // seed
+    std::default_random_engine gen(seed);
+    std::uniform_int_distribution<typename map_type<item_t>::value> dist(min, max);
+
+    // generate
+    for(size_t i = 0; i < num; i++) {
+        v[i] = (item_t)dist(gen);
+    }
+
+    return v;
+}
+
 /// \brief Generates a vector of random numbers between 0 and the given maximum (inclusive).
 /// \tparam item_t the number type
 /// \tparam vector_t the vector type
@@ -23,18 +46,7 @@ template<> struct map_type<bool> { using value = uint8_t; };
 /// \param seed the random seed
 template<typename item_t, typename vector_t = std::vector<item_t>>
 vector_t vector(const size_t num, const item_t max, const uint64_t seed = DEFAULT_SEED) {
-    vector_t v(num);
-
-    // seed
-    std::default_random_engine gen(seed);
-    std::uniform_int_distribution<typename map_type<item_t>::value> dist(0, max);
-
-    // generate
-    for(size_t i = 0; i < num; i++) {
-        v[i] = (item_t)dist(gen);
-    }
-
-    return v;
+    return vector_range<item_t, vector_t>(num, item_t(0), max, seed);
 }
 
 }} // namespace tdc::random
