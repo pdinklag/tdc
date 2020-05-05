@@ -54,16 +54,11 @@ void IntVector::set(const size_t i, const uint64_t v_) {
         m_data[b] = (b_hi << wb) | v_hi;
     } else {
         const size_t dl = j & 63ULL;
-        const size_t dvl = dl + m_width;
-        
         const uint64_t xa = m_data[a];
-        const uint64_t lo = xa & math::bit_mask(dl);
+        const uint64_t mask_lo = math::bit_mask(dl);
+        const uint64_t mask_hi = ~mask_lo << m_width;
         
-        if(dvl == 64ULL) {
-            m_data[a] = lo | (v << dl);
-        } else {
-            m_data[a] = lo | (v << dl) | (xa << dvl);
-        }
+        m_data[a] = (xa & mask_lo) | (v << dl) | (xa & mask_hi);
     }
 }
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 
+#include <tdc/math/bit_mask.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
 #include <tdc/vec/int_vector.hpp>
@@ -18,6 +19,8 @@ struct {
     std::vector<size_t> queries;
 
     uint64_t seed = random::DEFAULT_SEED;
+    
+    bool check = false;
 } options;
 
 stat::Phase benchmark_phase(std::string&& title) {
@@ -29,14 +32,27 @@ stat::Phase benchmark_phase(std::string&& title) {
 }
 
 template<typename C>
-void bench(C constructor) {
+void bench(C constructor, const size_t check_bits) {
     auto iv = constructor(options.num);
     
-    stat::Phase::wrap("set_seq", [&iv](){
+    stat::Phase::wrap("set_seq", [&iv,check_bits](stat::Phase& phase){
         for(size_t i = 0; i < options.num; i++) {
             iv[i] = options.data[i];
         }
+        
+        auto guard = phase.suppress();
+        if(options.check) {
+            size_t num_errors = 0;
+            const auto check_mask = math::bit_mask(check_bits);
+            for(size_t i = 0; i < options.num; i++) {
+                if(iv[i] != (options.data[i] & check_mask)) {
+                    ++num_errors;
+                }
+            }
+            phase.log("chk", num_errors);
+        }
     });
+    
     stat::Phase::wrap("get_seq", [&iv](stat::Phase& phase){
         uint64_t chk = 0;
         for(size_t i = 0; i < options.num; i++) {
@@ -65,10 +81,10 @@ void bench(C constructor) {
 }
 
 template<typename T>
-void bench_std_vector(const std::string& name) {
+void bench_std_vector(const std::string& name, const size_t w) {
     auto result = benchmark_phase("std");
     
-    bench([](const size_t sz){ return std::vector<T>(sz); });
+    bench([](const size_t sz){ return std::vector<T>(sz); }, w);
     
     result.suppress([&](){
         std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
@@ -79,7 +95,7 @@ template<size_t w>
 void bench_fwint_vector() {
     auto result = benchmark_phase("FixedWidthIntVector");
     
-    bench([](const size_t sz){ return vec::FixedWidthIntVector<w>(sz); });
+    bench([](const size_t sz){ return vec::FixedWidthIntVector<w>(sz, false); }, w);
     
     result.suppress([&](){
         std::cout << "RESULT algo=FixedWidthIntVector<" << w << "> " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
@@ -89,7 +105,7 @@ void bench_fwint_vector() {
 void bench_int_vector(const size_t w) {
     auto result = benchmark_phase("IntVector");
     
-    bench([w](const size_t sz){ return vec::IntVector(sz, w); });
+    bench([w](const size_t sz){ return vec::IntVector(sz, w, false); }, w);
     
     result.suppress([&](){
         std::cout << "RESULT algo=IntVector(" << w << ") " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
@@ -101,6 +117,7 @@ int main(int argc, char** argv) {
     cp.add_bytes('n', "num", options.num, "The size of the bit vetor (default: 1M).");
     cp.add_bytes('q', "queries", options.num_queries, "The size of the bit vetor (default: 10M).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
+    cp.add_flag("check", options.check, "Check results for correctness.");
     if(!cp.process(argc, argv)) {
         return -1;
     }
@@ -112,10 +129,10 @@ int main(int argc, char** argv) {
     options.queries = random::vector<size_t>(options.num_queries, options.num - 1, options.seed);
     
     // std::vector
-    bench_std_vector<uint8_t>("std_uint8");
-    bench_std_vector<uint16_t>("std_uint16");
-    bench_std_vector<uint32_t>("std_uint32");
-    bench_std_vector<uint64_t>("std_uint64");
+    bench_std_vector<uint8_t>("std_uint8", 8);
+    bench_std_vector<uint16_t>("std_uint16", 16);
+    bench_std_vector<uint32_t>("std_uint32", 32);
+    bench_std_vector<uint64_t>("std_uint64", 64);
 
     // tdc::vec::FixedWidthIntVector
     bench_fwint_vector<2>();
