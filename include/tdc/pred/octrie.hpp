@@ -7,7 +7,7 @@
 namespace tdc {
 namespace pred {
 
-/// \brief A cascade of \ref CompressedTrie8 instances in an octree to index a sorted sequence of arbitrary length.
+/// \brief Predecessor search in an octree of \ref CompressedTrie8 instances.
 class Octrie {
 private:
     struct octree_level_t {
@@ -22,11 +22,11 @@ private:
     size_t m_height;
 
 public:
-    /// \brief Constructs an empty trie
+    /// \brief Constructs an empty octrie.
     inline Octrie() : m_root(nullptr), m_octree_size_ub(0), m_height(0) {
     }
 
-    /// \brief Constructs a compressed trie for the given keys.
+    /// \brief Constructs an octrie for the given keys.
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys
     Octrie(const uint64_t* keys, const size_t num);
@@ -36,7 +36,7 @@ public:
     Octrie& operator=(const Octrie& other) = default;
     Octrie& operator=(Octrie&& other) = default;
     
-    /// \brief Finds the rank of the predecessor of the specified key in the compressed trie.
+    /// \brief Finds the rank of the predecessor of the specified key.
     /// \param keys the keys that the compressed trie was constructed for
     /// \param num the number of keys
     /// \param x the key in question
