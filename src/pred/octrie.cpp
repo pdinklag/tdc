@@ -4,31 +4,20 @@
 #include <iostream> // FIXME: DEBUG
 
 #include <tdc/math/idiv.hpp>
-#include <tdc/math/ilog2.hpp>
 #include <tdc/util/assert.hpp>
 #include <tdc/util/skip_accessor.hpp>
 
 using namespace tdc::pred;
 
-inline constexpr size_t log8_ceil(const size_t x) {
-    using namespace tdc::math;
-    return idiv_ceil(ilog2_ceil(x), 3); // log8(x) = log2(x) / log2(8)
-}
-
-inline constexpr size_t eight_to_the(const size_t x) {
-    return 1ULL << (3 * x); // 8^x = 2^3x
-}
-
-inline constexpr size_t octree_size(const size_t height) {
-    return (eight_to_the(height) - 1) / 7;
-}
-
-Octrie::Octrie(const uint64_t* keys, const size_t num) {
+Octrie::Octrie(const uint64_t* keys, const size_t num, const size_t max_height) {
     assert(num > 0);
     assert_sorted_ascending(keys, num);
     
     // allocate memory for octree
-    m_height = log8_ceil(num);
+    m_full_octree_height = log8_ceil(num);
+    assert(max_height <= m_full_octree_height);
+    
+    m_height = max_height;
     m_octree_size_ub = octree_size(m_height); 
     
     // std::cout << "num=" << num << ", height=" << m_height << ", octree_size <= " << m_octree_size_ub << std::endl;
@@ -40,7 +29,7 @@ Octrie::Octrie(const uint64_t* keys, const size_t num) {
         const size_t level = m_height - l - 1;
 
         // we want to sample every k-th key, with k=1 for the last level, k=8 for the level above, k=64 for the level above that, ...
-        const size_t k = eight_to_the(l);
+        const size_t k = eight_to_the(l + m_full_octree_height - m_height);
         
         auto& octree_level = m_octree[level];
         octree_level.first_node = (level > 0) ? octree_size(level) : 0;
@@ -67,10 +56,13 @@ Octrie::Octrie(const uint64_t* keys, const size_t num) {
     assert(m_root);
 }
 
+Octrie::Octrie(const uint64_t* keys, const size_t num) : Octrie(keys, num, log8_ceil(num)) {
+}
+
 Result Octrie::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
     // std::cout << "predecessor(" << x << ")" << std::endl;
     
-    size_t k = eight_to_the(m_height - 1); // sample distance
+    size_t k = eight_to_the(m_full_octree_height - 1); // sample distance
     size_t i = 0; // sample offset
     
     // first, check if there is a predecessor in the root node

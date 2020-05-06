@@ -9,6 +9,7 @@
 #include <tdc/pred/binary_search_hybrid.hpp>
 #include <tdc/pred/index.hpp>
 #include <tdc/pred/octrie.hpp>
+#include <tdc/pred/octrie_top.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -119,6 +120,9 @@ int main(int argc, char** argv) {
     bench("BinarySearch", [](const std::vector<uint64_t>& data){ return pred::BinarySearch(data.data(), data.size()); });
     bench("BinarySearchHybrid", [](const std::vector<uint64_t>& data){ return pred::BinarySearchHybrid(data.data(), data.size()); });
     bench("Octrie", [](const std::vector<uint64_t>& data){ return pred::Octrie(data.data(), data.size()); });
+    bench("OctrieTop(2)", [](const std::vector<uint64_t>& data){ return pred::OctrieTop(data.data(), data.size(), 2); });
+    bench("OctrieTop(3)", [](const std::vector<uint64_t>& data){ return pred::OctrieTop(data.data(), data.size(), 3); });
+    bench("OctrieTop(4)", [](const std::vector<uint64_t>& data){ return pred::OctrieTop(data.data(), data.size(), 4); });
     bench("Index(4)", [](const std::vector<uint64_t>& data){ return pred::Index(data.data(), data.size(), 4); });
     bench("Index(5)", [](const std::vector<uint64_t>& data){ return pred::Index(data.data(), data.size(), 5); });
     bench("Index(6)", [](const std::vector<uint64_t>& data){ return pred::Index(data.data(), data.size(), 6); });

@@ -2,6 +2,9 @@
 
 #include "compressed_trie8.hpp"
 
+#include <tdc/math/idiv.hpp>
+#include <tdc/math/ilog2.hpp>
+
 #include <vector>
 
 namespace tdc {
@@ -9,7 +12,20 @@ namespace pred {
 
 /// \brief Predecessor search in an octree of \ref CompressedTrie8 instances.
 class Octrie {
-private:
+protected:
+    inline static constexpr size_t log8_ceil(const size_t x) {
+        using namespace tdc::math;
+        return idiv_ceil(ilog2_ceil(x), 3); // log8(x) = log2(x) / log2(8)
+    }
+
+    inline static constexpr size_t eight_to_the(const size_t x) {
+        return 1ULL << (3 * x); // 8^x = 2^3x
+    }
+
+    inline static constexpr size_t octree_size(const size_t height) {
+        return (eight_to_the(height) - 1) / 7;
+    }
+
     struct octree_level_t {
         size_t first_node;
         std::vector<CompressedTrie8> nodes;
@@ -20,6 +36,13 @@ private:
     
     size_t m_octree_size_ub;
     size_t m_height;
+    size_t m_full_octree_height;
+    
+    /// \brief Constructs an octrie for the given keys and the given maximum height.
+    /// \param keys a pointer to the keys, that must be in ascending order
+    /// \param num the number of keys
+    /// \param height the maximum height of the octrie
+    Octrie(const uint64_t* keys, const size_t num, const size_t max_height);
 
 public:
     /// \brief Constructs an empty octrie.
