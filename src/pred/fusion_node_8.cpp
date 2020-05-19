@@ -9,24 +9,17 @@
 #include <bitset> // FIXME: DEBUG
 #include <iostream> // FIXME: DEBUG
 
-#include <tdc/pred/compressed_trie8.hpp>
+#include <tdc/pred/fusion_node_8.hpp>
 #include <tdc/util/assert.hpp>
 #include <tdc/util/likely.hpp>
+
+#include <tdc/pred/util/packed_byte_array_8.hpp>
 
 using namespace tdc::pred;
 
 struct ctrie8_t {
     uint64_t mask, branch, free;
 };
-
-// an 8x8 bit matrix, stuffed into 64 bits
-union bit_matrix_8x8_t {
-    uint64_t u64;
-    uint8_t  row[8];
-};
-
-// sanity check
-static_assert(sizeof(bit_matrix_8x8_t) == 8);
 
 // a very simple trie data structure
 struct trie_node {
@@ -83,14 +76,14 @@ size_t match(const uint64_t x, const ctrie8_t& ctrie8) {
     return rank((__m64)cx_repeat, (__m64)match_array);
 }
 
-CompressedTrie8::CompressedTrie8() : m_mask(0) {
+FusionNode8::FusionNode8() : m_mask(0) {
 }
 
 template<typename array_t>
 ctrie8_t construct(const array_t& keys, const size_t num)
 {
     assert(num > 0);
-    assert(num <= CompressedTrie8::MAX_KEYS);
+    assert(num <= FusionNode8::MAX_KEYS);
     tdc::assert_sorted_ascending(keys, num);
 
     // insert keys into binary trie and compute mask
@@ -101,7 +94,7 @@ ctrie8_t construct(const array_t& keys, const size_t num)
     const uint16_t root = 0;
     
     size_t m_mask = 0;
-    bit_matrix_8x8_t m_branch, m_free;
+    PackedByteArray8 m_branch, m_free;
     
     for(size_t i = 0; i < num; i++) {
         const uint64_t key = keys[i];
@@ -166,30 +159,30 @@ ctrie8_t construct(const array_t& keys, const size_t num)
             }
             
             assert(j == SIZE_MAX); // must have counted down to -1
-            m_branch.row[i] = uint8_t(branch.to_ulong());
-            m_free.row[i] = uint8_t(free.to_ulong());
+            m_branch.u8[i] = uint8_t(branch.to_ulong());
+            m_free.u8[i] = uint8_t(free.to_ulong());
             
             // std::cout << ", branch=" << std::bitset<8>(m_branch.row[i]) << ", free=" << std::bitset<8>(m_free.row[i]) << std::endl;
         }
         
         // in case there are less than 8 entries, repeat an unreachable maximum at the end
-        for(; i < CompressedTrie8::MAX_KEYS; i++) {
-            m_branch.row[i] = UINT8_MAX;
-            m_free.row[i] = 0;
+        for(; i < FusionNode8::MAX_KEYS; i++) {
+            m_branch.u8[i] = UINT8_MAX;
+            m_free.u8[i] = 0;
         }
     }
     
     return { m_mask, m_branch.u64, m_free.u64 };
 }
 
-CompressedTrie8::CompressedTrie8(const uint64_t* keys, const size_t num) {
+FusionNode8::FusionNode8(const uint64_t* keys, const size_t num) {
     auto ctrie8 = construct(keys, num);
     m_mask = ctrie8.mask;
     m_branch = ctrie8.branch;
     m_free = ctrie8.free;
 }
 
-CompressedTrie8::CompressedTrie8(const SkipAccessor<uint64_t>& keys, const size_t num) {
+FusionNode8::FusionNode8(const SkipAccessor<uint64_t>& keys, const size_t num) {
     auto ctrie8 = construct(keys, num);
     m_mask = ctrie8.mask;
     m_branch = ctrie8.branch;
@@ -235,10 +228,10 @@ Result predecessor_internal(const array_t& keys, const uint64_t x, const ctrie8_
     }
 }
 
-Result CompressedTrie8::predecessor(const uint64_t* keys, const uint64_t x) const {
+Result FusionNode8::predecessor(const uint64_t* keys, const uint64_t x) const {
     return predecessor_internal(keys, x, { m_mask, m_branch, m_free });
 }
 
-Result CompressedTrie8::predecessor(const SkipAccessor<uint64_t>& keys, const uint64_t x) const {
+Result FusionNode8::predecessor(const SkipAccessor<uint64_t>& keys, const uint64_t x) const {
     return predecessor_internal(keys, x, { m_mask, m_branch, m_free });
 }

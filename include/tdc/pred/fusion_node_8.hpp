@@ -10,7 +10,7 @@ namespace tdc {
 namespace pred {
 
 /// \brief A compressed trie that can solve predecessor queries for up to 8 64-bit keys using only 128 bits.
-class CompressedTrie8 {
+class FusionNode8 {
 public:
     /// \brief The maximum number of keys supported by this data structure.
     static constexpr size_t MAX_KEYS = 8;
@@ -20,7 +20,7 @@ private:
 
 public:
     /// \brief Constructs an empty compressed trie.
-    CompressedTrie8();
+    FusionNode8();
 
     /// \brief Constructs a compressed trie for the given keys.
     ///
@@ -30,7 +30,7 @@ public:
     ///
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
-    CompressedTrie8(const uint64_t* keys, const size_t num);
+    FusionNode8(const uint64_t* keys, const size_t num);
     
     /// \brief Constructs a compressed trie for the given keys.
     ///
@@ -40,7 +40,7 @@ public:
     ///
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
-    CompressedTrie8(const SkipAccessor<uint64_t>& keys, const size_t num);
+    FusionNode8(const SkipAccessor<uint64_t>& keys, const size_t num);
 
     /// \brief Finds the rank of the predecessor of the specified key in the compressed trie.
     /// \param keys the keys that the compressed trie was constructed for
