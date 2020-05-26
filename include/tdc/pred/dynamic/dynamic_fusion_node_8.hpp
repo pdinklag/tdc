@@ -2,22 +2,20 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <tdc/util/skip_accessor.hpp>
 
-#include "../result.hpp"
+#include <tdc/pred/result.hpp>
+#include <tdc/util/skip_accessor.hpp>
 
 namespace tdc {
 namespace pred {
 namespace dynamic {
 
-class DynamicFusionNode8 {
-public:
-    /// \brief The maximum number of keys supported by this data structure.
-    static constexpr size_t MAX_KEYS = 8;
+using Result = ::tdc::pred::Result;
 
+class DynamicFusionNode8 {
 private:
     size_t m_size;
-    uint64_t m_key[MAX_KEYS], m_index;
+    uint64_t m_key[8], m_index;
     uint64_t m_mask, m_branch, m_free;
     uint8_t m_bkey;
 
@@ -32,6 +30,16 @@ public:
     /// \brief Selects the key with the given rank.
     /// \param i the rank in question
     uint64_t select(const size_t i) const;
+
+    /// \brief Convenience operator for \ref select.
+    /// \param i the rank in question    
+    inline uint64_t operator[](const size_t i) const {
+        return select(i);
+    }
+    
+    /// \brief Finds the rank of the predecessor of the specified key in the node.
+    /// \param x the key in question
+    Result predecessor(const uint64_t x) const;
 
     /// \brief Inserts the specified key.
     /// \param key the key to insert

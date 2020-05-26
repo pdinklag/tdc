@@ -11,10 +11,6 @@ namespace pred {
 
 /// \brief A compressed trie that can solve predecessor queries for up to 8 64-bit keys using only 128 bits.
 class FusionNode8 {
-public:
-    /// \brief The maximum number of keys supported by this data structure.
-    static constexpr size_t MAX_KEYS = 8;
-
 private:
     uint64_t m_mask, m_branch, m_free;
 

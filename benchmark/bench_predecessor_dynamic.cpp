@@ -9,30 +9,43 @@
 
 #include <tlx/cmdline_parser.hpp>
 
-int main(int argc, char** argv) {
-    using namespace tdc::pred::dynamic;
+using namespace tdc::pred::dynamic;
 
-    DynamicFusionNode8 node;
-    node.print(); std::cout << std::endl;
+const uint64_t TEST = 10;
+DynamicFusionNode8 node;
+
+void pred(const uint64_t x) {
+    auto r = node.predecessor(x);
+    std::cout << "\tpredecessor of " << x;
+    if(r.exists) {
+        std::cout << " is " << node[r.pos];
+    } else {
+        std::cout << " does not exist";
+    }
+    std::cout << std::endl;
+}
+
+int main(int argc, char** argv) {
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(10);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(25);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(17);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.remove(10);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(23);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(12);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(9);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(20);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.remove(23);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     node.insert(1);
-    node.print(); std::cout << std::endl;
+    node.print(); pred(TEST); std::cout << std::endl;
     return 0;
 }
