@@ -6,6 +6,7 @@ add_library(tdc-pred
     index.cpp
     octrie.cpp
     octrie_top.cpp
-    dynamic/dynamic_fusion_node_8.cpp)
+    dynamic/dynamic_fusion_node_8.cpp
+    dynamic/dynamic_octrie.cpp)
 
 target_compile_options(tdc-pred PUBLIC -mbmi2 -mlzcnt -mpopcnt)

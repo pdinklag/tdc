@@ -5,47 +5,41 @@
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
 
-#include <tdc/pred/dynamic/dynamic_fusion_node_8.hpp>
+#include <tdc/pred/dynamic/dynamic_octrie.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
+using namespace tdc;
 using namespace tdc::pred::dynamic;
 
-const uint64_t TEST = 10;
-DynamicFusionNode8 node;
-
-void pred(const uint64_t x) {
-    auto r = node.predecessor(x);
-    std::cout << "\tpredecessor of " << x;
-    if(r.exists) {
-        std::cout << " is " << node[r.pos];
-    } else {
-        std::cout << " does not exist";
-    }
-    std::cout << std::endl;
-}
-
 int main(int argc, char** argv) {
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(10);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(25);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(17);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.remove(10);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(23);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(12);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(9);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(20);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.remove(23);
-    node.print(); pred(TEST); std::cout << std::endl;
-    node.insert(1);
-    node.print(); pred(TEST); std::cout << std::endl;
+    // generate and insert numbers
+    stat::Phase result("Result");
+    {
+        
+        DynamicOctrie tree;
+        auto perm = random::Permutation(1'000, 147);
+        for(size_t i = 0; i < 100; i++) {
+            const uint64_t x = perm(i);
+            tree.insert(x);
+        }
+        
+        result.suppress([&](){
+            tree.print();
+            std::cout << "predecessor of 3 is " << tree.predecessor(3).pos << std::endl;
+            std::cout << "predecessor of 42 is " << tree.predecessor(42).pos << std::endl;
+            std::cout << "predecessor of 5 is " << tree.predecessor(5).pos << std::endl;
+            std::cout << "predecessor of 35 is " << tree.predecessor(35).pos << std::endl;
+            std::cout << "predecessor of 135 is " << tree.predecessor(135).pos << std::endl;
+            std::cout << "predecessor of 100 is " << tree.predecessor(100).pos << std::endl;
+            std::cout << "predecessor of 9999 is " << tree.predecessor(9999).pos << std::endl;
+            result.log("size", tree.size());
+        });
+    }
+    
+    result.suppress([&](){
+        std::cout << "RESULT " << result.to_keyval() << std::endl;
+    });
+    
     return 0;
 }

@@ -14,10 +14,10 @@ using Result = ::tdc::pred::Result;
 
 class DynamicFusionNode8 {
 private:
-    size_t m_size;
     uint64_t m_key[8], m_index;
     uint64_t m_mask, m_branch, m_free;
     uint8_t m_bkey;
+    uint8_t m_size;
 
     size_t find(const uint64_t key) const;
     size_t rank(const uint64_t key) const;
@@ -26,6 +26,12 @@ private:
 public:
     /// \brief Constructs an empty fusion node.
     DynamicFusionNode8();
+
+    DynamicFusionNode8(const DynamicFusionNode8&) = default;
+    DynamicFusionNode8(DynamicFusionNode8&&) = default;
+
+    DynamicFusionNode8& operator=(const DynamicFusionNode8&) = default;
+    DynamicFusionNode8& operator=(DynamicFusionNode8&&) = default;
 
     /// \brief Selects the key with the given rank.
     /// \param i the rank in question
@@ -47,7 +53,8 @@ public:
 
     /// \brief Removes the specified key.
     /// \param key the key to remove
-    void remove(const uint64_t key);
+    /// \return whether the item was found and removed
+    bool remove(const uint64_t key);
 
     /// \brief Returns the current size of the fusion node.
     inline size_t size() const {

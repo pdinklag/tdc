@@ -66,7 +66,7 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     assert(j < 8);
     assert(!used(j));
 
-    std::cout << "inserting key " << key << " with rank " << i << " in slot " << j << std::endl;
+    // std::cout << "inserting key " << key << " with rank " << i << " in slot " << j << std::endl;
 
     // update index
     auto index = (PackedByteArray8)m_index;
@@ -97,7 +97,7 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     }
 }
 
-void DynamicFusionNode8::remove(const uint64_t key) {
+bool DynamicFusionNode8::remove(const uint64_t key) {
     assert(m_size > 0);
 
     // find key
@@ -107,7 +107,7 @@ void DynamicFusionNode8::remove(const uint64_t key) {
         const size_t j = index.u8[i];
         assert(j < 8);
 
-        std::cout << "removing key " << key << " with rank " << i << " from slot " << j << std::endl;
+        // std::cout << "removing key " << key << " with rank " << i << " from slot " << j << std::endl;
         
         // update index
         for(size_t k = i; k < m_size - 1; k++) {
@@ -131,8 +131,11 @@ void DynamicFusionNode8::remove(const uint64_t key) {
             m_branch = fnode.branch;
             m_free = fnode.free;
         }
+        
+        return true;
     } else {
-        // key not found, do nothing
+        // key not found
+        return false;
     }
 }
 
