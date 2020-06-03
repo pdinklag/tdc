@@ -24,20 +24,29 @@ DynamicOctrie::Node::~Node() {
 Result DynamicOctrie::predecessor(const uint64_t x) const {
     Node* node = m_root;
     Result r;
-    uint64_t v;
+    
+    bool exists = false;
+    uint64_t value = UINT64_MAX;
     
     r = node->fnode.predecessor(x);
     while(!node->is_leaf()) {
-        if(r.exists && node->fnode[r.pos] == x) {
-            return { true, node->fnode[r.pos] };
-        } else {        
-            const size_t i = r.exists ? r.pos + 1 : 0;
-            node = node->children[i];
-            r = node->fnode.predecessor(x);
+        exists = exists || r.exists;
+        if(r.exists) {
+            value = node->fnode[r.pos];
+            if(value == x) {
+                return { true, x };
+            }
         }
+           
+        const size_t i = r.exists ? r.pos + 1 : 0;
+        node = node->children[i];
+        r = node->fnode.predecessor(x);
     }
     
-    return r.exists ? Result { true, node->fnode[r.pos] } : r;
+    exists = exists || r.exists;
+    if(r.exists) value = node->fnode[r.pos];
+    
+    return { exists, value };
 }
 
 #ifndef NDEBUG
