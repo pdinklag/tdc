@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
     {
         
         DynamicOctrie tree;
-        auto perm = random::Permutation(10'000, 147);
-        for(size_t i = 0; i < 1'000; i++) {
+        auto perm = random::Permutation(1'000'000, 147);
+        for(size_t i = 0; i < 10'000; i++) {
             const uint64_t x = perm(i);
             tree.insert(x);
         }

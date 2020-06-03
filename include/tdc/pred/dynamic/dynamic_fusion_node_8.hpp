@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include <tdc/pred/result.hpp>
+#include <tdc/pred/util/packed_int3_array_9.hpp>
 #include <tdc/util/skip_accessor.hpp>
 
 namespace tdc {
@@ -14,8 +15,9 @@ using Result = ::tdc::pred::Result;
 
 class DynamicFusionNode8 {
 private:
-    uint64_t m_key[8], m_index;
+    uint64_t m_key[8];
     uint64_t m_mask, m_branch, m_free;
+    PackedInt3Array9 m_index;
     uint8_t m_bkey;
     uint8_t m_size;
 
