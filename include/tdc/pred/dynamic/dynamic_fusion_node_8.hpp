@@ -18,8 +18,8 @@ private:
     uint64_t m_key[8];
     uint64_t m_mask, m_branch, m_free;
     PackedInt3Array9 m_index;
-    uint8_t m_bkey;
-    uint8_t m_size;
+
+    inline uint8_t bkey() const { return m_index.x8; }
 
     size_t find(const uint64_t key) const;
     size_t rank(const uint64_t key) const;
@@ -60,11 +60,13 @@ public:
 
     /// \brief Returns the current size of the fusion node.
     inline size_t size() const {
-        return m_size;
+        return 8ULL - __builtin_popcount(bkey());
     }
 
     // FIXME DEBUG
     void print() const;
-};
+} __attribute__((__packed__));
+
+static_assert(sizeof(DynamicFusionNode8) == 92);
 
 }}} // namespace tdc::pred::dynamic

@@ -5,7 +5,7 @@
 namespace tdc {
 namespace pred {
 
-/// \brief An array of nine 3-bit-integers packed into a 32-bit word.
+/// \brief An array of eight 3-bit-integers and one byte packed into a 32-bit word.
 struct PackedInt3Array9 {
     /// \brief The stored integers.
     unsigned int x0 : 3;
@@ -16,7 +16,7 @@ struct PackedInt3Array9 {
     unsigned int x5 : 3;
     unsigned int x6 : 3;
     unsigned int x7 : 3;
-    unsigned int x8 : 3;
+    unsigned int x8 : 8;
     
     struct Int3Ref {
         PackedInt3Array9& arr;
@@ -78,10 +78,9 @@ struct PackedInt3Array9 {
     }
     
     /// \brief Default constructor.
-    inline PackedInt3Array9(const uint8_t init = 0) {
-        x0 = x1 = x2 = x3 = x4 = x5 = x6 = x7 = x8 = init;
+    inline PackedInt3Array9() {
     }
-};
+} __attribute__((__packed__));
 
 // sanity check
 static_assert(sizeof(PackedInt3Array9) == 4);

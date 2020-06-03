@@ -12,10 +12,11 @@ class DynamicOctrie {
 private:
     struct Node {
         DynamicFusionNode8 fnode;
-        std::vector<Node*> children;
+        uint8_t num_children;
+        Node** children;
     
         inline bool is_leaf() const {
-            return children.size() == 0;
+            return children == nullptr;
         }
 
         inline bool is_full() const {
@@ -30,13 +31,15 @@ private:
         Node& operator=(const Node&) = default;
         Node& operator=(Node&&) = default;
 
+        void insert_child(const size_t i, Node* node);
+
         void split_child(const size_t i);
         void insert(const uint64_t key);
             
 #ifndef NDEBUG
         size_t print(size_t num, const size_t level) const;
 #endif
-    };
+    } __attribute__((__packed__));
 
     size_t m_size;
     Node* m_root;
