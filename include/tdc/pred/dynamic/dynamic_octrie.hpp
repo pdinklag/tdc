@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dynamic_fusion_node_8.hpp"
-#include <vector>
+#include <functional>
 
 namespace tdc {
 namespace pred {
@@ -66,7 +66,7 @@ public:
     /// \param key the key to remove
     /// \return whether the item was found and removed
     bool remove(const uint64_t key);
-
+    
     /// \brief Returns the current size of the underlying octrie.
     inline size_t size() const {
         return m_size;
