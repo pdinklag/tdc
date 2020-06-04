@@ -17,7 +17,6 @@ struct {
     size_t universe = 0;
     size_t num_queries = 10'000'000ULL;
     uint64_t seed = random::DEFAULT_SEED;
-    bool check = false;
 } options;
 
 stat::Phase benchmark_phase(std::string&& title) {
@@ -35,7 +34,6 @@ int main(int argc, char** argv) {
     cp.add_bytes('u', "universe", options.universe, "The size of the universe to draw from (default: 10 * n)");
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 10M).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
-    cp.add_flag("check", options.check, "Check results for correctness.");
     if(!cp.process(argc, argv)) {
         return -1;
     }
@@ -122,7 +120,6 @@ int main(int argc, char** argv) {
                 auto guard = phase.suppress();
                 phase.log("chk", chk);
             });
-            // TODO: check?
         }
         
         result.suppress([&](){
