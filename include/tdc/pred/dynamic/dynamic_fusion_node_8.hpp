@@ -22,7 +22,6 @@ private:
     inline uint8_t bkey() const { return m_index.x8; }
 
     size_t find(const uint64_t key) const;
-    size_t rank(const uint64_t key) const;
     bool used(const size_t j) const;
 
 public:

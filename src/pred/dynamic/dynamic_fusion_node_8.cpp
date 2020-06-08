@@ -17,15 +17,6 @@ bool DynamicFusionNode8::used(const size_t j) const {
     return (bkey() & uint8_t(1 << j)) == 0;
 }
 
-size_t DynamicFusionNode8::rank(const uint64_t key) const {
-    // FIXME: naive, use data structure
-    size_t i = 0;
-    while(i < size() && m_key[m_index[i]] < key) {
-        ++i;
-    }
-    return i;
-}
-
 size_t DynamicFusionNode8::find(const uint64_t key) const {
     // FIXME: naive, use data structure
     for(size_t i = 0; i < size(); i++) {
@@ -50,12 +41,21 @@ Result DynamicFusionNode8::predecessor(const uint64_t x) const {
 }
 
 void DynamicFusionNode8::insert(const uint64_t key) {
-    assert(size() < 8);
+    const size_t sz = size();
+    assert(sz < 8);
 
     // find rank
-    const size_t i = rank(key);
+    size_t key_rank;
+    if(sz > 0) {
+        auto r = internal::predecessor(*this, key, { m_mask, m_branch, m_free });
+        key_rank = r.exists ? r.pos + 1 : 0;
+    } else {
+        key_rank = 0;
+    }
+    const size_t i = key_rank;
+    
     assert(i < 8);
-    if(i < size()) assert(key != select(i)); // keys must be unique
+    if(i < sz) assert(key != select(i)); // keys must be unique
 
     // find position to store
     const size_t j = __builtin_ctz(bkey());
@@ -65,8 +65,8 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     // std::cout << "inserting key " << key << " with rank " << i << " in slot " << j << std::endl;
 
     // update index
-    if(size() > 0) {
-        for(size_t k = size(); k > i; k--) {
+    if(sz > 0) {
+        for(size_t k = sz; k > i; k--) {
             m_index[k] = m_index[k-1];
         }
     }
@@ -81,7 +81,7 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     // meaning that we put the keys in order and build a static fusion node over it
     // any time the trie gets updated
     {
-        auto fnode = internal::construct(*this, size());
+        auto fnode = internal::construct(*this, sz + 1);
         m_mask = fnode.mask;
         m_branch = fnode.branch;
         m_free = fnode.free;
