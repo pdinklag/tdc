@@ -6,6 +6,7 @@
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
 
+#include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 
 #include <tlx/cmdline_parser.hpp>
@@ -17,6 +18,10 @@ struct {
     size_t universe = 0;
     size_t num_queries = 10'000'000ULL;
     uint64_t seed = random::DEFAULT_SEED;
+    
+    bool check;
+    std::vector<uint64_t> data; // only used if check == true
+    pred::BinarySearch data_pred;
 } options;
 
 stat::Phase benchmark_phase(std::string&& title) {
@@ -28,12 +33,82 @@ stat::Phase benchmark_phase(std::string&& title) {
     return phase;
 }
 
+// pred_ds_t must have an empty constructor and support insert
+template<typename pred_ds_t>
+void bench(
+    const std::string& name,
+    std::function<pred::Result(const pred_ds_t& ds, const uint64_t x)> pred,
+    const random::Permutation& perm,
+    const random::Permutation& qperm,
+    const uint64_t qperm_min) {
+
+    // measure
+    auto result = benchmark_phase("");
+    {
+        // construct empty
+        pred_ds_t ds;
+
+        // insert
+        {
+            stat::Phase::wrap("insert", [&](){
+                for(size_t i = 0; i < options.num; i++) {
+                    ds.insert(perm(i));
+                }
+            });
+        }
+        
+        // predecessor queries
+        {
+            uint64_t chk = 0;
+            stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
+                for(size_t i = 0; i < options.num_queries; i++) {
+                    const uint64_t x = qperm_min + qperm(i);
+                    auto r = pred(ds, x);
+                    chk += r.pos;
+                }
+                
+                auto guard = phase.suppress();
+                phase.log("chk", chk);
+            });
+        }
+        
+        // TODO: check
+        if(options.check) {
+            result.suppress([&](){
+                size_t num_errors = 0;
+                for(size_t j = 0; j < options.num_queries; j++) {
+                    const uint64_t x = qperm_min + qperm(j);
+                    auto r = pred(ds, x);
+                    assert(r.exists);
+                    
+                    // make sure that the result equals that of a simple binary search on the input
+                    auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
+                    assert(correct_result.exists);
+                    if(r.pos == options.data[correct_result.pos]) {
+                        // OK
+                    } else {
+                        // nah, count an error
+                        ++num_errors;
+                    }
+                }
+                result.log("errors", num_errors);
+            });
+        }
+    }
+    
+    result.suppress([&](){
+        std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+    });
+}
+
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
     cp.add_bytes('u', "universe", options.universe, "The size of the universe to draw from (default: 10 * n)");
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 10M).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
+    cp.add_flag("check", options.check, "Check results for correctness.");
+    
     if(!cp.process(argc, argv)) {
         return -1;
     }
@@ -44,89 +119,45 @@ int main(int argc, char** argv) {
     
     // generate permutation
     auto perm = random::Permutation(options.universe, options.seed);
-    uint64_t min = UINT64_MAX;
-    uint64_t max = 0;
+    uint64_t qmin = UINT64_MAX;
+    uint64_t qmax = 0;
+    
+    if(options.check) {
+        // data will contain sorted keys
+        options.data.reserve(options.num);
+    }
+    
     for(size_t i = 0; i < options.num; i++) {
         const uint64_t x = perm(i);
-        min = std::min(min, x);
-        max = std::min(max, x);
+        qmin = std::min(qmin, x);
+        qmax = std::max(qmax, x);
+        
+        if(options.check) {
+            options.data.push_back(x);
+        }
     }
     
-    auto qperm = random::Permutation(max - min, options.seed ^ 0x1234ABCD);
+    if(options.check) {
+        // prepare verification
+        std::sort(options.data.begin(), options.data.end());
+        options.data_pred = pred::BinarySearch(options.data.data(), options.num);
+    }
+    
+    auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
 
-    // DynamicOctrie
-    {
-        auto result = benchmark_phase("");
-     
-        pred::dynamic::DynamicOctrie trie;
+    bench<std::set<uint64_t>>("set",
+        [](const std::set<uint64_t>& set, const uint64_t x){
+            auto it = set.upper_bound(x);
+            return pred::Result { it != set.begin(), *(--it) };
+        },
+        perm, qperm, qmin);
         
-        // insert
-        {
-            stat::Phase::wrap("insert", [&](){
-                for(size_t i = 0; i < options.num; i++) {
-                    trie.insert(perm(i));
-                }
-            });
-        }
-        
-        // predecessor
-        {
-            uint64_t chk = 0;
-            stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
-                for(size_t i = 0; i < options.num_queries; i++) {
-                    const uint64_t x = min + perm(i);
-                    auto r = trie.predecessor(x);
-                    chk += r.pos;
-                }
-                
-                auto guard = phase.suppress();
-                phase.log("chk", chk);
-            });
-            // TODO: check?
-        }
-        
-        result.suppress([&](){
-            std::cout << "RESULT algo=DynamicOctrie " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-        });
-    }
-    
-    // std::set
-    {
-        auto result = benchmark_phase("");
-     
-        std::set<uint64_t> set;
-        
-        // insert
-        {
-            stat::Phase::wrap("insert", [&](){
-                for(size_t i = 0; i < options.num; i++) {
-                    set.insert(perm(i));
-                }
-            });
-        }
-        
-        // predecessor
-        {
-            uint64_t chk = 0;
-            stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
-                for(size_t i = 0; i < options.num_queries; i++) {
-                    const uint64_t x = min + perm(i);
-                    
-                    auto it = set.upper_bound(x);
-                    --it;
-                    chk += *it;
-                }
-                
-                auto guard = phase.suppress();
-                phase.log("chk", chk);
-            });
-        }
-        
-        result.suppress([&](){
-            std::cout << "RESULT algo=std::set " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-        });
-    }
-    
+    bench<pred::dynamic::DynamicOctrie>("DynamicOctrie",
+        [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
+            return trie.predecessor(x);
+        },
+        perm, qperm, qmin);
+
     return 0;
 }
     
