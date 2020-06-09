@@ -13,27 +13,20 @@ constexpr size_t NUM_DEBUG_BITS = 24;
 
 using namespace tdc::pred::dynamic;
 
-DynamicFusionNode8::DynamicFusionNode8() {
-    m_index.x8 = UINT8_MAX; // bkey
-}
-
-bool DynamicFusionNode8::used(const size_t j) const {
-    return (bkey() & uint8_t(1 << j)) == 0;
+DynamicFusionNode8::DynamicFusionNode8() : m_size(0) {
 }
 
 size_t DynamicFusionNode8::find(const uint64_t key) const {
     // FIXME: naive, use data structure
     for(size_t i = 0; i < size(); i++) {
-        if(m_key[m_index[i]] == key) return i;
+        if(m_key[i] == key) return i;
     }
     return SIZE_MAX;
 }
 
 uint64_t DynamicFusionNode8::select(const size_t i) const {
     assert(i < size());
-    const size_t j = m_index[i];
-    assert(used(j));
-    return m_key[j];
+    return m_key[i];
 }
 
 Result DynamicFusionNode8::predecessor(const uint64_t x) const {
@@ -147,24 +140,11 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     
     // insert
     {
-        // find position to store at
-        const size_t j = __builtin_ctz(bkey());
-        assert(j < 8);
-        assert(!used(j));
-
-        //~ std::cout << "    inserting in slot " << j << std::endl;
-
-        // update index
-        if(sz > 0) {
-            for(size_t k = sz; k > i; k--) {
-                m_index[k] = m_index[k-1];
-            }
+        for(size_t j = sz; j > i; j--) {
+            m_key[j] = m_key[j-1];
         }
-        m_index[i] = j;
-
-        // update keys
-        m_key[j] = key;
-        m_index.x8 &= ~uint8_t(1 << j);
+        m_key[i] = key;
+        ++m_size;
     }
     
     // verify
@@ -181,29 +161,25 @@ void DynamicFusionNode8::insert(const uint64_t key) {
 }
 
 bool DynamicFusionNode8::remove(const uint64_t key) {
-    assert(size() > 0);
+    const size_t sz = size();
+    assert(sz > 0);
 
     // find key
     const size_t i = find(key);
-    if(i < size()) {
-        const size_t j = m_index[i];
-        assert(j < 8);
-
+    if(i < sz) {
         // std::cout << "removing key " << key << " with rank " << i << " from slot " << j << std::endl;
         
-        // update index
-        for(size_t k = i; k < size() - 1; k++) {
-            m_index[k] = m_index[k+1];
+        // remove
+        for(size_t j = i; j < sz - 1; j++) {
+            m_key[j] = m_key[j+1];
         }
-
-        // update keys
-        m_index.x8 |= uint8_t(1 << j);
+        --m_size;
         
         // update data structure
         // FIXME: for now, we update data structure the naive way,
         // meaning that we put the keys in order and build a static fusion node over it
         // any time the trie gets updated
-        if(size() > 0) {
+        if(sz > 0) {
             auto fnode = internal::construct(*this, size());
             m_mask = fnode.mask;
             m_branch = fnode.branch;
@@ -221,7 +197,6 @@ void DynamicFusionNode8::print() const {
     std::cout << "DynamicFusionNode8 (size=" << size() << "):" << std::endl;
 
     for(size_t i = 0; i < size(); i++) {
-        const size_t j = m_index[i];
-        std::cout << "\ti=" << i << " -> index[i]=" << j << " -> keys[index[i]]=" << m_key[j] << std::endl;
+        std::cout << "\ti=" << i << " -> keys[i]=" << m_key[i] << std::endl;
     }
 }

@@ -4,7 +4,6 @@
 #include <cstdint>
 
 #include <tdc/pred/result.hpp>
-#include <tdc/pred/util/packed_int3_array_9.hpp>
 #include <tdc/util/skip_accessor.hpp>
 
 namespace tdc {
@@ -17,12 +16,9 @@ class DynamicFusionNode8 {
 private:
     uint64_t m_key[8];
     uint64_t m_mask, m_branch, m_free;
-    PackedInt3Array9 m_index;
-
-    inline uint8_t bkey() const { return m_index.x8; }
+    uint8_t  m_size;
 
     size_t find(const uint64_t key) const;
-    bool used(const size_t j) const;
 
 public:
     /// \brief Constructs an empty fusion node.
@@ -59,13 +55,13 @@ public:
 
     /// \brief Returns the current size of the fusion node.
     inline size_t size() const {
-        return 8ULL - __builtin_popcount(bkey());
+        return m_size;
     }
 
     // FIXME DEBUG
     void print() const;
 } __attribute__((__packed__));
 
-static_assert(sizeof(DynamicFusionNode8) == 92);
+static_assert(sizeof(DynamicFusionNode8) == 89);
 
 }}} // namespace tdc::pred::dynamic
