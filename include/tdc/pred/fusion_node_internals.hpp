@@ -180,6 +180,44 @@ Result predecessor(const array_t& keys, const uint64_t x, const internal::fnode8
     }
 }
 
+struct ExtResult {
+    Result r;
+    size_t j;
+    size_t i0, i1;
+    size_t i_matched;
+};
+
+template<typename array_t>
+ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const internal::fnode8_t& fnode8) {
+    // std::cout << "predecessor(" << x << "):" << std::endl;
+    // find the predecessor candidate by matching the key against our maintained keys
+    const size_t i = internal::match(x, fnode8);
+    // std::cout << "\ti=" << i << std::endl;
+    // lookup the key at the found position
+    const uint64_t y = keys[i];
+    // std::cout << "\ty=" << y << std::endl;
+    
+    if(x == y) {
+        // exact match - the predecessor is the key itself
+        return ExtResult { Result { true, i }, SIZE_MAX, SIZE_MAX, SIZE_MAX };
+    } else {
+        // mismatch
+        // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
+        // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
+        const size_t j = __builtin_clzll(x ^ y);
+        const size_t i0 = internal::match(x & (UINT64_MAX << (64ULL - j)), fnode8);
+        const size_t i1 = internal::match(x | (UINT64_MAX >> j), fnode8);
+        
+        ExtResult xr;
+        xr.j = j;
+        xr.i0 = i0;
+        xr.i1 = i1;
+        xr.i_matched = (x < y) ? i0 : i1;
+        xr.r = Result { x >= y || i0 > 0, x < y ? i0 - 1 : i1 };
+        return xr;
+    }
+}
+
 }}} // namespace tdc::pred::internal
 
 /// \endcond
