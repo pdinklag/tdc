@@ -85,52 +85,63 @@ void DynamicFusionNode8::insert(const uint64_t key) {
         const uint8_t hset = 1U << h;
         const uint8_t hclear = ~hset;
         const uint8_t hmask_lo = math::bit_mask(h);
+        const uint8_t hmask_hi = ~hmask_lo;
+
+        const uint64_t matrix_hset = 0x0101010101010101ULL << h;
         //~ std::cout << "    h = " << h << std::endl;
         
         // update mask (compression function)
         m_mask |= jmask;
         
         // update matrix
-        PackedByteArray8 free, branch;
-        branch.u64 = m_branch;
-        free.u64 = m_free;
-        
         if(new_significant_position) {
-            // insert a new column at rank h, filling it with dontcares (branch bits 0, free bits 1)
-            for(size_t k = 0; k < sz; k++) {
-                branch.u8[k] = (branch.u8[k] & hmask_lo) | ((branch.u8[k] & ~hmask_lo) << 1U); // insert and clear h-bit
-                free.u8[k] = (free.u8[k] & hmask_lo) | ((free.u8[k] & ~hmask_lo) << 1U) | hset; // insert and set h-bit
-            }
+            // insert a column of dontcares (0 in branch, 1 in free)
+            const uint64_t matrix_hmask_lo = hmask_lo * 0x0101010101010101ULL;
+            const uint64_t matrix_hmask_hi = hmask_hi * 0x0101010101010101ULL;
+
+            // make sure compressed keys that aren't used stay at the maximum possible value
+            const uint64_t unused = UINT64_MAX << (8 * sz);
+
+            // set h bit accordingly and shift all bits >= h one to the left
+            m_branch =               ((m_branch & matrix_hmask_hi) << 1ULL) | (m_branch & matrix_hmask_lo)   | unused;
+            m_free   = (matrix_hset | ((m_free   & matrix_hmask_hi) << 1ULL) | (m_free   & matrix_hmask_lo)) & ~unused;
         }
-        
+
         // update h-bits of compressed keys between ranks i0 and i1
-        for(size_t k = i0; k <= i1; k++) {
-            const uint64_t y = select(k);
-            //~ std::cout << "    updating compressed key for y = " << y << " = " << std::bitset<NUM_DEBUG_BITS>(y) << std::endl;
-            branch.u8[k] |= ((y & jmask) != 0) << h; // set the key's h-bit in branch
-            free.u8[k]   &= hclear; // clear the corresponding free bit
+        {
+            // get the significant bit in the matched key
+            const uint64_t y = select(matched);
+            const bool y_j = (y & jmask) != 0;
+
+            // create a mask for rows i0 to i1
+            const uint64_t matrix_i0_i1 = math::bit_mask((i1+1) * 8) - math::bit_mask(i0 * 8);
+
+            // mask out bit h
+            const uint64_t matrix_h_i0_i1 = matrix_i0_i1 & matrix_hset;
+
+            // set branch bits according to bit in matched key
+            m_branch |= (matrix_h_i0_i1 * y_j);
+
+            // clear free bits
+            m_free &= ~matrix_h_i0_i1;
         }
         
         // insert new row at rank i
-        for(size_t k = sz; k > i; k--) {
-            branch.u8[k] = branch.u8[k-1];
-            free.u8[k] = free.u8[k-1];
-        }
-        
-        // construct new entry:
-        // - the h-1 lowest bits are dontcares (branch 0, free 1)
-        // - the h-bit equals the j-th bit in the key
-        // - the remaining high bits equal that of the matched key
-        //~ std::cout << "    matched key " << select(matched) << std::endl;
-        branch.u8[i] = (branch.u8[matched] & (~hmask_lo << 1U)) | (((key & jmask) != 0) << h);
-        free.u8[i] = (free.u8[matched] & hclear) | (UINT8_MAX & hmask_lo);
+        {
+            const uint8_t matched_branch = m_branch >> (matched * 8ULL);
+            const uint8_t matched_free = m_free >> (matched * 8ULL);
 
-        // update
-        m_branch = branch.u64;
-        m_free = free.u64;
-        
-        //~ std::cout << "    tmp_branch = 0x" << std::hex << m_branch << std::endl;
-        //~ std::cout << "    tmp_free   = 0x" << m_free << std::dec << std::endl;
+            // construct new entry:
+            // - the h-1 lowest bits are dontcares (branch 0, free 1)
+            // - the h-bit equals the j-th bit in the key
+            // - the remaining high bits equal that of the matched key
+            const uint64_t row_branch = (matched_branch & (~hmask_lo << 1U)) | (((key & jmask) != 0) << h);
+            const uint64_t row_free = (matched_free & hclear) | (UINT8_MAX & hmask_lo);
+
+            const uint64_t lo = math::bit_mask(i * 8ULL);
+            m_branch = (m_branch & lo) | ((m_branch & ~lo) << 8ULL) | (row_branch << (i * 8ULL));
+            m_free   = (m_free & lo)   | ((m_free & ~lo) << 8ULL)   | (row_free << (i * 8ULL));
+        }
     } else {
         // we just inserted the first key
         m_mask = 0;                    // there are no branches in the trie
@@ -157,7 +168,6 @@ void DynamicFusionNode8::insert(const uint64_t key) {
         //~ assert(m_branch == fnode.branch);
         //~ assert(m_free == fnode.free);
     }
-    
 }
 
 bool DynamicFusionNode8::remove(const uint64_t key) {
@@ -174,6 +184,8 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
             m_key[j] = m_key[j+1];
         }
         --m_size;
+
+        // nb: a columns becomes insignificant when it contains wildcards in all but one row
         
         // update data structure
         // FIXME: for now, we update data structure the naive way,
