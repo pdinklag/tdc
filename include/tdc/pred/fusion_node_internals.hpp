@@ -199,7 +199,7 @@ ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const internal:
     
     if(x == y) {
         // exact match - the predecessor is the key itself
-        return ExtResult { Result { true, i }, SIZE_MAX, SIZE_MAX, SIZE_MAX };
+        return ExtResult { Result { true, i }, SIZE_MAX, SIZE_MAX, SIZE_MAX, i };
     } else {
         // mismatch
         // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]

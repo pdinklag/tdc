@@ -101,6 +101,24 @@ void bench(
     });
 }
 
+int _main(int argc, char** argv) {
+    pred::dynamic::DynamicFusionNode8 node;
+    
+    // insert
+    node.insert(0);
+    node.insert(2);
+    node.insert(6);
+    node.insert(10);
+    node.insert(12);
+    node.insert(13);
+    node.insert(15);
+    
+    // remove
+    node.remove(12);
+    
+    return 0;
+}
+
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
