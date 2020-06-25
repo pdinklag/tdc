@@ -3,7 +3,6 @@
 #include <cstdint>
 
 namespace tdc {
-namespace vec {
 
 /// \brief Counts the number of set bits in a 64-bit word.
 /// \param v the word in question
@@ -28,4 +27,4 @@ inline constexpr uint8_t rank1_u64(const uint64_t v, const uint8_t a, const uint
     return __builtin_popcountll(v & mask_a & mask_b);
 }
 
-}} // namespace tdc::vec
+} // namespace tdc::vec

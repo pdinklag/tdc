@@ -4,10 +4,10 @@
 #include <utility>
 
 #include <tdc/math/idiv.hpp>
+#include <tdc/util/rank_u64.hpp>
 
 #include "bit_vector.hpp"
 #include "fixed_width_int_vector.hpp"
-#include "rank_u64.hpp"
 
 namespace tdc {
 namespace vec {

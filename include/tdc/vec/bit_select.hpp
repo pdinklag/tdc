@@ -7,11 +7,11 @@
 #include "bit_vector.hpp"
 #include "fixed_width_int_vector.hpp"
 #include "int_vector.hpp"
-#include "rank_u64.hpp"
-#include "select_u64.hpp"
 
 #include <tdc/math/idiv.hpp>
 #include <tdc/math/ilog2.hpp>
+#include <tdc/util/rank_u64.hpp>
+#include <tdc/util/select_u64.hpp>
 
 namespace tdc {
 namespace vec {

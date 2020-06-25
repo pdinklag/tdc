@@ -1,7 +1,6 @@
 #pragma once
 
 namespace tdc {
-namespace vec {
 
 /// \brief Returned by \ref select0_u64 and \ref select1_u64 in case the searched bit does not exist in the given input value.
 constexpr uint8_t SELECT_U64_FAIL = 0xFF;
@@ -57,4 +56,4 @@ inline constexpr uint8_t select0_u64(const uint64_t v, const uint8_t l, const ui
 }
 
 
-}} // namespace tdc::vec
+} // namespace tdc
