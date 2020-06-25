@@ -8,6 +8,7 @@
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
+#include <tdc/pred/dynamic/dynamic_index.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -175,7 +176,11 @@ int main(int argc, char** argv) {
             return trie.predecessor(x);
         },
         perm, qperm, qmin);
-
+    bench<pred::dynamic::DynIndex>("Index",
+        [](const pred::dynamic::DynIndex& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
     return 0;
 }
     
