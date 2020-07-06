@@ -11,16 +11,17 @@ bool tdc::math::is_prime(const uint64_t p) {
 
         // first, check against small primes less than sqrt(p)
         size_t j = 2;
-        size_t i = SMALL_PRIMES[j];
-        while(i <= m && j < NUM_SMALL_PRIMES) {
+        uint64_t i = SMALL_PRIMES[j];
+        while(i <= m && j < NUM_SMALL_PRIMES - 1) {
             if((p % i) == 0) return false;
             i = SMALL_PRIMES[++j];
         }
 
-        // afterwards, try all uneven numbers less than sqrt(p)
+        // afterwards, use folklore algorithm for i less than sqrt(p)
+        i = 5ULL + ((i - 5ULL) / 6ULL) * 6ULL;
         while(i <= m) {
-            if((p % i) == 0) return false;
-            i += 2ULL;
+            if(((p % i) == 0) || (p % (i+2) == 0)) return false;
+            i += 6ULL;
         }
         return true;
     }
