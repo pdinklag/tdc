@@ -21,7 +21,7 @@ uint64_t Permutation::permute(const uint64_t x) const {
         return x;
     } else {
         // use quadratic residue
-        const uint64_t r = (uint64_t)((__uint128_t)x * (__uint128_t)x) % m_prime;
+        const uint64_t r = ((__uint128_t)x * (__uint128_t)x) % (__uint128_t)m_prime;
         return (x <= (m_prime >> 1ULL)) ? r : m_prime - r;
     }
 }
