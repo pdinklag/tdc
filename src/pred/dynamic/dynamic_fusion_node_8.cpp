@@ -57,7 +57,11 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     
     const size_t i = key_rank;
     assert(i < 8);
-    if(i < sz) assert(key != select(i)); // keys must be unique
+
+    // keys must be unique
+    if(i > 0) assert(key != select(i - 1));
+    if(i < sz) assert(key != select(i));
+
     //~ std::cout << "insert key = " << std::bitset<NUM_DEBUG_BITS>(key) << std::endl;
     //~ std::cout << "    i = " << i << std::endl;
 
@@ -161,15 +165,18 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     }
     
     // verify
-    {
+    //~ {
         //~ auto fnode = internal::construct(*this, sz + 1);
-        //~ std::cout << "    => mask   ~> " << std::bitset<NUM_DEBUG_BITS>(fnode.mask) << std::endl;
-        //~ std::cout << "    => branch ~> 0x" << std::hex << fnode.branch << std::endl;
-        //~ std::cout << "    => free   ~> 0x" << fnode.free << std::dec << std::endl;
+        //~ if(m_branch != fnode.branch || m_free != fnode.free || m_mask != fnode.mask) {
+            //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << fnode.mask << std::endl;
+            //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << fnode.branch << std::endl;
+            //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << fnode.free << std::endl;
+        //~ }
+
         //~ assert(m_mask == fnode.mask);
         //~ assert(m_branch == fnode.branch);
         //~ assert(m_free == fnode.free);
-    }
+    //~ }
 }
 
 bool DynamicFusionNode8::remove(const uint64_t key) {
@@ -292,7 +299,6 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
     // verify
     //~ if(sz > 1) {
         //~ auto fnode = internal::construct(*this, size());
-        
         //~ if(m_branch != fnode.branch || m_free != fnode.free || m_mask != fnode.mask) {
             //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << fnode.mask << std::endl;
             //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << fnode.branch << std::endl;
@@ -302,11 +308,6 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
         //~ assert(m_mask == fnode.mask);
         //~ assert(m_branch == fnode.branch);
         //~ assert(m_free == fnode.free);
-
-        //~ std::cout << "m_mask   <- 0x" << std::hex << m_mask << std::endl;
-        //~ std::cout << "m_branch <- 0x" << std::hex << m_branch << std::endl;
-        //~ std::cout << "m_free   <- 0x" << std::hex << m_free << std::endl;
-        //~ std::cout << std::dec;
     //~ }
     
     return true;
