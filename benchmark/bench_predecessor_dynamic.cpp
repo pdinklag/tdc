@@ -2,6 +2,7 @@
 #include <set>
 #include <vector>
 
+#include <tdc/math/ilog2.hpp>
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
@@ -11,6 +12,11 @@
 #include <tdc/pred/dynamic/dynamic_index.hpp>
 
 #include <tlx/cmdline_parser.hpp>
+
+#if defined(LEDA_FOUND) && defined(STREE_FOUND)
+    #define BENCH_STREE
+    #include <veb/STree_orig.h>
+#endif
 
 using namespace tdc;
 
@@ -72,8 +78,8 @@ void bench(
                 phase.log("chk", chk);
             });
         }
-        
-        // TODO: check
+
+        // check
         if(options.check) {
             result.suppress([&](){
                 size_t num_errors = 0;
@@ -102,24 +108,6 @@ void bench(
     });
 }
 
-int _main(int argc, char** argv) {
-    pred::dynamic::DynamicFusionNode8 node;
-    
-    // insert
-    node.insert(0);
-    node.insert(2);
-    node.insert(6);
-    node.insert(10);
-    node.insert(12);
-    node.insert(13);
-    node.insert(15);
-    
-    // remove
-    node.remove(12);
-    
-    return 0;
-}
-
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
@@ -140,7 +128,7 @@ int main(int argc, char** argv) {
     auto perm = random::Permutation(options.universe, options.seed);
     uint64_t qmin = UINT64_MAX;
     uint64_t qmax = 0;
-    
+        
     if(options.check) {
         // data will contain sorted keys
         options.data.reserve(options.num);
@@ -176,11 +164,54 @@ int main(int argc, char** argv) {
             return trie.predecessor(x);
         },
         perm, qperm, qmin);
+        
     bench<pred::dynamic::DynIndex>("Index",
         [](const pred::dynamic::DynIndex& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
+
+#ifdef BENCH_STREE
+    // benchmark STree [Dementiev et al., 2004]
+    if(options.universe <= INT32_MAX) {
+        auto result = benchmark_phase("");
+        {
+            STree_orig<> stree(0);
+            const size_t k = math::ilog2_ceil(options.universe);
+
+            // insert
+            {
+                stat::Phase::wrap("insert", [&](){
+                    stree = STree_orig<>(k, perm(0));
+                    for(size_t i = 1; i < options.num; i++) {
+                        stree.insert(perm(i));
+                    }
+                });
+            }
+
+            // predecessor queries
+            {
+                uint64_t chk = 0;
+                stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
+                    for(size_t i = 0; i < options.num_queries; i++) {
+                        const uint32_t x = qmin + qperm(i);
+                        auto r = stree.pred(x);
+                        chk += r;
+                    }
+                    
+                    auto guard = phase.suppress();
+                    phase.log("chk", chk);
+                });
+            }
+        }
+        result.suppress([&](){
+            std::cout << "RESULT algo=STree " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+        });
+    } else {
+        std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
+    }
+#endif
+
     return 0;
 }
     

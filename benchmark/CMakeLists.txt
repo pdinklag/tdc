@@ -19,5 +19,10 @@ target_link_libraries(bench_predecessor tlx tdc-stat tdc-random tdc-math tdc-pre
 add_executable(bench_predecessor_dynamic bench_predecessor_dynamic.cpp)
 target_link_libraries(bench_predecessor_dynamic tlx tdc-stat tdc-random tdc-math tdc-pred tdc-vec)
 
+if(LEDA_FOUND AND STREE_FOUND)
+    target_include_directories(bench_predecessor_dynamic PUBLIC ${LEDA_INCLUDE_DIRS} ${STREE_INCLUDE_DIRS})
+    target_link_libraries(bench_predecessor_dynamic ${LEDA_LIBRARIES})
+endif()
+
 add_executable(bench_sorted_sequence bench_sorted_sequence.cpp)
 target_link_libraries(bench_sorted_sequence tlx tdc-stat tdc-random tdc-math tdc-vec)
