@@ -16,7 +16,7 @@ namespace dynamic {
 
 /// \brief Dynamic predecessor search using universe-based sampling.
 
-class DynIndex {
+class DynIndexList {
  private:
   using uni_t = uint32_t;
   static constexpr size_t wordl = sizeof(uni_t) * 16;
@@ -78,7 +78,7 @@ class DynIndex {
     }
   };
 
-  using bucket = bucket_bv;
+  using bucket = bucket_list;
   mutable Result m_min = {false, 0};
   mutable std::vector<bucket*> m_xf;
   mutable bucket* m_first_b = nullptr;
@@ -167,7 +167,7 @@ class DynIndex {
   }
 
  public:
-  inline DynIndex() {
+  inline DynIndexList() {
     m_xf.resize(0);
     m_keys.resize(0);
   }
@@ -177,17 +177,17 @@ class DynIndex {
   /// \param num the number of keys
   /// \param lo_bits the number of low key bits, defining the maximum size of
   /// a search interval; lower means faster queries, but more memory usage
-  DynIndex(const uint64_t* keys, const size_t num) {
+  DynIndexList(const uint64_t* keys, const size_t num) {
     assert_sorted_ascending(keys, num);
     // build an index for high bits
     build_top(keys, num);
   }
 
-  DynIndex(const DynIndex& other) = default;
-  DynIndex(DynIndex&& other) = default;
-  DynIndex& operator=(const DynIndex& other) = default;
-  DynIndex& operator=(DynIndex&& other) = default;
-  ~DynIndex() {
+  DynIndexList(const DynIndexList& other) = default;
+  DynIndexList(DynIndexList&& other) = default;
+  DynIndexList& operator=(const DynIndexList& other) = default;
+  DynIndexList& operator=(DynIndexList&& other) = default;
+  ~DynIndexList() {
     for (bucket* b : m_xf) {
       delete b;
     }

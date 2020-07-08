@@ -10,6 +10,7 @@
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
+#include <tdc/pred/dynamic/dynamic_index_list.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -103,6 +104,7 @@ void bench(
                         // OK
                     } else {
                         // nah, count an error
+                        std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.pos << std::endl;
                         ++num_errors;
                     }
                 }
@@ -166,12 +168,12 @@ int main(int argc, char** argv) {
     
     auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
 
-    bench<std::set<uint64_t>>("set",
-        [](const std::set<uint64_t>& set, const uint64_t x){
-            auto it = set.upper_bound(x);
-            return pred::Result { it != set.begin(), *(--it) };
-        },
-        perm, qperm, qmin);
+    // bench<std::set<uint64_t>>("set",
+    //     [](const std::set<uint64_t>& set, const uint64_t x){
+    //         auto it = set.upper_bound(x);
+    //         return pred::Result { it != set.begin(), *(--it) };
+    //     },
+    //     perm, qperm, qmin);
         
     bench<pred::dynamic::DynamicOctrie>("fusion_btree",
         [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
@@ -179,8 +181,14 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
         
-    bench<pred::dynamic::DynIndex>("index",
+    bench<pred::dynamic::DynIndex>("index_bv",
         [](const pred::dynamic::DynIndex& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
+
+    bench<pred::dynamic::DynIndexList>("index_list",
+        [](const pred::dynamic::DynIndexList& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
