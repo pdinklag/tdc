@@ -133,6 +133,11 @@ int main(int argc, char** argv) {
         options.universe = 10 * options.num;
     }
     
+    if(options.universe < options.num) {
+        std::cerr << "universe not large enough" << std::endl;
+        return -1;
+    }
+    
     // generate permutation
     auto perm = random::Permutation(options.universe, options.seed);
     uint64_t qmin = UINT64_MAX;
