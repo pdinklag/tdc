@@ -26,6 +26,12 @@ struct {
     size_t num_queries = 10'000'000ULL;
     uint64_t seed = random::DEFAULT_SEED;
     
+    std::string ds; // if non-empty, only benchmarks the selected data structure
+    
+    bool do_bench(const std::string& name) {
+        return ds.length() == 0 || name == ds;
+    }
+    
     bool check;
     std::vector<uint64_t> data; // only used if check == true
     pred::BinarySearch data_pred;
@@ -48,6 +54,8 @@ void bench(
     const random::Permutation& perm,
     const random::Permutation& qperm,
     const uint64_t qperm_min) {
+        
+    if(!options.do_bench(name)) return;
 
     // measure
     auto result = benchmark_phase("");
@@ -114,6 +122,7 @@ int main(int argc, char** argv) {
     cp.add_bytes('u', "universe", options.universe, "The size of the universe to draw from (default: 10 * n)");
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 10M).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
+    cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
     cp.add_flag("check", options.check, "Check results for correctness.");
     
     if(!cp.process(argc, argv)) {
@@ -159,56 +168,58 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
         
-    bench<pred::dynamic::DynamicOctrie>("DynamicOctrie",
+    bench<pred::dynamic::DynamicOctrie>("fusion_btree",
         [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
             return trie.predecessor(x);
         },
         perm, qperm, qmin);
         
-    bench<pred::dynamic::DynIndex>("Index",
+    bench<pred::dynamic::DynIndex>("index",
         [](const pred::dynamic::DynIndex& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
 
 #ifdef BENCH_STREE
-    // benchmark STree [Dementiev et al., 2004]
-    if(options.universe <= INT32_MAX) {
-        auto result = benchmark_phase("");
-        {
-            STree_orig<> stree(0);
-            const size_t k = math::ilog2_ceil(options.universe);
-
-            // insert
+    if(options.do_bench("stree")) {
+        // benchmark STree [Dementiev et al., 2004]
+        if(options.universe <= INT32_MAX) {
+            auto result = benchmark_phase("");
             {
-                stat::Phase::wrap("insert", [&](){
-                    stree = STree_orig<>(k, perm(0));
-                    for(size_t i = 1; i < options.num; i++) {
-                        stree.insert(perm(i));
-                    }
-                });
-            }
+                STree_orig<> stree(0);
+                const size_t k = math::ilog2_ceil(options.universe);
 
-            // predecessor queries
-            {
-                uint64_t chk = 0;
-                stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
-                    for(size_t i = 0; i < options.num_queries; i++) {
-                        const uint32_t x = qmin + qperm(i);
-                        auto r = stree.pred(x);
-                        chk += r;
-                    }
-                    
-                    auto guard = phase.suppress();
-                    phase.log("chk", chk);
-                });
+                // insert
+                {
+                    stat::Phase::wrap("insert", [&](){
+                        stree = STree_orig<>(k, perm(0));
+                        for(size_t i = 1; i < options.num; i++) {
+                            stree.insert(perm(i));
+                        }
+                    });
+                }
+
+                // predecessor queries
+                {
+                    uint64_t chk = 0;
+                    stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
+                        for(size_t i = 0; i < options.num_queries; i++) {
+                            const uint32_t x = qmin + qperm(i);
+                            auto r = stree.pred(x);
+                            chk += r;
+                        }
+                        
+                        auto guard = phase.suppress();
+                        phase.log("chk", chk);
+                    });
+                }
             }
+            result.suppress([&](){
+                std::cout << "RESULT algo=stree " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
+            });
+        } else {
+            std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
         }
-        result.suppress([&](){
-            std::cout << "RESULT algo=STree " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-        });
-    } else {
-        std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
     }
 #endif
 
