@@ -45,6 +45,7 @@ include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
 
 # find optional packages
 find_package(LEDA)
+find_package(Plads)
 find_package(Powercap)
 find_package(STree)
 

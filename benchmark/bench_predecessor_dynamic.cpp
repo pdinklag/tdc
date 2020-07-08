@@ -8,8 +8,9 @@
 #include <tdc/stat/phase.hpp>
 
 #include <tdc/pred/binary_search.hpp>
-#include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
+#include <tdc/pred/dynamic/dynamic_octrie.hpp>
+#include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -131,11 +132,12 @@ int main(int argc, char** argv) {
 
     if(!options.universe) {
         options.universe = 10 * options.num;
-    }
-    
-    if(options.universe < options.num) {
-        std::cerr << "universe not large enough" << std::endl;
-        return -1;
+    } else {
+        --options.universe;
+        if(options.universe < options.num) {
+            std::cerr << "universe not large enough" << std::endl;
+            return -1;
+        }
     }
     
     // generate permutation
@@ -184,6 +186,14 @@ int main(int argc, char** argv) {
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
+        
+#ifdef PLADS_FOUND
+    bench<pred::dynamic::DynamicRankSelect>("dbv",
+        [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
+#endif
 
 #ifdef BENCH_STREE
     if(options.do_bench("stree")) {
