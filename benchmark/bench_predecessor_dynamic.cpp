@@ -201,16 +201,14 @@ int main(int argc, char** argv) {
 
                 // predecessor queries
                 {
-                    uint64_t chk = 0;
+                    volatile uint64_t chk = 0;
                     stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
                         for(size_t i = 0; i < options.num_queries; i++) {
                             const uint32_t x = qmin + qperm(i);
-                            auto r = stree.pred(x);
+                            auto r = stree.pred(x+1); // STree seems to look for the largest value STRICTLY LESS THAN the input
+                                                      // it crashes if there is no predecessor...
                             chk += r;
                         }
-                        
-                        auto guard = phase.suppress();
-                        phase.log("chk", chk);
                     });
                 }
             }
