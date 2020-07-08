@@ -7,6 +7,11 @@ add_library(tdc-pred
     octrie.cpp
     octrie_top.cpp
     dynamic/dynamic_fusion_node_8.cpp
-    dynamic/dynamic_octrie.cpp)
+    dynamic/dynamic_octrie.cpp
+    dynamic/dynamic_rankselect.cpp)
 
 target_compile_options(tdc-pred PUBLIC -mbmi2 -mlzcnt -mpopcnt)
+
+if(PLADS_FOUND)
+    target_include_directories(tdc-pred PUBLIC ${PLADS_INCLUDE_DIRS})
+endif()
