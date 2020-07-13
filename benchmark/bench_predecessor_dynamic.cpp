@@ -67,11 +67,14 @@ void bench(
 
         // insert
         {
-            stat::Phase::wrap("insert", [&](){
-                for(size_t i = 0; i < options.num; i++) {
-                    ds.insert(perm(i));
-                }
-            });
+            stat::Phase insert("insert");
+            for(size_t i = 0; i < options.num; i++) {
+                ds.insert(perm(i));
+            }
+            
+            auto guard = insert.suppress();
+            auto mem = insert.memory_info();
+            result.log("memData", mem.current - mem.offset);
         }
         
         // predecessor queries
@@ -215,12 +218,15 @@ int main(int argc, char** argv) {
 
                 // insert
                 {
-                    stat::Phase::wrap("insert", [&](){
-                        stree = STree_orig<>(k, perm(0));
-                        for(size_t i = 1; i < options.num; i++) {
-                            stree.insert(perm(i));
-                        }
-                    });
+                    stat::Phase insert("insert");
+                    stree = STree_orig<>(k, perm(0));
+                    for(size_t i = 1; i < options.num; i++) {
+                        stree.insert(perm(i));
+                    }
+            
+                    auto guard = insert.suppress();
+                    auto mem = insert.memory_info();
+                    result.log("memData", mem.current - mem.offset);
                 }
 
                 // predecessor queries
