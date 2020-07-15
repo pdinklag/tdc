@@ -32,6 +32,26 @@ public:
     static const std::string STAT_NUM_ALLOC;
     /// \brief The stat key used for a phase's number of frees.
     static const std::string STAT_NUM_FREE;
+    
+    /// \brief Contains information about the phase memory measurements.
+    struct MemoryInfo {
+        /// \brief The number of bytes allocated at the start of the phase.
+        ssize_t offset;
+        
+        /// \brief The number of bytes currently allocated.
+        ///
+        /// If the phase is finished, this is the number of bytes allocated at the end of the phase.
+        ssize_t current;
+        
+        /// \brief The peak number of bytes allocated during the phase.
+        ssize_t peak;
+        
+        /// \brief The number of allocations during the phase.
+        size_t num_allocs;
+        
+        /// \brief The number of frees during the phase.
+        size_t num_frees;
+    };
 
 private:
     //
@@ -293,6 +313,11 @@ public:
 
     inline const std::string& title() const {
         return m_title;
+    }
+
+    /// \brief Gets the current \ref MemoryInfo for the phase.
+    inline MemoryInfo memory_info() const {
+        return MemoryInfo { m_mem.off, m_mem.current, m_mem.peak, m_num_allocs, m_num_frees };
     }
 
     /// \brief Constructs the JSON representation of the measured data.

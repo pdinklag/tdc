@@ -71,11 +71,14 @@ void bench(
 
         // insert
         {
-            stat::Phase::wrap("insert", [&](){
-                for(size_t i = 0; i < options.num; i++) {
-                    ds.insert(perm(i));
-                }
-            });
+            stat::Phase insert("insert");
+            for(size_t i = 0; i < options.num; i++) {
+                ds.insert(perm(i));
+            }
+            
+            auto guard = insert.suppress();
+            auto mem = insert.memory_info();
+            result.log("memData", mem.current - mem.offset);
         }
         
         // predecessor queries
@@ -139,7 +142,6 @@ int main(int argc, char** argv) {
     if(!options.universe) {
         options.universe = 10 * options.num;
     } else {
-        --options.universe;
         if(options.universe < options.num) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
@@ -203,12 +205,23 @@ int main(int argc, char** argv) {
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
+<<<<<<< HEAD
     bench<pred::dynamic::DynIndexList_Batched>("index_list_batched",
         [](const pred::dynamic::DynIndexList_Batched& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
             
+=======
+
+    bench<std::set<uint64_t>>("set",
+        [](const std::set<uint64_t>& set, const uint64_t x){
+            auto it = set.upper_bound(x);
+            return pred::Result { it != set.begin(), *(--it) };
+        },
+        perm, qperm, qmin);
+        
+>>>>>>> c4bef355e7ae26b1d9c41f4ca8b0f1f7a9fdf719
 #ifdef PLADS_FOUND
     bench<pred::dynamic::DynamicRankSelect>("dbv",
         [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
@@ -216,8 +229,6 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
 #endif
-
-    
 
 #ifdef BENCH_STREE
     if(options.do_bench("stree")) {
@@ -230,12 +241,15 @@ int main(int argc, char** argv) {
 
                 // insert
                 {
-                    stat::Phase::wrap("insert", [&](){
-                        stree = STree_orig<>(k, perm(0));
-                        for(size_t i = 1; i < options.num; i++) {
-                            stree.insert(perm(i));
-                        }
-                    });
+                    stat::Phase insert("insert");
+                    stree = STree_orig<>(k, perm(0));
+                    for(size_t i = 1; i < options.num; i++) {
+                        stree.insert(perm(i));
+                    }
+            
+                    auto guard = insert.suppress();
+                    auto mem = insert.memory_info();
+                    result.log("memData", mem.current - mem.offset);
                 }
 
                 // predecessor queries
