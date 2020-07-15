@@ -177,14 +177,18 @@ int main(int argc, char** argv) {
             return trie.predecessor(x);
         },
         perm, qperm, qmin);
-        
-    bench<pred::dynamic::DynIndex<false, 16>>("index_bv",
-        [](const pred::dynamic::DynIndex<false, 16>& ds, const uint64_t x){
+    bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>>("index_hybrid",
+        [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
-    bench<pred::dynamic::DynIndex<true, 16>>("index_list",
-        [](const pred::dynamic::DynIndex<true, 16>& ds, const uint64_t x){
+    bench<tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>>("index_bv",
+        [](const tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
+    bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>>("index_list",
+        [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
