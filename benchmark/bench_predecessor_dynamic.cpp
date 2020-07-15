@@ -172,19 +172,12 @@ int main(int argc, char** argv) {
     
     auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
 
-    // bench<std::set<uint64_t>>("set",
-    //     [](const std::set<uint64_t>& set, const uint64_t x){
-    //         auto it = set.upper_bound(x);
-    //         return pred::Result { it != set.begin(), *(--it) };
-    //     },
-    //     perm, qperm, qmin);
-        
-    // bench<pred::dynamic::DynamicOctrie>("fusion_btree",
-    //     [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
-    //         return trie.predecessor(x);
-    //     },
-    //     perm, qperm, qmin);
-        
+    bench<pred::dynamic::DynamicOctrie>("fusion_btree",
+        [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
+            return trie.predecessor(x);
+        },
+        perm, qperm, qmin);
+       
     bench<pred::dynamic::DynIndex<false>>("index_bv",
         [](const pred::dynamic::DynIndex<false>& ds, const uint64_t x){
             return ds.predecessor(x);
