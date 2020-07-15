@@ -137,7 +137,6 @@ int main(int argc, char** argv) {
     if(!options.universe) {
         options.universe = 10 * options.num;
     } else {
-        --options.universe;
         if(options.universe < options.num) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
