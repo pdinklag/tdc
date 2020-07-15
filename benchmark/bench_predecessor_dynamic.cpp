@@ -9,7 +9,11 @@
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
+#include <tdc/pred/dynamic/dynamic_index_batched.hpp>
+
 #include <tdc/pred/dynamic/dynamic_index_list.hpp>
+#include <tdc/pred/dynamic/dynamic_index_list_batched.hpp>
+
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 
@@ -105,6 +109,7 @@ void bench(
                         // OK
                     } else {
                         // nah, count an error
+                        //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.pos << std::endl;
                         ++num_errors;
                     }
                 }
@@ -188,8 +193,18 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
 
+    bench<pred::dynamic::DynIndex_Batched>("index_bv_batched",
+        [](const pred::dynamic::DynIndex_Batched& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
     bench<pred::dynamic::DynIndexList>("index_list",
         [](const pred::dynamic::DynIndexList& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        perm, qperm, qmin);
+    bench<pred::dynamic::DynIndexList_Batched>("index_list_batched",
+        [](const pred::dynamic::DynIndexList_Batched& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
