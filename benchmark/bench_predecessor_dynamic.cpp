@@ -196,7 +196,14 @@ int main(int argc, char** argv) {
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
-            
+
+    bench<std::set<uint64_t>>("set",
+        [](const std::set<uint64_t>& set, const uint64_t x){
+            auto it = set.upper_bound(x);
+            return pred::Result { it != set.begin(), *(--it) };
+        },
+        perm, qperm, qmin);
+        
 #ifdef PLADS_FOUND
     bench<pred::dynamic::DynamicRankSelect>("dbv",
         [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
@@ -204,8 +211,6 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
 #endif
-
-    
 
 #ifdef BENCH_STREE
     if(options.do_bench("stree")) {
