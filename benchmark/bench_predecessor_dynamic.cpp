@@ -9,10 +9,6 @@
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
-#include <tdc/pred/dynamic/dynamic_index_batched.hpp>
-
-#include <tdc/pred/dynamic/dynamic_index_list.hpp>
-#include <tdc/pred/dynamic/dynamic_index_list_batched.hpp>
 
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
@@ -183,36 +179,23 @@ int main(int argc, char** argv) {
     //     },
     //     perm, qperm, qmin);
         
-    bench<pred::dynamic::DynamicOctrie>("fusion_btree",
-        [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
-            return trie.predecessor(x);
-        },
-        perm, qperm, qmin);
+    // bench<pred::dynamic::DynamicOctrie>("fusion_btree",
+    //     [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
+    //         return trie.predecessor(x);
+    //     },
+    //     perm, qperm, qmin);
         
-    bench<pred::dynamic::DynIndex>("index_bv",
-        [](const pred::dynamic::DynIndex& ds, const uint64_t x){
+    bench<pred::dynamic::DynIndex<false>>("index_bv",
+        [](const pred::dynamic::DynIndex<false>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
-
-    bench<pred::dynamic::DynIndex_Batched>("index_bv_batched",
-        [](const pred::dynamic::DynIndex_Batched& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        perm, qperm, qmin);
-    bench<pred::dynamic::DynIndexList>("index_list",
-        [](const pred::dynamic::DynIndexList& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        perm, qperm, qmin);
-<<<<<<< HEAD
-    bench<pred::dynamic::DynIndexList_Batched>("index_list_batched",
-        [](const pred::dynamic::DynIndexList_Batched& ds, const uint64_t x){
+    bench<pred::dynamic::DynIndex<true>>("index_list",
+        [](const pred::dynamic::DynIndex<true>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
             
-=======
 
     bench<std::set<uint64_t>>("set",
         [](const std::set<uint64_t>& set, const uint64_t x){
@@ -221,7 +204,6 @@ int main(int argc, char** argv) {
         },
         perm, qperm, qmin);
         
->>>>>>> c4bef355e7ae26b1d9c41f4ca8b0f1f7a9fdf719
 #ifdef PLADS_FOUND
     bench<pred::dynamic::DynamicRankSelect>("dbv",
         [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
