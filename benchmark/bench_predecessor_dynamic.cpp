@@ -179,23 +179,22 @@ int main(int argc, char** argv) {
     //     },
     //     perm, qperm, qmin);
         
-    // bench<pred::dynamic::DynamicOctrie>("fusion_btree",
-    //     [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
-    //         return trie.predecessor(x);
-    //     },
-    //     perm, qperm, qmin);
+    bench<pred::dynamic::DynamicOctrie>("fusion_btree",
+        [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
+            return trie.predecessor(x);
+        },
+        perm, qperm, qmin);
         
-    bench<pred::dynamic::DynIndex<false>>("index_bv",
-        [](const pred::dynamic::DynIndex<false>& ds, const uint64_t x){
+    bench<pred::dynamic::DynIndex<false, 16>>("index_bv",
+        [](const pred::dynamic::DynIndex<false, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
-    bench<pred::dynamic::DynIndex<true>>("index_list",
-        [](const pred::dynamic::DynIndex<true>& ds, const uint64_t x){
+    bench<pred::dynamic::DynIndex<true, 16>>("index_list",
+        [](const pred::dynamic::DynIndex<true, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
         perm, qperm, qmin);
-            
 
     bench<std::set<uint64_t>>("set",
         [](const std::set<uint64_t>& set, const uint64_t x){

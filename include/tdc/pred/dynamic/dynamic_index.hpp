@@ -16,26 +16,30 @@ namespace dynamic {
 
 /// \brief Dynamic predecessor search using universe-based sampling.
 
-template<bool t_list>
+template <bool t_list, uint8_t t_sampling>
 class DynIndex {
  private:
-  using uni_t = uint32_t;
-  static constexpr size_t wordl = sizeof(uni_t) * 16;
-  static constexpr size_t b_wordl = 16;
-  static constexpr size_t b_size = (1ULL << b_wordl);
-  static constexpr size_t x_wordl = 16;
+  // This data structure needs RAM depending on the greatest key.
+  // If you store keys greater than 2^30 you will need a lot of RAM.
+  // Here we set greatest key to have 40 bit. wordl = x_wordl + b_wordl.
+  static constexpr size_t wordl = 40;
+  static constexpr size_t word_size = (1ULL << wordl);
+  // The top part of the data structure stores pointers to the bottom buckets.
+  static constexpr size_t x_wordl = 40-t_sampling;
   static constexpr size_t x_size = (1ULL << x_wordl);
+  // The bottom part of the data structure is either
+  // a bit vector, std::array, or a hybrid.
+  static constexpr size_t b_wordl = t_sampling;
+  static constexpr size_t b_size = (1ULL << b_wordl);
 
+  // This is a bucket that holds a bit vector.
   struct bucket_bv {
     uint64_t prefix;
     uint64_t prev_pred = 0;
-
     bucket_bv* next_b = nullptr;  // next bucket
     std::bitset<b_size> bits;
 
     void set(uint64_t i) { bits[i] = true; }
-
-    // bool check(unsigned char i) const { return bits[i]; }
 
     uint64_t pred(int64_t i) const {
       for (; i >= 0; --i) {
@@ -50,7 +54,6 @@ class DynIndex {
   struct bucket_list {
     uint64_t prefix;
     uint64_t prev_pred = 0;
-
     bucket_list* next_b = nullptr;
     std::vector<uint16_t> list;
 
@@ -78,34 +81,28 @@ class DynIndex {
     }
   };
 
-  using bucket = typename std::conditional<t_list, bucket_list, bucket_bv>::type;//using bucket = bucket_bv;
-  mutable Result m_min = {false, 0};
-  mutable Result m_max = {false, 0};
-  mutable std::vector<bucket*> m_xf;
-  mutable bucket* m_first_b = nullptr;
+  using bucket =
+      typename std::conditional<t_list, bucket_list, bucket_bv>::type;
+  uint64_t m_size = 0;                  // number of keys stored
+  mutable uint64_t m_min;               // stores the minimal key
+  mutable uint64_t m_max;               // stores the maximal key
+  mutable std::vector<bucket*> m_xf;    // top data structure
+  mutable bucket* m_first_b = nullptr;  // pointer to the first bucket
 
-  mutable std::vector<uint64_t> m_keys;
-
+  // return the x_wordl more significant bits of i
   inline uint64_t prefix(uint64_t i) const { return i >> b_wordl; }
-  inline uint64_t suffix(uint64_t i) const {
-    return i & ((1ULL << (b_wordl)) - 1);
-  }
+  // return the b_wordl less significant bits
+  inline uint64_t suffix(uint64_t i) const { return i & (b_size - 1); }
 
  public:
-  inline DynIndex() {
-    m_xf.resize(1, nullptr);
-    m_keys.resize(0);
-  }
+  inline DynIndex() { m_xf.resize(0); }
 
   /// \brief Constructs the index for the given keys.
   /// \param keys a pointer to the keys, that must be in ascending order
   /// \param num the number of keys
-  /// \param lo_bits the number of low key bits, defining the maximum size of
-  /// a search interval; lower means faster queries, but more memory usage
   DynIndex(const uint64_t* keys, const size_t num) {
     assert_sorted_ascending(keys, num);
-    // build an index for high bits
-    for(size_t i = 0; i < num; ++i) {
+    for (size_t i = 0; i < num; ++i) {
       insert(keys[i]);
     }
   }
@@ -121,74 +118,77 @@ class DynIndex {
   }
 
   void insert(const uint64_t key) {
-    if (prefix(key) >= m_xf.size()) {
-      m_xf.resize(prefix(key) + 1, m_xf.back());
-    }
-    if (!m_min.exists) {
-      m_min = {true, key};
-      m_max = {true, key};
-    } else {
-      if (key < m_min.pos) {
-        m_min = {true, key};
-      }
-      if (key > m_max.pos) {
-        m_max = {true, key};
-      }
-    }
-    uint64_t key_pre = prefix(key);
-    uint64_t key_suf = suffix(key);
-    bucket* key_bucket = m_xf[key_pre];
+    const uint64_t key_pre = prefix(key);
+    const uint64_t key_suf = suffix(key);
     bucket* new_b;
-    // if previous bucket exists
-    if (key_bucket != nullptr) {
-      // if exact bucket exists, add key
-      if (key_bucket->prefix == key_pre) {
-        key_bucket->set(key_suf);
-        bucket* next_bucket = key_bucket->next_b;
-        if (next_bucket != nullptr) {  // Das tritt genau ein wenn
-                                       // key_bucket->prefix < m_xf.size()-1
-          next_bucket->prev_pred = std::max(key, next_bucket->prev_pred);
-        }
-        return;
-      } else {  // if exact bucket does not exist
+
+    // if a key is inserted that needs a greater bucket
+    if (key_pre >= m_xf.size()) {
+      if (tdc_likely(m_size != 0)) {
         new_b = new bucket;
         new_b->prefix = key_pre;
-        new_b->next_b = key_bucket->next_b;
+        new_b->next_b = nullptr;
         new_b->set(key_suf);
-        // pointer in next_bucket
-        key_bucket->next_b = new_b;
-        new_b->prev_pred = m_xf[key_pre - 1]->pred(
-            b_size -
-            1);  // Das kommt mir spanisch vor, lieber nochmal unterscheiden ob
-                 // wir einen bucket ans ende oder in die mitte einfügen
-        bucket* next_bucket = new_b->next_b;  // siehe kommentar ^
-        if (next_bucket != nullptr) {
-          next_bucket->prev_pred = key;
-        }
+        new_b->prev_pred = m_max;
+        m_xf.back()->next_b = new_b;
+        m_xf.resize(prefix(key) + 1, m_xf.back());
+      } else {
+        m_min = key;
+        m_max = key;
+        new_b = new bucket;
+        new_b->prefix = key_pre;
+        new_b->next_b = m_first_b;
+        m_first_b = new_b;
+        new_b->set(key_suf);
+        ++m_size;  // TODO: CALCULATE SIZE CORRECTLY
+        m_xf.resize(prefix(key) + 1, nullptr);
       }
-    } else {  // TODO: Das tritt nur ein, falls x < min. Schiebe das also hoch
-      // if no prev bucket exists, create bucket
-      if (m_first_b != nullptr) {
-        m_first_b->prev_pred = key;
-      }
+    } else if (key_pre < prefix(m_min)) {
+      // if a key is inserted before the first bucket
+      m_first_b->prev_pred = key;
       new_b = new bucket;
       new_b->prefix = key_pre;
       new_b->prev_pred = 0;
       new_b->next_b = m_first_b;
       m_first_b = new_b;
       new_b->set(key_suf);
+    } else {
+      // if a key is inserted inbetween
+      bucket* key_bucket = m_xf[key_pre];
+      // if exact bucket exists, add key
+      if (key_bucket->prefix == key_pre) {
+        key_bucket->set(key_suf);
+        bucket* next_bucket = key_bucket->next_b;
+        if (next_bucket != nullptr) {
+          next_bucket->prev_pred = std::max(key, next_bucket->prev_pred);
+        }
+        m_min = std::min(key, m_min);
+        m_max = std::max(key, m_max);
+        return;
+      } else {
+        // if exact bucket does not exist
+        new_b = new bucket;
+        new_b->prefix = key_pre;
+        new_b->next_b = key_bucket->next_b;
+        new_b->set(key_suf);
+        // pointer in next_bucket
+        key_bucket->next_b = new_b;
+        new_b->prev_pred = new_b->next_b->prev_pred;
+        new_b->next_b->prev_pred = key;
+      }
     }
 
+    m_min = std::min(key, m_min);
+    m_max = std::max(key, m_max);
     // update xfast
     m_xf[key_pre] = new_b;
-    size_t check_to = m_xf.size();
-    for (size_t j = key_pre + 1; j < check_to; ++j) {
-      // Improvement: save pointer and compare pointer instead of prefix value
-      // of pointer
-      if (m_xf[j] == nullptr || m_xf[j]->prefix < new_b->prefix) {
-        m_xf[j] = new_b;
-      } else {
-        break;
+    if (key_pre + 1 < m_xf.size()) {
+      bucket* next_bucket = m_xf[key_pre + 1];
+      if (next_bucket == nullptr || next_bucket->prefix < key_pre) {
+        for (size_t j = key_pre + 1; j < m_xf.size() && next_bucket == m_xf[j];
+             ++j) {
+          m_xf[j] = new_b;
+        }
       }
     }
   }
@@ -198,13 +198,12 @@ class DynIndex {
   /// \param num the number of keys
   /// \param x the key in question
   Result predecessor(const uint64_t x) const {
-    if (tdc_unlikely(!m_min.exists)) return Result{false, 1};
-    if (tdc_unlikely(x < m_min.pos)) return Result{false, 0};
-    if (tdc_unlikely(x >= m_max.pos)) return Result{true, m_max};
+    if (tdc_unlikely(m_size == 0)) return Result{false, 1};
+    if (tdc_unlikely(x < m_min)) return Result{false, 0};
+    if (tdc_unlikely(x >= m_max)) return Result{true, m_max};
     return {true, m_xf[prefix(x)]->pred(suffix(x))};
   }
-};  // namespace dynamic
-
+};
 }  // namespace dynamic
 }  // namespace pred
 }  // namespace tdc
