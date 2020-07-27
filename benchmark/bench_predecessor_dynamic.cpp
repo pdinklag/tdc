@@ -48,11 +48,14 @@ stat::Phase benchmark_phase(std::string&& title) {
     return phase;
 }
 
-// pred_ds_t must have an empty constructor and support insert
-template<typename pred_ds_t>
+// pred_ds_t must have an empty constructor and support a function insert
+// pred_func:   predecessor function with signature pred::Result(const pred_ds_t& ds, const uint64_t x)
+// remove_func: key removal function with signature <any>(pred_ds_t& ds, const uint64_t x)
+template<typename pred_ds_t, typename pred_func_t, typename remove_func_t>
 void bench(
     const std::string& name,
-    std::function<pred::Result(const pred_ds_t& ds, const uint64_t x)> pred,
+    pred_func_t pred_func,
+    remove_func_t remove_func,
     const random::Permutation& perm,
     const random::Permutation& qperm,
     const uint64_t qperm_min) {
@@ -83,7 +86,7 @@ void bench(
             stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
                 for(size_t i = 0; i < options.num_queries; i++) {
                     const uint64_t x = qperm_min + qperm(i);
-                    auto r = pred(ds, x);
+                    auto r = pred_func(ds, x);
                     chk += r.pos;
                 }
                 
@@ -98,7 +101,7 @@ void bench(
                 size_t num_errors = 0;
                 for(size_t j = 0; j < options.num_queries; j++) {
                     const uint64_t x = qperm_min + qperm(j);
-                    auto r = pred(ds, x);
+                    auto r = pred_func(ds, x);
                     assert(r.exists);
                     
                     // make sure that the result equals that of a simple binary search on the input
@@ -114,6 +117,19 @@ void bench(
                 }
                 result.log("errors", num_errors);
             });
+        }
+        
+        // delete
+        {
+            stat::Phase del("delete");
+            for(size_t i = 0; i < options.num; i++) {
+                remove_func(ds, perm(i));
+            }
+        }
+        
+        {
+            auto mem = result.memory_info();
+            result.log("memEmpty", mem.current - mem.offset);
         }
     }
     
@@ -173,30 +189,46 @@ int main(int argc, char** argv) {
     auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
 
     bench<pred::dynamic::DynamicOctrie>("fusion_btree",
-        [](const pred::dynamic::DynamicOctrie& trie, const uint64_t x){
-            return trie.predecessor(x);
+        [](const pred::dynamic::DynamicOctrie& ds, const uint64_t x){
+            return ds.predecessor(x);
+        },
+        [](pred::dynamic::DynamicOctrie& ds, const uint64_t x){
+            ds.remove(x);
         },
         perm, qperm, qmin);
+    /*
     bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>>("index_hybrid",
         [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
+        },
+        [](pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>& ds, const uint64_t x){
+            ds.del(x);
         },
         perm, qperm, qmin);
     bench<tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>>("index_bv",
         [](const tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
+        [](tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>& ds, const uint64_t x){
+            ds.del(x);
+        },
         perm, qperm, qmin);
     bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>>("index_list",
         [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>& ds, const uint64_t x){
             return ds.predecessor(x);
         },
+        [](pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>& ds, const uint64_t x){
+            ds.del(x);
+        },
         perm, qperm, qmin);
-
+    */
     bench<std::set<uint64_t>>("set",
         [](const std::set<uint64_t>& set, const uint64_t x){
             auto it = set.upper_bound(x);
             return pred::Result { it != set.begin(), *(--it) };
+        },
+        [](std::set<uint64_t>& set, const uint64_t x){
+            set.erase(x);
         },
         perm, qperm, qmin);
         
@@ -204,6 +236,9 @@ int main(int argc, char** argv) {
     bench<pred::dynamic::DynamicRankSelect>("dbv",
         [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
             return ds.predecessor(x);
+        },
+        [](pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
+            ds.remove(x);
         },
         perm, qperm, qmin);
 #endif
@@ -241,6 +276,19 @@ int main(int argc, char** argv) {
                             chk += r;
                         }
                     });
+                }
+                
+                // delete
+                {
+                    stat::Phase del("delete");
+                    for(size_t i = 1; i < options.num; i++) {
+                        stree.del(perm(i));
+                    }
+                }
+                
+                {
+                    auto mem = result.memory_info();
+                    result.log("memEmpty", mem.current - mem.offset);
                 }
             }
             result.suppress([&](){
