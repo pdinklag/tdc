@@ -32,6 +32,36 @@ size_t DynamicOctrie::Node::print(size_t num, const size_t level) const {
     for(size_t i = 0; i < num_children; i++) num = children[i]->print(num, level+1);
     return num;
 }
+
+void DynamicOctrie::Node::verify() const {
+    if(!is_leaf()) {
+        // make sure there is one more child than splitters in the node
+        assert(num_children == size() + 1);
+        
+        for(size_t i = 0; i < size(); i++) {
+            // the largest value of the i-th subtree must be smaller than the i-th splitter
+            Node* c = children[i];
+            while(!c->is_leaf()) {
+                c = c->children[c->num_children-1];
+            }
+            assert(c->fnode[c->size()-1] < fnode[i]);
+        }
+        
+        // the smallest value of the last subtree must be larger than the last splitter
+        {
+            Node* c = children[size()];
+            while(!c->is_leaf()) {
+                c = c->children[0];
+            }
+            assert(c->fnode[0] > fnode[size() - 1]);
+        }
+        
+        // verify children
+        for(size_t i = 0; i < num_children; i++) {
+            children[i]->verify();
+        }
+    }
+}
 #endif
 
 void DynamicOctrie::Node::insert_child(const size_t i, Node* node) {
@@ -145,7 +175,7 @@ bool DynamicOctrie::Node::remove(const uint64_t key) {
         
         if(r.exists && fnode[r.pos] == key) {
             // key is contained in this internal node
-            assert(i < 8);
+            assert(i < 9);
 
             Node* y = children[i-1];
             const size_t ysize = y->size();
@@ -153,8 +183,12 @@ bool DynamicOctrie::Node::remove(const uint64_t key) {
             const size_t zsize = z->size();
             
             if(ysize >= DELETION_THRESHOLD) {
-                // find predecessor of key in y
-                const uint64_t key_pred = y->fnode[ysize-1];
+                // find predecessor of key in y's subtree - i.e., the maximum
+                Node* c = y;
+                while(!c->is_leaf()) {
+                    c = c->children[c->num_children-1];
+                }
+                const uint64_t key_pred = c->fnode[c->size()-1];
 
                 // replace key by predecssor in this node
                 fnode.remove(key);
@@ -163,8 +197,12 @@ bool DynamicOctrie::Node::remove(const uint64_t key) {
                 // recursively delete key_pred from y
                 y->remove(key_pred);
             } else if(zsize >= DELETION_THRESHOLD) {
-                // find successor of key in z
-                const uint64_t key_succ = z->fnode[0];
+                // find successor of key in z's subtree - i.e., its minimum
+                Node* c = z;
+                while(!c->is_leaf()) {
+                    c = c->children[0];
+                }
+                const uint64_t key_succ = c->fnode[0];
 
                 // replace key by successor in this node
                 fnode.remove(key);
@@ -233,7 +271,7 @@ bool DynamicOctrie::Node::remove(const uint64_t key) {
                     
                     // move largest key from left sibling to this node
                     const uint64_t llargest = left->fnode[left->size()-1];
-                    assert(splitter < llargest); // sanity
+                    assert(splitter > llargest); // sanity
                     left->fnode.remove(llargest);
                     fnode.insert(llargest);
                     
@@ -376,6 +414,10 @@ Result DynamicOctrie::predecessor(const uint64_t x) const {
 #ifndef NDEBUG
 void DynamicOctrie::print() const {
     m_root->print(0, 0);
+}
+
+void DynamicOctrie::verify() const {
+    m_root->verify();
 }
 #endif
 

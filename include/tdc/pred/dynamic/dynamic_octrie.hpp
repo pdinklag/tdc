@@ -48,6 +48,7 @@ private:
 
 #ifndef NDEBUG
         size_t print(size_t num, const size_t level) const;
+        void verify() const;
 #endif
     } __attribute__((__packed__));
 
@@ -84,6 +85,7 @@ public:
     
 #ifndef NDEBUG
     void print() const;
+    void verify() const;
 #endif
 };
 
