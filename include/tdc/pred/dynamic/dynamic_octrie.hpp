@@ -18,9 +18,17 @@ private:
         inline bool is_leaf() const {
             return children == nullptr;
         }
+        
+        inline size_t size() const {
+            return fnode.size();
+        }
+        
+        inline bool is_empty() const {
+            return size() == 0;
+        }
 
         inline bool is_full() const {
-            return fnode.size() == 8;
+            return size() == 8;
         }
 
         Node();
@@ -32,10 +40,12 @@ private:
         Node& operator=(Node&&) = default;
 
         void insert_child(const size_t i, Node* node);
+        void remove_child(const size_t i);
 
         void split_child(const size_t i);
         void insert(const uint64_t key);
-            
+        bool remove(const uint64_t key);
+
 #ifndef NDEBUG
         size_t print(size_t num, const size_t level) const;
 #endif

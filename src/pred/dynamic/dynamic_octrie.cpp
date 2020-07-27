@@ -19,7 +19,7 @@ DynamicOctrie::Node::~Node() {
     for(size_t i = 0; i < num_children; i++) {
         delete children[i];
     }
-    delete[] children;
+    if(children) delete[] children;
 }
 
 #ifndef NDEBUG
@@ -47,6 +47,17 @@ void DynamicOctrie::Node::insert_child(const size_t i, Node* node) {
     }
     children[i] = node;
     ++num_children;
+}
+
+void DynamicOctrie::Node::remove_child(const size_t i) {
+    assert(num_children > 0);
+    assert(i <= num_children);
+
+    for(size_t j = i; j < num_children-1; j++) {
+        children[j] = children[j+1];
+    }
+    children[num_children-1] = nullptr;
+    --num_children;
 }
 
 void DynamicOctrie::Node::split_child(const size_t i) {
@@ -102,7 +113,7 @@ void DynamicOctrie::Node::insert(const uint64_t key) {
         // we're at a leaf, insert
         fnode.insert(key);
     } else {
-        // find the child to descend to
+        // find the child to descend into
         const auto r = fnode.predecessor(key);
         size_t i = r.exists ? r.pos + 1 : 0;
         
@@ -116,6 +127,221 @@ void DynamicOctrie::Node::insert(const uint64_t key) {
 
         // descend into non-full child
         children[i]->insert(key);
+    }
+}
+
+bool DynamicOctrie::Node::remove(const uint64_t key) {
+    static constexpr size_t DELETION_THRESHOLD = 4;
+    
+    assert(!is_empty());
+
+    if(is_leaf()) {
+        // leaf - simply remove
+        return fnode.remove(key);
+    } else {
+        // find the item, or the child to descend into
+        const auto r = fnode.predecessor(key);
+        size_t i = r.exists ? r.pos + 1 : 0;
+        
+        if(r.exists && fnode[r.pos] == key) {
+            // key is contained in this internal node
+            assert(i < 8);
+
+            Node* y = children[i-1];
+            const size_t ysize = y->size();
+            Node* z = children[i];
+            const size_t zsize = z->size();
+            
+            if(ysize >= DELETION_THRESHOLD) {
+                // find predecessor of key in y
+                const uint64_t key_pred = y->fnode[ysize-1];
+
+                // replace key by predecssor in this node
+                fnode.remove(key);
+                fnode.insert(key_pred);
+
+                // recursively delete key_pred from y
+                y->remove(key_pred);
+            } else if(zsize >= DELETION_THRESHOLD) {
+                // find successor of key in z
+                const uint64_t key_succ = z->fnode[0];
+
+                // replace key by successor in this node
+                fnode.remove(key);
+                fnode.insert(key_succ);
+
+                // recursively delete key_succ from z
+                z->remove(key_succ);
+            } else {
+                // assert balance
+                assert(ysize == DELETION_THRESHOLD - 1);
+                assert(zsize == DELETION_THRESHOLD - 1);
+
+                // remove key from this node
+                fnode.remove(key);
+
+                // merge key and all of z into y
+                {
+                    // insert key and keys of z into y
+                    y->fnode.insert(key);
+                    for(size_t j = 0; j < zsize; j++) {
+                        y->fnode.insert(z->fnode[j]);
+                    }
+
+                    // move children from z to y
+                    if(!z->is_leaf()) {
+                        assert(!y->is_leaf()); // the sibling of an inner node cannot be a leaf
+                        
+                        size_t next_child = y->num_children;
+                        for(size_t j = 0; j < z->num_children; j++) {
+                            y->children[next_child++] = z->children[j];
+                        }
+                        y->num_children = next_child;
+                        z->num_children = 0;
+                    }
+                }
+
+                // delete z
+                remove_child(i);
+                delete z;
+
+                // recursively delete key from y
+                y->remove(key);
+            }
+            return true;
+        } else {
+            // get i-th child
+            Node* c = children[i];
+
+            if(c->size() < DELETION_THRESHOLD) {
+                // preprocess child so we can safely remove from it
+                assert(c->size() == DELETION_THRESHOLD - 1);
+                
+                // get siblings
+                Node* left  = i > 0 ? children[i-1] : nullptr;
+                Node* right = i < num_children-1 ? children[i+1] : nullptr;
+                
+                if(left && left->size() >= DELETION_THRESHOLD) {
+                    // there is a left child, so there must be a splitter
+                    assert(i > 0);
+                    
+                    // retrieve splitter and move it into c
+                    const uint64_t splitter = fnode[i-1];
+                    assert(key > splitter); // sanity
+                    fnode.remove(splitter);
+                    c->fnode.insert(splitter);
+                    
+                    // move largest key from left sibling to this node
+                    const uint64_t llargest = left->fnode[left->size()-1];
+                    assert(splitter < llargest); // sanity
+                    left->fnode.remove(llargest);
+                    fnode.insert(llargest);
+                    
+                    // move rightmost child of left sibling to c
+                    if(!left->is_leaf()) {
+                        Node* lrightmost = left->children[left->num_children-1];
+                        left->remove_child(left->num_children-1);
+                        c->insert_child(0, lrightmost);
+                    }
+                } else if(right && right->size() >= DELETION_THRESHOLD) {
+                    // there is a right child, so there must be a splitter
+                    assert(i < fnode.size());
+                    
+                    // retrieve splitter and move it into c
+                    const uint64_t splitter = fnode[i];
+                    assert(key < splitter); // sanity
+                    fnode.remove(splitter);
+                    c->fnode.insert(splitter);
+                    
+                    // move smallest key from right sibling to this node
+                    const uint64_t rsmallest = right->fnode[0];
+                    assert(rsmallest > splitter); // sanity
+                    right->fnode.remove(rsmallest);
+                    fnode.insert(rsmallest);
+                    
+                    // move leftmost child of right sibling to c
+                    if(!right->is_leaf()) {
+                        Node* rleftmost = right->children[0];
+                        right->remove_child(0);
+                        c->insert_child(c->num_children, rleftmost);
+                    }
+                } else {
+                    // this node is not a leaf and is not empty, so there must be at least one sibling to the child
+                    assert(left != nullptr || right != nullptr);
+                    assert(left == nullptr || left->size() == DELETION_THRESHOLD - 1);
+                    assert(right == nullptr || right->size() == DELETION_THRESHOLD - 1);
+                    
+                    // select the sibling and corresponding splitter to mergre with
+                    if(right != nullptr) {
+                        // merge child with right sibling
+                        const uint64_t splitter = fnode[i];
+                        assert(key < splitter); // sanity
+                        
+                        // move splitter into child as new median
+                        fnode.remove(splitter);
+                        c->fnode.insert(splitter);
+                        
+                        // move keys right sibling to child
+                        for(size_t j = 0; j < right->size(); j++) {
+                            c->fnode.insert(right->fnode[j]);
+                        }
+                        
+                        if(!right->is_leaf()) {
+                            assert(!c->is_leaf()); // the sibling of an inner node cannot be a leaf
+                            
+                            // append children of right sibling to child
+                            size_t next_child = c->num_children;
+                            for(size_t j = 0; j < right->num_children; j++) {
+                                c->children[next_child++] = right->children[j];
+                            }
+                            c->num_children = next_child;
+                            right->num_children = 0;
+                        }
+                        
+                        // delete right sibling
+                        remove_child(i+1);
+                        delete right;
+                    } else {
+                        // merge child with left sibling
+                        const uint64_t splitter = fnode[i-1];
+                        assert(key > splitter); // sanity
+                        
+                        // move splitter into child as new median
+                        fnode.remove(splitter);
+                        c->fnode.insert(splitter);
+                        
+                        // move keys left sibling to child
+                        for(size_t j = 0; j < left->size(); j++) {
+                            c->fnode.insert(left->fnode[j]);
+                        }
+                        
+                        if(!left->is_leaf()) {
+                            assert(!c->is_leaf()); // the sibling of an inner node cannot be a leaf
+                            
+                            // move children of child to the back
+                            size_t next_child = left->num_children;
+                            for(size_t j = 0; j < c->num_children; j++) {
+                                c->children[next_child++] = c->children[j];
+                            }
+                            c->num_children = next_child;
+                            
+                            // prepend children of left sibling to child
+                            for(size_t j = 0; j < left->num_children; j++) {
+                                c->children[j] = left->children[j];
+                            }
+                            left->num_children = 0;
+                        }
+                        
+                        // delete left sibling
+                        remove_child(i-1);
+                        delete left;
+                    }
+                }
+            }
+            
+            // remove from subtree
+            return c->remove(key);
+        }
     }
 }
 
@@ -167,6 +393,17 @@ void DynamicOctrie::insert(const uint64_t key) {
 }
 
 bool DynamicOctrie::remove(const uint64_t key) {
-    // TODO
-    return false;
+    bool result = m_root->remove(key);
+    
+    if(m_root->size() == 0 && m_root->num_children > 0) {
+        assert(m_root->num_children == 1);
+        
+        // root is now empty but it still has a child, make that new root
+        Node* new_root = m_root->children[0];
+        m_root->num_children = 0;
+        delete m_root;
+        m_root = new_root;
+    }
+    
+    return result;
 }
