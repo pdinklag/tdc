@@ -83,53 +83,51 @@ void bench(
 
         // insert
         {
-            stat::Phase insert("insert");
-            for(size_t i = initial_size; i < options.num; i++) {
-                insert_func(ds, perm(i));
+            stat::Phase::MemoryInfo mem;
+            {
+                stat::Phase insert("insert");
+                for(size_t i = initial_size; i < options.num; i++) {
+                    insert_func(ds, perm(i));
+                }
+                mem = insert.memory_info();
             }
-            
-            auto guard = insert.suppress();
-            auto mem = insert.memory_info();
             result.log("memData", mem.current - mem.offset);
         }
         
         // predecessor queries
         {
             uint64_t chk = 0;
-            stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
+            {
+                stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
                     const uint64_t x = qperm_min + qperm(i);
                     auto r = pred_func(ds, x);
                     chk += r.pos;
                 }
-                
-                auto guard = phase.suppress();
-                phase.log("chk", chk);
-            });
+            }
+            result.log("chk", chk);
         }
 
         // check
         if(options.check) {
-            result.suppress([&](){
-                size_t num_errors = 0;
-                for(size_t j = 0; j < options.num_queries; j++) {
-                    const uint64_t x = qperm_min + qperm(j);
-                    auto r = pred_func(ds, x);
-                    assert(r.exists);
-                    
-                    // make sure that the result equals that of a simple binary search on the input
-                    auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
-                    assert(correct_result.exists);
-                    if(r.pos == options.data[correct_result.pos]) {
-                        // OK
-                    } else {
-                        // nah, count an error
-                        //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.pos << std::endl;
-                        ++num_errors;
-                    }
+            size_t num_errors = 0;
+            for(size_t j = 0; j < options.num_queries; j++) {
+                const uint64_t x = qperm_min + qperm(j);
+                auto r = pred_func(ds, x);
+                assert(r.exists);
+                
+                // make sure that the result equals that of a simple binary search on the input
+                auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
+                assert(correct_result.exists);
+                if(r.pos == options.data[correct_result.pos]) {
+                    // OK
+                } else {
+                    // nah, count an error
+                    //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.pos << std::endl;
+                    ++num_errors;
                 }
-                result.log("errors", num_errors);
-            });
+            }
+            result.log("errors", num_errors);
         }
         
         // delete
@@ -140,15 +138,14 @@ void bench(
             }
         }
         
+        // memory of empty data structure
         {
             auto mem = result.memory_info();
             result.log("memEmpty", mem.current - mem.offset);
         }
     }
     
-    result.suppress([&](){
-        std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-    });
+    std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
 }
 
 int main(int argc, char** argv) {
