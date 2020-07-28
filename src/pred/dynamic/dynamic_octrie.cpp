@@ -435,7 +435,13 @@ void DynamicOctrie::insert(const uint64_t key) {
 }
 
 bool DynamicOctrie::remove(const uint64_t key) {
+    assert(m_size > 0);
+    
     bool result = m_root->remove(key);
+    
+    if(result) {
+        --m_size;
+    }
     
     if(m_root->size() == 0 && m_root->num_children > 0) {
         assert(m_root->num_children == 1);
@@ -446,6 +452,5 @@ bool DynamicOctrie::remove(const uint64_t key) {
         delete m_root;
         m_root = new_root;
     }
-    
     return result;
 }
