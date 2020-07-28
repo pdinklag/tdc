@@ -48,17 +48,29 @@ stat::Phase benchmark_phase(std::string&& title) {
     return phase;
 }
 
-// pred_ds_t must have an empty constructor and support a function insert
-// pred_func:   predecessor function with signature pred::Result(const pred_ds_t& ds, const uint64_t x)
-// remove_func: key removal function with signature <any>(pred_ds_t& ds, const uint64_t x)
-template<typename pred_ds_t, typename pred_func_t, typename remove_func_t>
+/// \brief Performs a benchmark.
+/// \param name        the algorithm name
+/// \param ctor_func   constructor function, must support signature T(const uint64_t) and return an empty data structure,
+///                    or a data structure containing the first element if it cannot be empty
+/// \param size_func   size function, must support signature size_t(const T& ds)
+/// \param insert_func insertion function, must support signature <any>(T& ds, const uint64_t x)
+/// \param pred_func   predecessor function, must support signature pred::Result(const T& ds, const uint64_t x)
+/// \param remove_func key removal function, must support signature <any>(T& ds, const uint64_t x)
+/// \param perm        the permutation for inserted values
+/// \param qperm       the permutation for queries
+/// \param qperm_min   the minimum value inserted into the data structure, used to assure a predecessor query always succeeds
+template<typename ctor_func_t, typename size_func_t, typename insert_func_t, typename pred_func_t, typename remove_func_t>
 void bench(
     const std::string& name,
+    ctor_func_t ctor_func,
+    size_func_t size_func,
+    insert_func_t insert_func,
     pred_func_t pred_func,
     remove_func_t remove_func,
     const random::Permutation& perm,
     const random::Permutation& qperm,
-    const uint64_t qperm_min) {
+    const uint64_t qperm_min,
+    const bool non_empty = false) {
         
     if(!options.do_bench(name)) return;
 
@@ -66,13 +78,14 @@ void bench(
     auto result = benchmark_phase("");
     {
         // construct empty
-        pred_ds_t ds;
+        auto ds = ctor_func(perm(0));
+        const size_t initial_size = size_func(ds);
 
         // insert
         {
             stat::Phase insert("insert");
-            for(size_t i = 0; i < options.num; i++) {
-                ds.insert(perm(i));
+            for(size_t i = initial_size; i < options.num; i++) {
+                insert_func(ds, perm(i));
             }
             
             auto guard = insert.suppress();
@@ -122,7 +135,7 @@ void bench(
         // delete
         {
             stat::Phase del("delete");
-            for(size_t i = 0; i < options.num; i++) {
+            for(size_t i = initial_size; i < options.num; i++) {
                 remove_func(ds, perm(i));
             }
         }
@@ -188,115 +201,80 @@ int main(int argc, char** argv) {
     
     auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
 
-    bench<pred::dynamic::DynamicOctrie>("fusion_btree",
-        [](const pred::dynamic::DynamicOctrie& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        [](pred::dynamic::DynamicOctrie& ds, const uint64_t x){
-            ds.remove(x);
-        },
+    bench("fusion_btree",
+        [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); },
         perm, qperm, qmin);
+    
     /*
-    bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>>("index_hybrid",
-        [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        [](pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>& ds, const uint64_t x){
-            ds.del(x);
-        },
+    bench("index_hybrid",
+        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.del(x); },
         perm, qperm, qmin);
-    bench<tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>>("index_bv",
-        [](const tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        [](tdc::pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>& ds, const uint64_t x){
-            ds.del(x);
-        },
+        
+    bench("index_bv",
+        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.del(x); },
         perm, qperm, qmin);
-    bench<pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>>("index_list",
-        [](const pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        [](pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>& ds, const uint64_t x){
-            ds.del(x);
-        },
+        
+    bench("index_list",
+        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.del(x); },
         perm, qperm, qmin);
     */
-    bench<std::set<uint64_t>>("set",
-        [](const std::set<uint64_t>& set, const uint64_t x){
+    
+    bench("set",
+        [](const uint64_t){ return std::set<uint64_t>(); },
+        [](const auto& set){ return set.size(); },
+        [](auto& set, const uint64_t x){ set.insert(x); },
+        [](const auto& set, const uint64_t x){
             auto it = set.upper_bound(x);
             return pred::Result { it != set.begin(), *(--it) };
         },
-        [](std::set<uint64_t>& set, const uint64_t x){
-            set.erase(x);
-        },
+        [](auto& set, const uint64_t x){ set.erase(x); },
         perm, qperm, qmin);
         
 #ifdef PLADS_FOUND
-    bench<pred::dynamic::DynamicRankSelect>("dbv",
-        [](const pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
-            return ds.predecessor(x);
-        },
-        [](pred::dynamic::DynamicRankSelect& ds, const uint64_t x){
-            ds.remove(x);
-        },
+    bench("dbv",
+        [](const uint64_t){ return pred::dynamic::DynamicRankSelect(); },
+        [](const auto& dbv){ return dbv.size(); },
+        [](auto& dbv, const uint64_t x){ dbv.insert(x); },
+        [](const auto& dbv, const uint64_t x){ return dbv.predecessor(x); },
+        [](auto& dbv, const uint64_t x){ dbv.remove(x); },
         perm, qperm, qmin);
 #endif
 
 #ifdef BENCH_STREE
-    if(options.do_bench("stree")) {
-        // benchmark STree [Dementiev et al., 2004]
-        if(options.universe <= INT32_MAX) {
-            auto result = benchmark_phase("");
-            {
-                STree_orig<> stree(0);
+    if(options.universe <= INT32_MAX) {
+        bench("stree",
+            [](const uint64_t first){
+                // STree cannot be empty
                 const size_t k = math::ilog2_ceil(options.universe);
-
-                // insert
-                {
-                    stat::Phase insert("insert");
-                    stree = STree_orig<>(k, perm(0));
-                    for(size_t i = 1; i < options.num; i++) {
-                        stree.insert(perm(i));
-                    }
-            
-                    auto guard = insert.suppress();
-                    auto mem = insert.memory_info();
-                    result.log("memData", mem.current - mem.offset);
-                }
-
-                // predecessor queries
-                {
-                    volatile uint64_t chk = 0;
-                    stat::Phase::wrap("predecessor_rnd", [&](stat::Phase& phase){
-                        for(size_t i = 0; i < options.num_queries; i++) {
-                            const uint32_t x = qmin + qperm(i);
-                            auto r = stree.pred(x+1); // STree seems to look for the largest value STRICTLY LESS THAN the input
-                                                      // it crashes if there is no predecessor...
-                            chk += r;
-                        }
-                    });
-                }
-                
-                // delete
-                {
-                    stat::Phase del("delete");
-                    for(size_t i = 1; i < options.num; i++) {
-                        stree.del(perm(i));
-                    }
-                }
-                
-                {
-                    auto mem = result.memory_info();
-                    result.log("memEmpty", mem.current - mem.offset);
-                }
-            }
-            result.suppress([&](){
-                std::cout << "RESULT algo=stree " << result.to_keyval() << " " << result.subphases_keyval() << " " << result.subphases_keyval("chk") << std::endl;
-            });
-        } else {
-            std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
-        }
+                return STree_orig<>(k, first);
+            },
+            [](auto& stree){ return stree.getSize(); },
+            [](auto& stree, const uint64_t x){ stree.insert(x); },
+            [](auto& stree, const uint64_t x){
+                // STree seems to look for the largest value STRICTLY LESS THAN the input
+                // and crashes if there is no predecessor...
+                return pred::Result { true, (size_t)stree.pred(x+1) };
+            },
+            [](auto& stree, const uint64_t x){ stree.del(x); },
+            perm, qperm, qmin);
+    } else {
+        std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
     }
 #endif
 
