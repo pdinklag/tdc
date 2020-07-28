@@ -292,6 +292,10 @@ class DynIndex {
       cur = next;
     }
   }
+  
+  inline size_t size() const {
+    return m_size;
+  }
 
   void insert(const uint64_t key) {
     const uint64_t key_pre = prefix(key);
