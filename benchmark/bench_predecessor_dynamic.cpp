@@ -58,7 +58,6 @@ stat::Phase benchmark_phase(std::string&& title) {
 /// \param remove_func key removal function, must support signature <any>(T& ds, const uint64_t x)
 /// \param perm        the permutation for inserted values
 /// \param qperm       the permutation for queries
-/// \param qperm_min   the minimum value inserted into the data structure, used to assure a predecessor query always succeeds
 template<typename ctor_func_t, typename size_func_t, typename insert_func_t, typename pred_func_t, typename remove_func_t>
 void bench(
     const std::string& name,
@@ -68,26 +67,27 @@ void bench(
     pred_func_t pred_func,
     remove_func_t remove_func,
     const random::Permutation& perm,
-    const random::Permutation& qperm,
-    const uint64_t qperm_min,
-    const bool non_empty = false) {
+    const random::Permutation& qperm
+) {
         
     if(!options.do_bench(name)) return;
 
     // measure
     auto result = benchmark_phase("");
     {
-        // construct empty
-        auto ds = ctor_func(perm(0));
-        const size_t initial_size = size_func(ds);
+        // construct data structure so it contains only zero
+        auto ds = ctor_func(0);
+        if(size_func(ds) == 0) insert_func(ds, 0);
+        
+        assert(size_func(ds) == 1);
 
         // insert
         {
             stat::Phase::MemoryInfo mem;
             {
                 stat::Phase insert("insert");
-                for(size_t i = initial_size; i < options.num; i++) {
-                    insert_func(ds, perm(i));
+                for(size_t i = 0; i < options.num; i++) {
+                    insert_func(ds, perm(i) + 1);  // add 1 because zero is already in
                 }
                 mem = insert.memory_info();
             }
@@ -100,7 +100,7 @@ void bench(
             {
                 stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
-                    const uint64_t x = qperm_min + qperm(i);
+                    const uint64_t x = qperm(i);
                     auto r = pred_func(ds, x);
                     chk += r.pos;
                 }
@@ -112,7 +112,7 @@ void bench(
         if(options.check) {
             size_t num_errors = 0;
             for(size_t j = 0; j < options.num_queries; j++) {
-                const uint64_t x = qperm_min + qperm(j);
+                const uint64_t x = qperm(j);
                 auto r = pred_func(ds, x);
                 assert(r.exists);
                 
@@ -133,10 +133,13 @@ void bench(
         // delete
         {
             stat::Phase del("delete");
-            for(size_t i = initial_size; i < options.num; i++) {
-                remove_func(ds, perm(i));
+            for(size_t i = 0; i < options.num; i++) {
+                remove_func(ds, perm(i) + 1); // add 1 to keep zero in there
             }
         }
+
+        // make sure size is back to normal (only zero is contained)
+        assert(size_func(ds) == 1);
         
         // memory of empty data structure
         {
@@ -164,25 +167,25 @@ int main(int argc, char** argv) {
     if(!options.universe) {
         options.universe = 10 * options.num;
     } else {
-        if(options.universe < options.num) {
+        if(options.universe - 1 < options.num) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
         }
     }
     
     // generate permutation
-    auto perm = random::Permutation(options.universe, options.seed);
-    uint64_t qmin = UINT64_MAX;
+    // we subtract 1 from the universe because we add it back for the insertions
+    auto perm = random::Permutation(options.universe - 1, options.seed);
     uint64_t qmax = 0;
-        
+
     if(options.check) {
         // data will contain sorted keys
         options.data.reserve(options.num);
+        options.data.push_back(0);
     }
     
     for(size_t i = 0; i < options.num; i++) {
-        const uint64_t x = perm(i);
-        qmin = std::min(qmin, x);
+        const uint64_t x = perm(i) + 1;
         qmax = std::max(qmax, x);
         
         if(options.check) {
@@ -196,7 +199,7 @@ int main(int argc, char** argv) {
         options.data_pred = pred::BinarySearch(options.data.data(), options.num);
     }
     
-    auto qperm = random::Permutation(qmax - qmin, options.seed ^ 0x1234ABCD);
+    auto qperm = random::Permutation(qmax, options.seed ^ 0x1234ABCD);
 
     bench("fusion_btree",
         [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
@@ -204,7 +207,7 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); },
-        perm, qperm, qmin);
+        perm, qperm);
     
     /*
     bench("index_hybrid",
@@ -213,7 +216,7 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm, qmin);
+        perm, qperm);
         
     bench("index_bv",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
@@ -221,7 +224,7 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm, qmin);
+        perm, qperm);
         
     bench("index_list",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>(); },
@@ -229,7 +232,7 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm, qmin);
+        perm, qperm);
     */
     
     bench("set",
@@ -241,7 +244,7 @@ int main(int argc, char** argv) {
             return pred::Result { it != set.begin(), *(--it) };
         },
         [](auto& set, const uint64_t x){ set.erase(x); },
-        perm, qperm, qmin);
+        perm, qperm);
         
 #ifdef PLADS_FOUND
     bench("dbv",
@@ -250,7 +253,7 @@ int main(int argc, char** argv) {
         [](auto& dbv, const uint64_t x){ dbv.insert(x); },
         [](const auto& dbv, const uint64_t x){ return dbv.predecessor(x); },
         [](auto& dbv, const uint64_t x){ dbv.remove(x); },
-        perm, qperm, qmin);
+        perm, qperm);
 #endif
 
 #ifdef BENCH_STREE
@@ -269,7 +272,7 @@ int main(int argc, char** argv) {
                 return pred::Result { true, (size_t)stree.pred(x+1) };
             },
             [](auto& stree, const uint64_t x){ stree.del(x); },
-            perm, qperm, qmin);
+            perm, qperm);
     } else {
         std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
     }
