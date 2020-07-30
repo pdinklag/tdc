@@ -30,7 +30,7 @@ struct {
     size_t num = 1'000'000ULL;
     size_t universe = 0;
     size_t num_queries = 1'000'000ULL;
-    size_t num_ops = 333'333ULL;
+    size_t num_ops = 0ULL;
     uint64_t seed = random::DEFAULT_SEED;
     
     std::string ds; // if non-empty, only benchmarks the selected data structure
@@ -196,7 +196,7 @@ int main(int argc, char** argv) {
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
     cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: match input)");
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
-    cp.add_bytes('o', "ops", options.num_ops, "The number of simulated operations (will be multiplied by 3 -- default: 1M/3).");
+    cp.add_bytes('o', "ops", options.num_ops, "The number of simulated operations (will be multiplied by 3 -- default: queries/3).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
     cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
     cp.add_flag("check", options.check, "Check results for correctness.");
@@ -213,6 +213,10 @@ int main(int argc, char** argv) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
         }
+    }
+
+    if(!options.num_ops) {
+        options.num_ops = options.num_queries / 3ULL;
     }
     
     // generate permutation
