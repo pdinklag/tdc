@@ -26,6 +26,9 @@ uint64_t Permutation::permute(const uint64_t x) const {
     }
 }
 
+Permutation::Permutation() : m_universe(1), m_seed(0), m_prime(0) {
+}
+
 Permutation::Permutation(const uint64_t universe, const uint64_t seed)
     : m_universe(universe),
       m_prime(prev_prime_3mod4(universe)),

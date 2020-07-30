@@ -17,14 +17,24 @@ private:
     // finds the largest prime p less than or equal to x that satisfies p = (3 mod 4)
     static uint64_t prev_prime_3mod4(const uint64_t x);
 
-    const uint64_t m_universe;
-    const uint64_t m_seed;
-    const uint64_t m_prime;
+    uint64_t m_universe;
+    uint64_t m_seed;
+    uint64_t m_prime;
 
     // permute the given number
     uint64_t permute(const uint64_t x) const;
 
 public:
+    /// \brief Default constructor.
+    ///
+    /// The default permutation contains only zero.
+    Permutation();
+    
+    Permutation(const Permutation&) = default;
+    Permutation(Permutation&&) = default;
+    Permutation& operator=(const Permutation&) = default;
+    Permutation& operator=(Permutation&&) = default;
+
     /// \brief Initializes a permutation.
     /// \param universe the universe size
     /// \param seed the random seed

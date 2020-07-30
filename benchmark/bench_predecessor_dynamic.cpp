@@ -33,6 +33,9 @@ struct {
     bool do_bench(const std::string& name) {
         return ds.length() == 0 || name == ds;
     }
+
+    random::Permutation perm;  // value permutation
+    random::Permutation qperm; // query permutation
     
     bool check;
     std::vector<uint64_t> data; // only used if check == true
@@ -65,9 +68,7 @@ void bench(
     size_func_t size_func,
     insert_func_t insert_func,
     pred_func_t pred_func,
-    remove_func_t remove_func,
-    const random::Permutation& perm,
-    const random::Permutation& qperm
+    remove_func_t remove_func
 ) {
         
     if(!options.do_bench(name)) return;
@@ -87,7 +88,7 @@ void bench(
             {
                 stat::Phase insert("insert");
                 for(size_t i = 0; i < options.num; i++) {
-                    insert_func(ds, perm(i) + 1);  // add 1 because zero is already in
+                    insert_func(ds, options.perm(i) + 1);  // add 1 because zero is already in
                 }
                 mem = insert.memory_info();
             }
@@ -100,7 +101,7 @@ void bench(
             {
                 stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
-                    const uint64_t x = qperm(i);
+                    const uint64_t x = options.qperm(i);
                     auto r = pred_func(ds, x);
                     chk += r.pos;
                 }
@@ -112,7 +113,7 @@ void bench(
         if(options.check) {
             size_t num_errors = 0;
             for(size_t j = 0; j < options.num_queries; j++) {
-                const uint64_t x = qperm(j);
+                const uint64_t x = options.qperm(j);
                 auto r = pred_func(ds, x);
                 assert(r.exists);
                 
@@ -134,7 +135,7 @@ void bench(
         {
             stat::Phase del("delete");
             for(size_t i = 0; i < options.num; i++) {
-                remove_func(ds, perm(i) + 1); // add 1 to keep zero in there
+                remove_func(ds, options.perm(i) + 1); // add 1 to keep zero in there
             }
         }
 
@@ -175,7 +176,7 @@ int main(int argc, char** argv) {
     
     // generate permutation
     // we subtract 1 from the universe because we add it back for the insertions
-    auto perm = random::Permutation(options.universe - 1, options.seed);
+    options.perm = random::Permutation(options.universe - 1, options.seed);
     uint64_t qmax = 0;
 
     if(options.check) {
@@ -185,7 +186,7 @@ int main(int argc, char** argv) {
     }
     
     for(size_t i = 0; i < options.num; i++) {
-        const uint64_t x = perm(i) + 1;
+        const uint64_t x = options.perm(i) + 1;
         qmax = std::max(qmax, x);
         
         if(options.check) {
@@ -199,15 +200,15 @@ int main(int argc, char** argv) {
         options.data_pred = pred::BinarySearch(options.data.data(), options.num);
     }
     
-    auto qperm = random::Permutation(qmax, options.seed ^ 0x1234ABCD);
+    options.qperm = random::Permutation(qmax, options.seed ^ 0x1234ABCD);
 
     bench("fusion_btree",
         [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); },
-        perm, qperm);
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
     
     /*
     bench("index_hybrid",
@@ -215,24 +216,24 @@ int main(int argc, char** argv) {
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm);
+        [](auto& ds, const uint64_t x){ ds.del(x); }
+    );
         
     bench("index_bv",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm);
+        [](auto& ds, const uint64_t x){ ds.del(x); }
+    );
         
     bench("index_list",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); },
-        perm, qperm);
+        [](auto& ds, const uint64_t x){ ds.del(x); }
+    );
     */
     
     bench("set",
@@ -243,8 +244,8 @@ int main(int argc, char** argv) {
             auto it = set.upper_bound(x);
             return pred::Result { it != set.begin(), *(--it) };
         },
-        [](auto& set, const uint64_t x){ set.erase(x); },
-        perm, qperm);
+        [](auto& set, const uint64_t x){ set.erase(x); }
+    );
         
 #ifdef PLADS_FOUND
     bench("dbv",
@@ -252,8 +253,8 @@ int main(int argc, char** argv) {
         [](const auto& dbv){ return dbv.size(); },
         [](auto& dbv, const uint64_t x){ dbv.insert(x); },
         [](const auto& dbv, const uint64_t x){ return dbv.predecessor(x); },
-        [](auto& dbv, const uint64_t x){ dbv.remove(x); },
-        perm, qperm);
+        [](auto& dbv, const uint64_t x){ dbv.remove(x); }
+    );
 #endif
 
 #ifdef BENCH_STREE
@@ -271,8 +272,8 @@ int main(int argc, char** argv) {
                 // and crashes if there is no predecessor...
                 return pred::Result { true, (size_t)stree.pred(x+1) };
             },
-            [](auto& stree, const uint64_t x){ stree.del(x); },
-            perm, qperm);
+            [](auto& stree, const uint64_t x){ stree.del(x); }
+        );
     } else {
         std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
     }
