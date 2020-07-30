@@ -25,12 +25,11 @@ inline uint64_t suffix(uint64_t i) {
   return i & ((1ULL << b_wordl) - 1);
 }
 
-// TODO: implement delete
 // This is a bucket that holds a bit vector.
 template <uint8_t b_wordl>
 struct bucket_bv {
   uint32_t m_size = 0;
-  uint64_t m_prefix;
+  const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_bv *m_next_b = nullptr;  // next bucket
   std::bitset<1ULL << b_wordl> m_bits;
@@ -47,32 +46,26 @@ struct bucket_bv {
     return 0;
   }
   void set(const uint64_t i) {
-    ++m_size;
     m_bits[i] = true;
+    ++m_size;
   }
 
   // deletes a key and updates the bottom level of the data structure
   // it can not update the top level
-  bool del(uint64_t suf) {
-    --m_size;
+  void remove(uint64_t suf) {
     m_bits[suf] = false;
-
+    --m_size;
     // here we update next_b->prev_pred
     if (tdc_likely(m_next_b != nullptr)) {
       if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
-        if (m_size != 0) {
-          while (!m_bits[suf--]) {
-          };
-          m_next_b->m_prev_pred = (m_prefix << b_wordl) + suf;
-        } else {
-          m_next_b->m_prev_pred = m_prev_pred;
-        }
+        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
       }
     }
-
-    return (m_size == 0);
   }
 
+  size_t size() {
+    return m_size;
+  }
   uint64_t pred(int64_t i) const {
     i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
     for (; i >= 0; --i) {
@@ -84,12 +77,11 @@ struct bucket_bv {
   }
 };
 
-// TODO: implement delete
 // This is a bucket that holds an std::vector.
 template <uint8_t b_wordl>
 struct bucket_list {
   uint32_t m_size = 0;
-  uint64_t m_prefix;
+  const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_list *m_next_b = nullptr;
   std::vector<uint16_t> m_list;
@@ -97,14 +89,34 @@ struct bucket_list {
   bucket_list(uint64_t prefix, uint64_t prev_pred, bucket_list *next_b)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {}
 
-  uint64_t get_min() { return (m_prefix << b_wordl) + *std::min_element(std::begin(m_list), std::end(m_list)); }
+  uint64_t get_min() {
+    return (m_prefix << b_wordl) + *std::min_element(std::begin(m_list), std::end(m_list));
+  }
 
   void set(uint64_t i) {
     m_list.push_back(i);
     ++m_size;
   }
 
-  bool del(uint64_t i) { return true; }
+  void remove(uint64_t suf) {
+    for (size_t j = 0; j < m_size; ++j) {
+      if (m_list[j] == suf) {
+        m_list[j] = m_list.back();
+        m_list.pop_back();
+        break;
+      }
+    }
+    if (tdc_likely(m_next_b != nullptr)) {
+      if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
+        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
+      }
+    }
+    --m_size;
+  }
+
+  size_t size() {
+    return m_size;
+  }
 
   uint64_t pred(int64_t i) const {
     i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
@@ -130,15 +142,14 @@ struct bucket_list {
   }
 };
 
-static constexpr size_t upper_threshhold = 1ULL << 8;
-static constexpr size_t lower_threshhold = 1ULL << 7;
-// TODO: implement delete
+static constexpr size_t upper_threshhold = 1ULL << 9;
+static constexpr size_t lower_threshhold = 1ULL << 8;
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
 template <uint8_t b_wordl>
 struct bucket_hybrid {
   uint32_t m_size = 0;
-  uint64_t m_prefix;
+  const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_hybrid *m_next_b = nullptr;
 
@@ -175,6 +186,34 @@ struct bucket_hybrid {
     }
   }
 
+  void remove(const uint64_t suf) {
+    if (m_is_list) {
+      for (size_t j = 0; j < m_size; ++j) {
+        if (m_list[j] == suf) {
+          m_list[j] = m_list.back();
+          m_list.pop_back();
+          break;
+        }
+      }
+    } else {
+      m_bits[suf] = false;
+    }
+    // here we update next_b->prev_pred
+    if (tdc_likely(m_next_b != nullptr)) {
+      if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
+        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
+      }
+    }
+    --m_size;
+    if (!m_is_list && (m_size < lower_threshhold)) {
+      rebuild();
+    }
+  }
+
+  size_t size() {
+    return m_size;
+  }
+
   uint64_t pred(int64_t i) const {
     i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
     if (m_is_list) {
@@ -198,7 +237,6 @@ struct bucket_hybrid {
       }
       return (m_prefix << b_wordl) + p;
     } else {
-      i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
       for (; i >= 0; --i) {
         if (m_bits[i]) {
           return (m_prefix << b_wordl) + i;
@@ -292,7 +330,7 @@ class DynIndex {
       cur = next;
     }
   }
-  
+
   inline size_t size() const {
     return m_size;
   }
@@ -360,19 +398,21 @@ class DynIndex {
     }
   }
 
-  void del(const uint64_t key) {
+  void remove(uint64_t key) {
+    --m_size;
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
-    const bucket *key_bucket = m_xf[key_pre];
-    const bucket *prev_bucket = m_xf[prefix(key_bucket->m_prev_pred)];
-    const bucket *next_bucket = key_bucket->m_next_b;
+    bucket *const key_bucket = m_xf[key_pre];
+    bucket *const prev_bucket = m_xf[prefix(key_bucket->m_prev_pred)];
+    bucket *const next_bucket = key_bucket->m_next_b;
 
     // if the last key of a bucket was deleted
-    if (key_bucket->del(suffix(key))) {
+    key_bucket->remove(suffix(key));
+    if (key_bucket->size() == 0) {
       // 3 options: bucket is between 2 buckets; first bucket, last bucket
       if (key_bucket != m_first_b && next_bucket != nullptr) {
         prev_bucket->m_next_b = next_bucket;
-        for (uint64_t i = key_pre; i < next_bucket->m_prev_pred; ++i) {
+        for (uint64_t i = key_pre; i < next_bucket->m_prefix; ++i) {
           m_xf[i] = prev_bucket;
         }
       } else if (m_first_b == key_bucket) {
@@ -380,7 +420,7 @@ class DynIndex {
         if (next_bucket != nullptr) {
           m_first_b = next_bucket;
           next_bucket->m_prev_pred = 0;
-          for (uint64_t i = key_pre; i < next_bucket->m_prev_pred; ++i) {
+          for (uint64_t i = key_pre; i < next_bucket->m_prefix; ++i) {
             m_xf[i] = nullptr;
           }
           if (key == m_min) {
@@ -395,26 +435,30 @@ class DynIndex {
           m_xf.shrink_to_fit();
         }
       } else if (key_bucket == m_xf.back()) {
-        m_xf.resize(prev_bucket->m_prev_pred + 1);
+        m_xf.resize(prev_bucket->m_prefix + 1);
         m_xf.shrink_to_fit();
-        m_xf.back()->next_b = nullptr;
+        m_xf.back()->m_next_b = nullptr;
         m_max = key_bucket->m_prev_pred;
       }
       // delete the empty bucket
       delete key_bucket;
     }
   }
+
   /// \brief Finds the rank of the predecessor of the specified key.
   /// \param keys the keys that the compressed trie was constructed for
   /// \param num the number of keys
   /// \param x the key in question
   Result predecessor(const uint64_t x) const {
-    if (tdc_unlikely(m_size == 0)) return Result{false, 1};
-    if (tdc_unlikely(x < m_min)) return Result{false, 0};
-    if (tdc_unlikely(x >= m_max)) return Result{true, m_max};
+    if (tdc_unlikely(m_size == 0))
+      return Result{false, 1};
+    if (tdc_unlikely(x < m_min))
+      return Result{false, 0};
+    if (tdc_unlikely(x >= m_max))
+      return Result{true, m_max};
     return {true, m_xf[prefix(x)]->pred(x)};
   }
-};
+};  // namespace dynamic
 }  // namespace dynamic
 }  // namespace pred
 }  // namespace tdc

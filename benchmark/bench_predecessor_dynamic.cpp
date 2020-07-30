@@ -247,21 +247,20 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     
-    /*
     bench("index_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); }
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-        
+    /*   
     bench("index_bv",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); }
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
         
     bench("index_list",
@@ -269,7 +268,7 @@ int main(int argc, char** argv) {
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.del(x); }
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     */
     
