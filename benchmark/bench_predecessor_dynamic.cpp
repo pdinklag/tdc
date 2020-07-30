@@ -22,10 +22,15 @@
 
 using namespace tdc;
 
+constexpr uint64_t OP_INSERT = 0;
+constexpr uint64_t OP_QUERY  = 1;
+constexpr uint64_t OP_DELETE = 2;
+
 struct {
     size_t num = 1'000'000ULL;
     size_t universe = 0;
-    size_t num_queries = 10'000'000ULL;
+    size_t num_queries = 1'000'000ULL;
+    size_t num_ops = 333'333ULL;
     uint64_t seed = random::DEFAULT_SEED;
     
     std::string ds; // if non-empty, only benchmarks the selected data structure
@@ -34,8 +39,9 @@ struct {
         return ds.length() == 0 || name == ds;
     }
 
-    random::Permutation perm;  // value permutation
-    random::Permutation qperm; // query permutation
+    random::Permutation perm_values;  // value permutation
+    random::Permutation perm_queries; // query permutation
+    random::Permutation perm_ops;     // operation permutation
     
     bool check;
     std::vector<uint64_t> data; // only used if check == true
@@ -47,6 +53,7 @@ stat::Phase benchmark_phase(std::string&& title) {
     phase.log("num", options.num);
     phase.log("universe", options.universe);
     phase.log("queries", options.num_queries);
+    phase.log("ops", options.num_ops);
     phase.log("seed", options.seed);
     return phase;
 }
@@ -59,8 +66,6 @@ stat::Phase benchmark_phase(std::string&& title) {
 /// \param insert_func insertion function, must support signature <any>(T& ds, const uint64_t x)
 /// \param pred_func   predecessor function, must support signature pred::Result(const T& ds, const uint64_t x)
 /// \param remove_func key removal function, must support signature <any>(T& ds, const uint64_t x)
-/// \param perm        the permutation for inserted values
-/// \param qperm       the permutation for queries
 template<typename ctor_func_t, typename size_func_t, typename insert_func_t, typename pred_func_t, typename remove_func_t>
 void bench(
     const std::string& name,
@@ -88,7 +93,7 @@ void bench(
             {
                 stat::Phase insert("insert");
                 for(size_t i = 0; i < options.num; i++) {
-                    insert_func(ds, options.perm(i) + 1);  // add 1 because zero is already in
+                    insert_func(ds, options.perm_values(i) + 1);  // add 1 because zero is already in
                 }
                 mem = insert.memory_info();
             }
@@ -97,23 +102,21 @@ void bench(
         
         // predecessor queries
         {
-            uint64_t chk = 0;
+            uint64_t chk_q = 0;
             {
                 stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
-                    const uint64_t x = options.qperm(i);
-                    auto r = pred_func(ds, x);
-                    chk += r.pos;
+                    chk_q += pred_func(ds, options.perm_queries(i)).pos;
                 }
             }
-            result.log("chk", chk);
+            result.log("chk_q", chk_q);
         }
 
         // check
         if(options.check) {
             size_t num_errors = 0;
             for(size_t j = 0; j < options.num_queries; j++) {
-                const uint64_t x = options.qperm(j);
+                const uint64_t x = options.perm_queries(j);
                 auto r = pred_func(ds, x);
                 assert(r.exists);
                 
@@ -130,12 +133,48 @@ void bench(
             }
             result.log("errors", num_errors);
         }
+
+        // operations
+        if(options.num_ops > 0) {
+            uint64_t chk_ops = 0;
+            {
+                stat::Phase ops("ops");
+
+                size_t ins_cursor = options.num;
+                size_t del_cursor = 0;
+                size_t q_cursor = options.num;
+                
+                for(size_t i = 0; i < 3 * options.num_ops; i++) {
+                    const uint64_t op = options.perm_ops(i) % 3;
+                    switch(op) {
+                        case OP_INSERT:
+                            insert_func(ds, options.perm_values(ins_cursor++) + 1);
+                            break;
+
+                        case OP_QUERY:
+                            chk_ops += pred_func(ds, options.perm_queries(q_cursor++)).pos;
+                            break;
+
+                        case OP_DELETE:
+                            remove_func(ds, options.perm_values(del_cursor++) + 1);
+                            break;
+                    }
+                }
+            }
+            result.log("chk_ops", chk_ops);
+        }
+
+        // size should not have changed
+        assert(size_func(ds) == options.num+1);
         
         // delete
         {
+            // we already deleted the first num_ops values during the operations above
+            const size_t offset = options.num_ops;
+            
             stat::Phase del("delete");
             for(size_t i = 0; i < options.num; i++) {
-                remove_func(ds, options.perm(i) + 1); // add 1 to keep zero in there
+                remove_func(ds, options.perm_values(offset + i) + 1); // add 1 to keep zero in there
             }
         }
 
@@ -155,8 +194,9 @@ void bench(
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
-    cp.add_bytes('u', "universe", options.universe, "The size of the universe to draw from (default: 10 * n)");
-    cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 10M).");
+    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: match input)");
+    cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
+    cp.add_bytes('o', "ops", options.num_ops, "The number of simulated operations (will be multiplied by 3 -- default: 1M/3).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
     cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
     cp.add_flag("check", options.check, "Check results for correctness.");
@@ -166,9 +206,10 @@ int main(int argc, char** argv) {
     }
 
     if(!options.universe) {
-        options.universe = 10 * options.num;
+        options.universe = 2 * (options.num + options.num_ops);
     } else {
-        if(options.universe - 1 < options.num) {
+        options.universe = (options.universe == 64) ? UINT64_MAX : (1ULL << options.universe)-1;
+        if(options.universe < options.num + 1 + options.num_ops) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
         }
@@ -176,31 +217,23 @@ int main(int argc, char** argv) {
     
     // generate permutation
     // we subtract 1 from the universe because we add it back for the insertions
-    options.perm = random::Permutation(options.universe - 1, options.seed);
-    uint64_t qmax = 0;
+    options.perm_values = random::Permutation(options.universe - 1, options.seed);
 
     if(options.check) {
-        // data will contain sorted keys
+        // insert keys
         options.data.reserve(options.num);
         options.data.push_back(0);
-    }
-    
-    for(size_t i = 0; i < options.num; i++) {
-        const uint64_t x = options.perm(i) + 1;
-        qmax = std::max(qmax, x);
-        
-        if(options.check) {
-            options.data.push_back(x);
+        for(size_t i = 0; i < options.num; i++) {
+            options.data.push_back(options.perm_values(i) + 1); // add one because zero is already in
         }
-    }
-    
-    if(options.check) {
+
         // prepare verification
         std::sort(options.data.begin(), options.data.end());
         options.data_pred = pred::BinarySearch(options.data.data(), options.num);
     }
     
-    options.qperm = random::Permutation(qmax, options.seed ^ 0x1234ABCD);
+    options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
+    options.perm_ops = random::Permutation(3 * options.num_ops, options.seed ^ 0xFEDCBA98);
 
     bench("fusion_btree",
         [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
@@ -248,6 +281,8 @@ int main(int argc, char** argv) {
     );
         
 #ifdef PLADS_FOUND
+    // TOO SLOW
+    /*
     bench("dbv",
         [](const uint64_t){ return pred::dynamic::DynamicRankSelect(); },
         [](const auto& dbv){ return dbv.size(); },
@@ -255,6 +290,7 @@ int main(int argc, char** argv) {
         [](const auto& dbv, const uint64_t x){ return dbv.predecessor(x); },
         [](auto& dbv, const uint64_t x){ dbv.remove(x); }
     );
+    */
 #endif
 
 #ifdef BENCH_STREE
