@@ -30,7 +30,6 @@ struct {
     size_t num = 1'000'000ULL;
     size_t universe = 0;
     size_t num_queries = 1'000'000ULL;
-    size_t num_ops = 0ULL;
     uint64_t seed = random::DEFAULT_SEED;
     
     std::string ds; // if non-empty, only benchmarks the selected data structure
@@ -41,7 +40,6 @@ struct {
 
     random::Permutation perm_values;  // value permutation
     random::Permutation perm_queries; // query permutation
-    random::Permutation perm_ops;     // operation permutation
     
     bool check;
     std::vector<uint64_t> data; // only used if check == true
@@ -53,7 +51,6 @@ stat::Phase benchmark_phase(std::string&& title) {
     phase.log("num", options.num);
     phase.log("universe", options.universe);
     phase.log("queries", options.num_queries);
-    phase.log("ops", options.num_ops);
     phase.log("seed", options.seed);
     return phase;
 }
@@ -100,6 +97,9 @@ void bench(
             result.log("memData", mem.current - mem.offset);
         }
         
+        // make sure all have been inserted
+        assert(size_func(ds) == options.num+1);
+        
         // predecessor queries
         {
             uint64_t chk_q = 0;
@@ -133,48 +133,12 @@ void bench(
             }
             result.log("errors", num_errors);
         }
-
-        // operations
-        if(options.num_ops > 0) {
-            uint64_t chk_ops = 0;
-            {
-                stat::Phase ops("ops");
-
-                size_t ins_cursor = options.num;
-                size_t del_cursor = 0;
-                size_t q_cursor = options.num;
-                
-                for(size_t i = 0; i < 3 * options.num_ops; i++) {
-                    const uint64_t op = options.perm_ops(i) % 3;
-                    switch(op) {
-                        case OP_INSERT:
-                            insert_func(ds, options.perm_values(ins_cursor++) + 1);
-                            break;
-
-                        case OP_QUERY:
-                            chk_ops += pred_func(ds, options.perm_queries(q_cursor++)).pos;
-                            break;
-
-                        case OP_DELETE:
-                            remove_func(ds, options.perm_values(del_cursor++) + 1);
-                            break;
-                    }
-                }
-            }
-            result.log("chk_ops", chk_ops);
-        }
-
-        // size should not have changed
-        assert(size_func(ds) == options.num+1);
         
         // delete
         {
-            // we already deleted the first num_ops values during the operations above
-            const size_t offset = options.num_ops;
-            
             stat::Phase del("delete");
             for(size_t i = 0; i < options.num; i++) {
-                remove_func(ds, options.perm_values(offset + i) + 1); // add 1 to keep zero in there
+                remove_func(ds, options.perm_values(i) + 1); // add 1 to keep zero in there
             }
         }
 
@@ -194,9 +158,8 @@ void bench(
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
-    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: match input)");
+    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
-    cp.add_bytes('o', "ops", options.num_ops, "The number of simulated operations (will be multiplied by 3 -- default: queries/3).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
     cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
     cp.add_flag("check", options.check, "Check results for correctness.");
@@ -206,19 +169,15 @@ int main(int argc, char** argv) {
     }
 
     if(!options.universe) {
-        options.universe = 2 * (options.num + options.num_ops);
+        options.universe = 2 * (options.num);
     } else {
         options.universe = (options.universe == 64) ? UINT64_MAX : (1ULL << options.universe)-1;
-        if(options.universe < options.num + 1 + options.num_ops) {
+        if(options.universe < options.num + 1) {
             std::cerr << "universe not large enough" << std::endl;
             return -1;
         }
     }
 
-    if(!options.num_ops) {
-        options.num_ops = options.num_queries / 3ULL;
-    }
-    
     // generate permutation
     // we subtract 1 from the universe because we add it back for the insertions
     options.perm_values = random::Permutation(options.universe - 1, options.seed);
@@ -237,7 +196,6 @@ int main(int argc, char** argv) {
     }
     
     options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
-    options.perm_ops = random::Permutation(3 * options.num_ops, options.seed ^ 0xFEDCBA98);
 
     bench("fusion_btree",
         [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
