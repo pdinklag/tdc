@@ -92,6 +92,7 @@ int main(int argc, char** argv) {
     size_t count_insert = 0;
     size_t count_delete = 0;
     size_t count_query = 0;
+    size_t failed_inserts = 0;
     
     auto generate_insert = [&](){
         ++count_insert;
@@ -99,6 +100,7 @@ int main(int argc, char** argv) {
         uint64_t x = random_from_universe(gen_val);
         while(cur_set.find(x) != cur_set.end()) {
             x = random_from_universe(gen_val);
+            ++failed_inserts;
         }
         
         cur_set.insert(x);
@@ -216,7 +218,7 @@ int main(int argc, char** argv) {
         }
     }
     
-    std::cerr << "generated " << count_total << " operations (seed: " << seed << "): "
+    std::cerr << "generated " << count_total << " operations (seed: " << seed << ", " << failed_inserts << " duplicates prevented): "
         << count_insert << " inserts, "
         << count_delete << " deletes and "
         << count_query << " queries"
