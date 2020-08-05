@@ -3,6 +3,7 @@
 #include <set>
 
 #include <tdc/stat/time.hpp>
+#include <tdc/util/benchmark/integer_operation.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -107,14 +108,14 @@ int main(int argc, char** argv) {
         cur_min = std::min(cur_min, x);
         cur_max = std::max(cur_max, x);
         
-        return op_t { 'I', x };
+        return benchmark::IntegerOperation { benchmark::OPCODE_INSERT, x };
     };
     
     auto generate_query = [&](){
         ++count_query;
         
         std::uniform_int_distribution<uint64_t> random_range(cur_min, cur_max);
-        return op_t { 'Q', random_range(gen_val) };
+        return benchmark::IntegerOperation { benchmark::OPCODE_QUERY, random_range(gen_val) };
     };
     
     auto generate_delete = [&](){
@@ -136,12 +137,12 @@ int main(int argc, char** argv) {
             cur_max = 0;
         }
 
-        return op_t { 'D', x };
+        return benchmark::IntegerOperation { benchmark::OPCODE_DELETE, x };
     };
     
     size_t count_total = 0;
     
-    auto output = [&](const op_t& op){
+    auto output = [&](const benchmark::IntegerOperation& op){
         ++count_total;
 
         // print
@@ -149,7 +150,7 @@ int main(int argc, char** argv) {
             std::cout.write((const char*)&op, sizeof(op));
         } else {
             if(print_opnum) std::cout << count_total << '\t';
-            std::cout << op.code << '\t' << op.x;
+            std::cout << op.code << '\t' << op.key;
             if(print_num) std::cout << '\t' << cur_num;
             std::cout << std::endl;
         }
