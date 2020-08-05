@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <vector>
@@ -13,6 +14,9 @@
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 
+#include <tdc/util/literals.hpp>
+#include <tdc/util/benchmark/integer_operation.hpp>
+
 #include <tlx/cmdline_parser.hpp>
 
 #if defined(LEDA_FOUND) && defined(STREE_FOUND)
@@ -22,17 +26,16 @@
 
 using namespace tdc;
 
-constexpr uint64_t OP_INSERT = 0;
-constexpr uint64_t OP_QUERY  = 1;
-constexpr uint64_t OP_DELETE = 2;
+constexpr size_t OPS_READ_BUFSIZE = 64_Mi;
 
 struct {
-    size_t num = 1'000'000ULL;
+    size_t num = 1_M;
     size_t universe = 0;
-    size_t num_queries = 1'000'000ULL;
+    size_t num_queries = 1_M;
     uint64_t seed = random::DEFAULT_SEED;
     
     std::string ds; // if non-empty, only benchmarks the selected data structure
+    std::string ops_filename;
     
     bool do_bench(const std::string& name) {
         return ds.length() == 0 || name == ds;
@@ -52,6 +55,7 @@ stat::Phase benchmark_phase(std::string&& title) {
     phase.log("universe", options.universe);
     phase.log("queries", options.num_queries);
     phase.log("seed", options.seed);
+    phase.log("ops", options.ops_filename);
     return phase;
 }
 
@@ -77,7 +81,8 @@ void bench(
 
     // measure
     auto result = benchmark_phase("");
-    {
+    
+    if(options.num > 0) {
         // construct data structure so it contains only zero
         auto ds = ctor_func(0);
         if(size_func(ds) == 0) insert_func(ds, 0);
@@ -109,7 +114,7 @@ void bench(
                     chk_q += pred_func(ds, options.perm_queries(i)).pos;
                 }
             }
-            result.log("chk_q", chk_q);
+            result.log("chk", chk_q);
         }
 
         // check
@@ -148,8 +153,68 @@ void bench(
         // memory of empty data structure
         {
             auto mem = result.memory_info();
-            result.log("memEmpty", mem.current - mem.offset);
+            result.log("memEmpty", mem.current);
         }
+    }
+    
+    if(options.ops_filename.length() > 0) {
+        auto ds = ctor_func(0);
+        if(size_func(ds) == 1) remove_func(ds, 0);
+        
+        assert(size_func(ds) == 0);
+        
+        // open file with buffer
+        std::ifstream f;
+        char* buffer = new char[OPS_READ_BUFSIZE];
+        
+        f.rdbuf()->pubsetbuf(buffer, OPS_READ_BUFSIZE);
+        f.open(options.ops_filename);
+        
+        uint64_t ops_chk = 0;
+        size_t ops_total = 0;
+        size_t ops_ins = 0;
+        size_t ops_del = 0;
+        size_t ops_q = 0;
+        {
+            stat::Phase ops_phase("ops");
+            
+            benchmark::IntegerOperation op;
+            while(f.good()) {
+                // read next operation
+                f.read((char*)&op, sizeof(op));
+                if(f.eof()) break;
+                
+                ++ops_total;
+                switch(op.code) {
+                    case benchmark::OPCODE_INSERT:
+                        ++ops_ins;
+                        insert_func(ds, op.key);
+                        break;
+
+                    case benchmark::OPCODE_DELETE:
+                        ++ops_del;
+                        remove_func(ds, op.key);
+                        break;
+                        
+                    case benchmark::OPCODE_QUERY:
+                        ++ops_q;
+                        ops_chk += pred_func(ds, op.key).pos;
+                        break;
+                }
+            }
+            
+            auto mem = ops_phase.memory_info();
+            result.log("memPeak_ops", mem.peak);
+        }
+        
+        result.log("ops_total", ops_total);
+        result.log("ops_ins", ops_ins);
+        result.log("ops_del", ops_del);
+        result.log("ops_q", ops_q);
+        result.log("ops_chk", ops_chk);
+        
+        f.close();
+        delete[] buffer;
     }
     
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
@@ -162,6 +227,7 @@ int main(int argc, char** argv) {
     cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
     cp.add_bytes('s', "seed", options.seed, "The random seed.");
     cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
+    cp.add_string("ops", options.ops_filename, "The file containing the operation sequence to benchmark, if any.");
     cp.add_flag("check", options.check, "Check results for correctness.");
     
     if(!cp.process(argc, argv)) {
@@ -169,7 +235,8 @@ int main(int argc, char** argv) {
     }
 
     if(!options.universe) {
-        options.universe = 2 * (options.num);
+        std::cerr << "universe required" << std::endl;
+        return -1;
     } else {
         options.universe = (options.universe == 64) ? UINT64_MAX : (1ULL << options.universe)-1;
         if(options.universe < options.num + 1) {
@@ -178,24 +245,26 @@ int main(int argc, char** argv) {
         }
     }
 
-    // generate permutation
-    // we subtract 1 from the universe because we add it back for the insertions
-    options.perm_values = random::Permutation(options.universe - 1, options.seed);
+    if(options.num > 0) {
+        // generate permutation
+        // we subtract 1 from the universe because we add it back for the insertions
+        options.perm_values = random::Permutation(options.universe - 1, options.seed);
 
-    if(options.check) {
-        // insert keys
-        options.data.reserve(options.num);
-        options.data.push_back(0);
-        for(size_t i = 0; i < options.num; i++) {
-            options.data.push_back(options.perm_values(i) + 1); // add one because zero is already in
+        if(options.check) {
+            // insert keys
+            options.data.reserve(options.num);
+            options.data.push_back(0);
+            for(size_t i = 0; i < options.num; i++) {
+                options.data.push_back(options.perm_values(i) + 1); // add one because zero is already in
+            }
+
+            // prepare verification
+            std::sort(options.data.begin(), options.data.end());
+            options.data_pred = pred::BinarySearch(options.data.data(), options.num);
         }
-
-        // prepare verification
-        std::sort(options.data.begin(), options.data.end());
-        options.data_pred = pred::BinarySearch(options.data.data(), options.num);
+        
+        options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
-    
-    options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
 
     bench("fusion_btree",
         [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
