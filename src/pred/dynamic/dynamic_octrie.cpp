@@ -454,3 +454,19 @@ bool DynamicOctrie::remove(const uint64_t key) {
     }
     return result;
 }
+
+uint64_t DynamicOctrie::min() const {
+    Node* node = m_root;
+    while(!node->is_leaf()) {
+        node = node->children[0];
+    }
+    return node->fnode[0];
+}
+
+uint64_t DynamicOctrie::max() const {
+    Node* node = m_root;
+    while(!node->is_leaf()) {
+        node = node->children[node->num_children - 1];
+    }
+    return node->fnode[node->size() - 1];
+}

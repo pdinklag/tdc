@@ -69,6 +69,19 @@ public:
     /// \param x the key in question
     Result predecessor(const uint64_t x) const;
 
+    /// \brief Tests whether the given key is contained in the trie.
+    /// \param x the key in question
+    inline bool contains(const uint64_t x) const {
+        auto r = predecessor(x);
+        return r.exists && r.pos == x;
+    }
+
+    /// \brief Reports the minimum key in the trie.
+    uint64_t min() const;
+
+    /// \brief Reports the maximum key in the trie.
+    uint64_t max() const;
+
     /// \brief Inserts the specified key.
     /// \param key the key to insert
     void insert(const uint64_t key);
