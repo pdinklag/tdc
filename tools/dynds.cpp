@@ -2,6 +2,7 @@
 #include <random>
 #include <set>
 
+#include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/stat/time.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
 
@@ -74,8 +75,7 @@ int main(int argc, char** argv) {
     std::uniform_int_distribution<uint64_t> random_from_universe(0ULL, u);
     
     // working set
-    std::set<uint64_t>    cur_set; // to check if an element is already in
-    //std::vector<uint64_t> cur_vec; // to pick a random element
+    pred::dynamic::DynamicOctrie cur_set;
     uint64_t* cur_arr = new uint64_t[max_num];
     
     uint64_t cur_num = 0;
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
         ++count_insert;
         
         uint64_t x = random_from_universe(gen_val);
-        while(cur_set.find(x) != cur_set.end()) {
+        while(cur_set.contains(x)) {
             x = random_from_universe(gen_val);
             ++failed_inserts;
         }
@@ -127,13 +127,13 @@ int main(int argc, char** argv) {
         const size_t i = random_index(gen_val);
         const uint64_t x = cur_arr[i];
         
-        cur_set.erase(x);
+        cur_set.remove(x);
         cur_arr[i] = cur_arr[cur_num - 1]; // "delete" = swap with last, order isn't important
         
         --cur_num;
         if(cur_num > 0) {
-            if(x == cur_min) cur_min = *cur_set.begin();
-            if(x == cur_max) cur_max = *cur_set.rbegin();
+            if(x == cur_min) cur_min = cur_set.min();
+            if(x == cur_max) cur_max = cur_set.max();
         } else {
             cur_min = UINT64_MAX;
             cur_max = 0;
