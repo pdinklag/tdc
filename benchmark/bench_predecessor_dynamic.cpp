@@ -3,6 +3,7 @@
 #include <set>
 #include <vector>
 
+#include <tdc/io/mmap_file.hpp>
 #include <tdc/math/ilog2.hpp>
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
@@ -163,12 +164,11 @@ void bench(
         
         assert(size_func(ds) == 0);
         
-        // open file with buffer
-        std::ifstream f;
-        char* buffer = new char[OPS_READ_BUFSIZE];
+        // map input file to memory
+        auto mapped = io::MMapReadOnlyFile(options.ops_filename);
         
-        f.rdbuf()->pubsetbuf(buffer, OPS_READ_BUFSIZE);
-        f.open(options.ops_filename);
+        const auto* ops = (const benchmark::IntegerOperation*)mapped.data();
+        const size_t num_ops = mapped.size() / sizeof(benchmark::IntegerOperation);
         
         uint64_t ops_chk = 0;
         size_t ops_total = 0;
@@ -179,10 +179,12 @@ void bench(
             stat::Phase ops_phase("ops");
             
             benchmark::IntegerOperation op;
-            while(f.good()) {
+            for(size_t i = 0; i < num_ops; i++) {
                 // read next operation
-                f.read((char*)&op, sizeof(op));
-                if(f.eof()) break;
+                {
+                    auto guard = ops_phase.suppress();
+                    op = ops[i];
+                }
                 
                 ++ops_total;
                 switch(op.code) {
@@ -212,9 +214,6 @@ void bench(
         result.log("ops_del", ops_del);
         result.log("ops_q", ops_q);
         result.log("ops_chk", ops_chk);
-        
-        f.close();
-        delete[] buffer;
     }
     
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
