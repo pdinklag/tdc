@@ -44,6 +44,7 @@ include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
 
 # find optional packages
+find_package(IntegerStructures)
 find_package(LEDA)
 find_package(Plads)
 find_package(Powercap)

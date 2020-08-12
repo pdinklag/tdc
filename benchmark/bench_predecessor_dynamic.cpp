@@ -25,6 +25,11 @@
     #include <veb/STree_orig.h>
 #endif
 
+#if defined(INTEGERSTRUCTURES_FOUND)
+    #define BENCH_INTEGERSTRUCTURES
+    #include <btrie/lpcbtrie.h>
+#endif
+
 using namespace tdc;
 
 constexpr size_t OPS_READ_BUFSIZE = 64_Mi;
@@ -340,10 +345,31 @@ int main(int argc, char** argv) {
             [](auto& stree, const uint64_t x){ stree.del(x); }
         );
     } else {
-        std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
+        if(options.do_bench("stree")) {
+            std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
+        }
+    }
+#endif
+
+#ifdef BENCH_INTEGERSTRUCTURES
+    {
+        size_t btrie_size = 0;
+        bench("burst_trie",
+            [](const uint64_t){
+                auto btrie = LPCBTrie<uint64_t, uint64_t>();
+                btrie.insert(UINT64_MAX, UINT64_MAX); // make sure there always is a successor
+                return btrie;
+            },
+            [&btrie_size](auto& btrie){ return btrie_size; },
+            [&btrie_size](auto& btrie, const uint64_t x){ btrie.insert(x, x); ++btrie_size; },
+            [](auto& btrie, const uint64_t x){
+                auto* p = btrie.locate(x);
+                return pred::Result { true, 0 };
+            },
+            [&btrie_size](auto& btrie, const uint64_t x){ btrie.remove(x); --btrie_size; }
+        );
     }
 #endif
 
     return 0;
 }
-    
