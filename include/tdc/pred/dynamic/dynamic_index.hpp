@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <tdc/pred/dynamic/buckets/buckets.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/util/assert.hpp>
 #include <tdc/vec/int_vector.hpp>
@@ -14,314 +15,41 @@ namespace tdc {
 namespace pred {
 namespace dynamic {
 
-// return the x_wordl more significant bits of i
-template <uint8_t b_wordl>
-inline uint64_t prefix(uint64_t i) {
-  return i >> b_wordl;
-}
-// return the b_wordl less significant bits
-template <uint8_t b_wordl>
-inline uint64_t suffix(uint64_t i) {
-  return i & ((1ULL << b_wordl) - 1);
-}
-
-// This is a bucket that holds a bit vector.
-template <uint8_t b_wordl>
-struct bucket_bv {
-  uint32_t m_size = 0;
-  const uint64_t m_prefix;
-  uint64_t m_prev_pred = 0;
-  bucket_bv *m_next_b = nullptr;  // next bucket
-  std::bitset<1ULL << b_wordl> m_bits;
-
-  bucket_bv(uint64_t prefix, uint64_t prev_pred, bucket_bv *next_b)
-      : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {}
-
-  uint64_t get_min() {
-    for (uint64_t i = 0; i < (1 << b_wordl); ++i) {
-      if (m_bits[i]) {
-        return (m_prefix << b_wordl) + i;
-      }
-    }
-    return 0;
-  }
-  void set(const uint64_t i) {
-    m_bits[i] = true;
-    ++m_size;
-  }
-
-  // deletes a key and updates the bottom level of the data structure
-  // it can not update the top level
-  void remove(uint64_t suf) {
-    m_bits[suf] = false;
-    --m_size;
-    // here we update next_b->prev_pred
-    if (tdc_likely(m_next_b != nullptr)) {
-      if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
-        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
-      }
-    }
-  }
-
-  size_t size() {
-    return m_size;
-  }
-  uint64_t pred(int64_t i) const {
-    i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
-    for (; i >= 0; --i) {
-      if (m_bits[i]) {
-        return (m_prefix << b_wordl) + i;
-      }
-    }
-    return m_prev_pred;
-  }
-};
-
-// This is a bucket that holds an std::vector.
-template <uint8_t b_wordl>
-struct bucket_list {
-  uint32_t m_size = 0;
-  const uint64_t m_prefix;
-  uint64_t m_prev_pred = 0;
-  bucket_list *m_next_b = nullptr;
-  std::vector<uint16_t> m_list;
-
-  bucket_list(uint64_t prefix, uint64_t prev_pred, bucket_list *next_b)
-      : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {}
-
-  uint64_t get_min() {
-    return (m_prefix << b_wordl) + *std::min_element(std::begin(m_list), std::end(m_list));
-  }
-
-  void set(uint64_t i) {
-    m_list.push_back(i);
-    ++m_size;
-  }
-
-  void remove(uint64_t suf) {
-    for (size_t j = 0; j < m_size; ++j) {
-      if (m_list[j] == suf) {
-        m_list[j] = m_list.back();
-        m_list.pop_back();
-        break;
-      }
-    }
-    if (tdc_likely(m_next_b != nullptr)) {
-      if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
-        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
-      }
-    }
-    --m_size;
-  }
-
-  size_t size() {
-    return m_size;
-  }
-
-  uint64_t pred(int64_t i) const {
-    i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
-    size_t j = 0;
-    uint64_t p;
-    bool found = false;
-    for (; j < m_list.size(); ++j) {
-      if (m_list[j] <= i) {
-        p = m_list[j];
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      return m_prev_pred;
-    }
-    for (; j < m_list.size(); ++j) {
-      if (m_list[j] > p && m_list[j] <= i) {
-        p = m_list[j];
-      }
-    }
-    return (m_prefix << b_wordl) + p;
-  }
-};
-
-static constexpr size_t upper_threshhold = 1ULL << 9;
-static constexpr size_t lower_threshhold = 1ULL << 8;
-// This is a bucket that either holds an std::vector or a bit_vector depending
-// on fill rate
-template <uint8_t b_wordl>
-struct bucket_hybrid {
-  uint32_t m_size = 0;
-  const uint64_t m_prefix;
-  uint64_t m_prev_pred = 0;
-  bucket_hybrid *m_next_b = nullptr;
-
-  bool m_is_list = true;
-  std::vector<uint16_t> m_list;
-  std::vector<bool> m_bits;
-
-  bucket_hybrid(uint64_t prefix, uint64_t prev_pred, bucket_hybrid *next_b)
-      : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {}
-
-  uint64_t get_min() {
-    if (m_is_list) {
-      return (m_prefix << b_wordl) + *std::min_element(std::begin(m_list), std::end(m_list));
-    } else {
-      for (uint64_t i = 0; i < (1 << b_wordl); ++i) {
-        if (m_bits[i]) {
-          return (m_prefix << b_wordl) + i;
-        }
-      }
-      return 0;
-    }
-  }
-
-  void set(const uint64_t i) {
-    if (m_is_list) {
-      m_list.push_back(i);
-      ++m_size;
-    } else {
-      m_bits[i] = true;
-      ++m_size;
-    }
-    if (m_is_list && (m_size > upper_threshhold)) {
-      rebuild();
-    }
-  }
-
-  void remove(const uint64_t suf) {
-    if (m_is_list) {
-      for (size_t j = 0; j < m_size; ++j) {
-        if (m_list[j] == suf) {
-          m_list[j] = m_list.back();
-          m_list.pop_back();
-          break;
-        }
-      }
-    } else {
-      m_bits[suf] = false;
-    }
-    // here we update next_b->prev_pred
-    if (tdc_likely(m_next_b != nullptr)) {
-      if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
-        m_next_b->m_prev_pred = pred((m_prefix << b_wordl) + suf);
-      }
-    }
-    --m_size;
-    if (!m_is_list && (m_size < lower_threshhold)) {
-      rebuild();
-    }
-  }
-
-  size_t size() {
-    return m_size;
-  }
-
-  uint64_t pred(int64_t i) const {
-    i = (i >> b_wordl) != m_prefix ? (1ULL << b_wordl) - 1 : i & ((1ULL << b_wordl) - 1);
-    if (m_is_list) {
-      size_t j = 0;
-      uint64_t p;
-      bool found = false;
-      for (; j < m_list.size(); ++j) {
-        if (m_list[j] <= i) {
-          p = m_list[j];
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        return m_prev_pred;
-      }
-      for (; j < m_list.size(); ++j) {
-        if (m_list[j] > p && m_list[j] <= i) {
-          p = m_list[j];
-        }
-      }
-      return (m_prefix << b_wordl) + p;
-    } else {
-      for (; i >= 0; --i) {
-        if (m_bits[i]) {
-          return (m_prefix << b_wordl) + i;
-        }
-      }
-      return m_prev_pred;
-    }
-  }
-
-  void rebuild() {
-    if (m_is_list) {
-      m_is_list = false;
-      m_size = 0;
-      m_bits = std::vector<bool>(1ULL << b_wordl);
-      // bits = new std::bitset<1ULL << b_wordl>;
-      for (uint16_t key : m_list) {
-        set(key);
-      }
-      // this frees the memory allocated by the vector
-      std::vector<uint16_t>().swap(m_list);
-    } else {
-      m_is_list = true;
-      m_size = 0;
-      for (size_t i = 0; i < (1ULL << b_wordl); ++i) {
-        if (m_bits[i]) {
-          set(i);
-        }
-      }
-      std::vector<bool>().swap(m_bits);
-    }
-  }
-};
-
 // TODO: use int_vector so that sampling parameter works
 /// \brief Dynamic predecessor search using universe-based sampling.
-template <template <uint8_t> class t_list, uint8_t t_sampling>
+template <template <uint8_t> class t_bucket, uint8_t t_sampling>
 class DynIndex {
  private:
-  // This data structure needs RAM depending on the greatest key.
-  // If you store keys greater than 2^30 you will need a lot of RAM.
-  // Here we set greatest key to have 40 bit. wordl = x_wordl + b_wordl.
-  static constexpr size_t wordl = 48;
-  static constexpr size_t word_size = (1ULL << wordl);
-  // The top part of the data structure stores pointers to the bottom buckets.
-  static constexpr size_t x_wordl = 40 - t_sampling;
-  static constexpr size_t x_size = (1ULL << x_wordl);
   // The bottom part of the data structure is either
   // a bit vector, std::array, or a hybrid.
   static constexpr size_t b_wordl = t_sampling;
-  static constexpr size_t b_size = (1ULL << b_wordl);
+  static constexpr size_t b_max = (1ULL << b_wordl) - 1;
 
-  using bucket = t_list<b_wordl>;
+  using bucket = t_bucket<b_wordl>;
   uint64_t m_size = 0;                                    // number of keys stored
   uint64_t m_min = std::numeric_limits<uint64_t>::max();  // stores the minimal key
   uint64_t m_max = std::numeric_limits<uint64_t>::min();  // stores the maximal key
-  std::vector<bucket *> m_xf;                             // top data structure
+  std::vector<bucket *> m_top;                            // top data structure
   bucket *m_first_b = nullptr;                            // pointer to the first bucket
 
   // return the x_wordl more significant bits of i
   inline uint64_t prefix(uint64_t i) const { return i >> b_wordl; }
   // return the b_wordl less significant bits
-  inline uint64_t suffix(uint64_t i) const { return i & (b_size - 1); }
+  inline uint64_t suffix(uint64_t i) const { return i & b_max; }
 
  public:
-  inline DynIndex() { m_xf.resize(0); }
+  inline DynIndex() {}
 
   /// \brief Constructs the index for the given keys.
   /// \param keys a pointer to the keys, that must be in ascending order
   /// \param num the number of keys
   DynIndex(const uint64_t *keys, const size_t num) {
-    assert_sorted_ascending(keys, num);
     for (size_t i = 0; i < num; ++i) {
       insert(keys[i]);
     }
   }
 
-  DynIndex(const DynIndex &other) = default;
-  DynIndex(DynIndex &&other) = default;
-  DynIndex &operator=(const DynIndex &other) = default;
-  DynIndex &operator=(DynIndex &&other) = default;
   ~DynIndex() {
-    // for (bucket* b : m_xf) {
-    //   delete b;
-    // }
-
     bucket *cur = m_first_b;
     bucket *next;
     while (cur != nullptr) {
@@ -336,50 +64,45 @@ class DynIndex {
   }
 
   void insert(const uint64_t key) {
+    assert(!predecessor(key).exists || predecessor(key).pos != key);
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
     bucket *new_b;
 
     // if a key is inserted that needs a greater bucket
-    if (key_pre >= m_xf.size()) {
+    if (key_pre >= m_top.size()) {
       if (tdc_likely(m_size != 0)) {
-        new_b = new bucket(key_pre, m_max, nullptr);
-        new_b->set(key_suf);
-        m_xf.back()->m_next_b = new_b;
-        m_xf.resize(prefix(key) + 1, m_xf.back());
+        new_b = new bucket(key_pre, m_max, nullptr, key_suf);
+        m_top.back()->m_next_b = new_b;
+        m_top.resize(prefix(key) + 1, m_top.back());
       } else {
-        new_b = new bucket(key_pre, 0, nullptr);
-        new_b->set(key_suf);
+        new_b = new bucket(key_pre, 0, nullptr, key_suf);
         m_first_b = new_b;
-        m_xf.resize(prefix(key) + 1, nullptr);
+        m_top.resize(prefix(key) + 1, nullptr);
       }
     } else if (key_pre < prefix(m_min)) {
       // if a key is inserted before the first bucket
-      new_b = new bucket(key_pre, 0, m_first_b);
-      new_b->set(key_suf);
-      m_first_b->m_prev_pred = key;
+      new_b = new bucket(key_pre, 0, m_first_b, key_suf);
       m_first_b = new_b;
     } else {
       // if a key is inserted inbetween
-      bucket *key_bucket = m_xf[key_pre];
+      bucket *key_bucket = m_top[key_pre];
+      bucket *next_bucket = key_bucket->m_next_b;
       // if exact bucket exists, add key
       if (key_bucket->m_prefix == key_pre) {
         key_bucket->set(key_suf);
-        bucket *next_bucket = key_bucket->m_next_b;
-        if (next_bucket != nullptr) {
-          next_bucket->m_prev_pred = std::max(key, next_bucket->m_prev_pred);
-        }
         m_min = std::min(key, m_min);
         m_max = std::max(key, m_max);
         ++m_size;
+        assert(predecessor(key).pos == key);
         return;
       } else {
         // if exact bucket does not exist
-        new_b = new bucket(key_pre, key_bucket->m_next_b->m_prev_pred, key_bucket->m_next_b);
-        new_b->set(key_suf);
+        new_b = new bucket(key_pre, next_bucket->m_prev_pred, next_bucket, key_suf);
         // pointer in next_bucket
         key_bucket->m_next_b = new_b;
-        new_b->m_next_b->m_prev_pred = key;
+        assert(key_bucket->m_prefix < new_b->m_prefix);
+        assert(new_b->m_prefix < next_bucket->m_prefix);
       }
     }
 
@@ -387,57 +110,59 @@ class DynIndex {
     m_min = std::min(key, m_min);
     m_max = std::max(key, m_max);
     // update xfast
-    m_xf[key_pre] = new_b;
-    if (key_pre + 1 < m_xf.size()) {
-      bucket *next_bucket = m_xf[key_pre + 1];
+    m_top[key_pre] = new_b;
+    if (key_pre + 1 < m_top.size()) {
+      bucket *next_bucket = m_top[key_pre + 1];
       if (next_bucket == nullptr || next_bucket->m_prefix < key_pre) {
-        for (size_t j = key_pre + 1; j < m_xf.size() && next_bucket == m_xf[j]; ++j) {
-          m_xf[j] = new_b;
+        for (size_t j = key_pre + 1; j < m_top.size() && next_bucket == m_top[j]; ++j) {
+          m_top[j] = new_b;
         }
       }
     }
+    assert(predecessor(key).pos == key);
   }
 
   void remove(uint64_t key) {
+    assert(predecessor(key).pos == key);
     --m_size;
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
-    bucket *const key_bucket = m_xf[key_pre];
-    bucket *const prev_bucket = m_xf[prefix(key_bucket->m_prev_pred)];
+    bucket *const key_bucket = m_top[key_pre];
+    bucket *const prev_bucket = m_top[prefix(key_bucket->m_prev_pred)];
     bucket *const next_bucket = key_bucket->m_next_b;
 
     // if the last key of a bucket was deleted
     key_bucket->remove(suffix(key));
     if (key_bucket->size() == 0) {
-      // 3 options: bucket is between 2 buckets; first bucket, last bucket
+      // 3 options: bucket is between 2 buckets; first bucket; last bucket
       if (key_bucket != m_first_b && next_bucket != nullptr) {
         prev_bucket->m_next_b = next_bucket;
+        next_bucket->m_prev_pred = key_bucket->m_prev_pred;
         for (uint64_t i = key_pre; i < next_bucket->m_prefix; ++i) {
-          m_xf[i] = prev_bucket;
+          m_top[i] = prev_bucket;
         }
       } else if (m_first_b == key_bucket) {
         // if there are buckets left
         if (next_bucket != nullptr) {
           m_first_b = next_bucket;
-          next_bucket->m_prev_pred = 0;
-          for (uint64_t i = key_pre; i < next_bucket->m_prefix; ++i) {
-            m_xf[i] = nullptr;
+          m_first_b->m_prev_pred = 0;
+          for (uint64_t i = key_pre; i < m_first_b->m_prefix; ++i) {
+            m_top[i] = nullptr;
           }
-          if (key == m_min) {
-            m_min = m_first_b->get_min();
-          }
+          assert(key == m_min);
+          m_min = m_first_b->get_min();
           // if it is the last bucket
         } else {
           m_first_b = nullptr;
           m_min = std::numeric_limits<uint64_t>::max();
           m_max = std::numeric_limits<uint64_t>::min();
-          m_xf.resize(0);
-          m_xf.shrink_to_fit();
+          std::vector<bucket *>().swap(m_top);
         }
-      } else if (key_bucket == m_xf.back()) {
-        m_xf.resize(prev_bucket->m_prefix + 1);
-        m_xf.shrink_to_fit();
-        m_xf.back()->m_next_b = nullptr;
+      } else if (key_bucket == m_top.back()) {
+        m_top.resize(prev_bucket->m_prefix + 1);
+        m_top.shrink_to_fit();
+        m_top.back()->m_next_b = nullptr;
+        assert(key == m_max);
         m_max = key_bucket->m_prev_pred;
       }
       // delete the empty bucket
@@ -456,9 +181,9 @@ class DynIndex {
       return Result{false, 0};
     if (tdc_unlikely(x >= m_max))
       return Result{true, m_max};
-    return {true, m_xf[prefix(x)]->pred(x)};
+    return {true, m_top[prefix(x)]->predecessor(x)};
   }
-};  // namespace dynamic
+};
 }  // namespace dynamic
 }  // namespace pred
 }  // namespace tdc
