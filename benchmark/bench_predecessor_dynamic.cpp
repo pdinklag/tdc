@@ -265,13 +265,13 @@ int main(int argc, char** argv) {
         
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
-    // bench("fusion_btree",
-    //     [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
-    //     [](const auto& ds){ return ds.size(); },
-    //     [](auto& ds, const uint64_t x){ ds.insert(x); },
-    //     [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-    //     [](auto& ds, const uint64_t x){ ds.remove(x); }
-    // );
+    bench("fusion_btree",
+        [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
     
     bench("index_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
