@@ -11,7 +11,7 @@
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
-//#include <tdc/pred/dynamic/dynamic_index_map.hpp>
+#include <tdc/pred/dynamic/dynamic_index_map.hpp>
 
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
@@ -265,15 +265,22 @@ int main(int argc, char** argv) {
         
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
-
-    bench("fusion_btree",
-        [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
+    // bench("fusion_btree",
+    //     [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
+    //     [](const auto& ds){ return ds.size(); },
+    //     [](auto& ds, const uint64_t x){ ds.insert(x); },
+    //     [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+    //     [](auto& ds, const uint64_t x){ ds.remove(x); }
+    // );
+    
+    bench("index_hybrid",
+        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    
+    /*
     bench("index_bv",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -288,37 +295,29 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    bench("index_hybrid",
-        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
-    //TODO: DONT OUTCOMMENT. THESE DS ARE NOT PUSHED YET
-    /*
-    bench("map_bv",
-        [](const uint64_t){ return pred::dynamic::DynIndexBV<tdc::pred::dynamic::map_bucket_bv, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
-    bench("map_list",
-        [](const uint64_t){ return pred::dynamic::DynIndexBV<tdc::pred::dynamic::map_bucket_list, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
-    bench("map_hybrid",
-        [](const uint64_t){ return pred::dynamic::DynIndexBV<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
     */
+    
+    bench("map_hybrid",
+        [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
+    // bench("map_bv",
+    //     [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_bv, 16>(); },
+    //     [](const auto& ds){ return ds.size(); },
+    //     [](auto& ds, const uint64_t x){ ds.insert(x); },
+    //     [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+    //     [](auto& ds, const uint64_t x){ ds.remove(x); }
+    // );
+    // bench("map_list",
+    //     [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_list, 16>(); },
+    //     [](const auto& ds){ return ds.size(); },
+    //     [](auto& ds, const uint64_t x){ ds.insert(x); },
+    //     [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+    //     [](auto& ds, const uint64_t x){ ds.remove(x); }
+    // );
     
     bench("set",
         [](const uint64_t){ return std::set<uint64_t>(); },
