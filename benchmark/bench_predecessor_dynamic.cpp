@@ -12,6 +12,7 @@
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
 #include <tdc/pred/dynamic/dynamic_index_map.hpp>
+#include <tdc/pred/dynamic/dynamic_pred_bv.hpp>
 
 #include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
@@ -272,7 +273,6 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    
     bench("index_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -296,7 +296,6 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     */
-    
     bench("map_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -328,6 +327,14 @@ int main(int argc, char** argv) {
             return pred::Result { it != set.begin(), *(--it) };
         },
         [](auto& set, const uint64_t x){ set.erase(x); }
+    );
+    // Baseline for dense keys
+    bench("pred_bv",
+        [](const uint64_t){ return pred::dynamic::DynPredBV(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
         
 #ifdef PLADS_FOUND
