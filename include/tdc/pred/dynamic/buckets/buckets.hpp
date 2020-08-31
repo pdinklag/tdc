@@ -440,7 +440,7 @@ struct map_bucket_hybrid {
     } else {
       for (; suf >= 0; --suf) {
         if ((*m_bits)[suf]) {
-          return Result{true, suf};
+          return Result{true, static_cast<uint64_t>(suf)};
         }
       }
       return Result{false, 0};
