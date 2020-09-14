@@ -2,7 +2,8 @@
 #include <random>
 #include <set>
 
-#include <tdc/pred/dynamic/dynamic_octrie.hpp>
+#include <tdc/pred/dynamic/btree.hpp>
+#include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
 #include <tdc/stat/time.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
 
@@ -75,7 +76,7 @@ int main(int argc, char** argv) {
     std::uniform_int_distribution<uint64_t> random_from_universe(0ULL, u);
     
     // working set
-    pred::dynamic::DynamicOctrie cur_set;
+    pred::dynamic::BTree<pred::dynamic::DynamicFusionNode8> cur_set;
     uint64_t* cur_arr = new uint64_t[max_num];
     
     uint64_t cur_num = 0;

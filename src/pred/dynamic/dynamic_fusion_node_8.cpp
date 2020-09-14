@@ -7,7 +7,7 @@ constexpr size_t NUM_DEBUG_BITS = 24;
 
 #include <tdc/math/bit_mask.hpp>
 #include <tdc/pred/fusion_node_internals.hpp>
-#include <tdc/pred/dynamic/dynamic_fusion_node_8.hpp>
+#include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/likely.hpp>
 #include <tdc/util/rank_u64.hpp>
@@ -32,7 +32,8 @@ uint64_t DynamicFusionNode8::select(const size_t i) const {
 }
 
 Result DynamicFusionNode8::predecessor(const uint64_t x) const {
-    if(tdc_unlikely(size() == 0)) {
+    const size_t sz = size();
+    if(tdc_unlikely(sz == 0)) {
         return { false, 0 };
     } else {
         return internal::predecessor(*this, x, { m_mask, m_branch, m_free });

@@ -13,9 +13,10 @@
 #include <tdc/pred/dynamic/dynamic_index.hpp>
 #include <tdc/pred/dynamic/dynamic_index_map.hpp>
 #include <tdc/pred/dynamic/dynamic_pred_bv.hpp>
-
-#include <tdc/pred/dynamic/dynamic_octrie.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
+
+#include <tdc/pred/dynamic/btree.hpp>
+#include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
 
 #include <tdc/util/literals.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
@@ -267,7 +268,7 @@ int main(int argc, char** argv) {
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
     bench("fusion_btree",
-        [](const uint64_t){ return pred::dynamic::DynamicOctrie(); },
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode8>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
