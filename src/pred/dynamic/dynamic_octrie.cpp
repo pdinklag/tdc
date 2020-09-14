@@ -88,6 +88,11 @@ void DynamicOctrie::Node::remove_child(const size_t i) {
     }
     children[num_children-1] = nullptr;
     --num_children;
+    
+    if(num_children == 0) {
+        delete[] children;
+        children = nullptr;
+    }
 }
 
 void DynamicOctrie::Node::split_child(const size_t i) {
