@@ -3,15 +3,18 @@
 
 #include <cstddef>
 #include <tdc/pred/result.hpp>
-#include <plads/bit_vector_dynamic/bit_vector_dynamic_unique.hpp>
+#include <plads/bit_vector_dynamic/bit_vector_dynamic.hpp>
+#include <plads/bit_vector_dynamic/uncompressed_leaf.hpp>
 
 namespace tdc {
 namespace pred {
 namespace dynamic {
 
+using namespace ::plads::dynamic;
+
 class DynamicRankSelect {
 private:
-    using DynamicBitVector = plads::dynamic::bit_vector_dynamic_unique;
+    using DynamicBitVector = bit_vector_dynamic<uncompressed_leaf>;
     
     size_t m_size;
     DynamicBitVector m_dbv;
