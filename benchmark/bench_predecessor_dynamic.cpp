@@ -179,6 +179,7 @@ void bench(
         size_t ops_ins = 0;
         size_t ops_del = 0;
         size_t ops_q = 0;
+        size_t ops_max = 0;
         {
             stat::Phase ops_phase("ops");
             
@@ -195,6 +196,7 @@ void bench(
                     case benchmark::OPCODE_INSERT:
                         ++ops_ins;
                         insert_func(ds, op.key);
+                        ops_max = std::max(ops_max, (size_t)size_func(ds));
                         break;
 
                     case benchmark::OPCODE_DELETE:
@@ -218,6 +220,7 @@ void bench(
         result.log("ops_del", ops_del);
         result.log("ops_q", ops_q);
         result.log("ops_chk", ops_chk);
+        result.log("ops_max", ops_max);
     }
     
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
