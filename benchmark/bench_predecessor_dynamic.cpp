@@ -278,14 +278,14 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    bench("btree<8>",
+    bench("btree_8",
         [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<8>, 9>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    bench("btree<64>",
+    bench("btree_64",
         [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<64>, 65>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
