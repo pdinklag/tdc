@@ -12,10 +12,20 @@ namespace pred {
 namespace dynamic {
 
 /// \brief A B-Tree.
-/// \tparam node_impl_t node implementation. Must support array access, size, insert, remove and predecessor.
-template<typename node_impl_t>
+/// \tparam node_impl_t node implementation; must be sorted and support array access, size, insert, remove and predecessor
+/// \tparam degree the maximum number of children per node
+template<typename node_impl_t, size_t m_degree>
 class BTree {
 private:
+    static_assert((m_degree % 2) == 1); // we only allow odd maximum degrees for the sake of implementation simplicity
+    static_assert(m_degree > 1);
+    static_assert(m_degree < 256);
+    
+    static constexpr size_t m_max_node_keys = m_degree - 1;
+    static constexpr size_t m_split_right = m_max_node_keys / 2;
+    static constexpr size_t m_split_mid = m_split_right - 1;
+    static constexpr size_t m_deletion_threshold = m_degree / 2;
+
     struct Node {
         node_impl_t impl;
         uint8_t num_children;
@@ -34,7 +44,7 @@ private:
         }
 
         inline bool is_full() const {
-            return size() == 8;
+            return size() == m_max_node_keys;
         }
 
         Node() : children(nullptr), num_children(0) {
@@ -56,7 +66,7 @@ private:
             assert(i <= num_children);
             
             if(children == nullptr) {
-                children = new Node*[9];
+                children = new Node*[m_degree];
             }
             
             // insert
@@ -93,27 +103,27 @@ private:
             Node* z = new Node();
 
             // get the middle value
-            const uint64_t m = y->impl[3];
+            const uint64_t m = y->impl[m_split_mid];
 
-            // move the 4 largest keys from y to z and remove the middle
+            // move the keys larger than middle from y to z and remove the middle
             {
-                uint64_t buf[4];
-                for(size_t j = 0; j < 4; j++) {
-                    buf[j] = y->impl[j + 4];
+                uint64_t buf[m_split_right];
+                for(size_t j = 0; j < m_split_right; j++) {
+                    buf[j] = y->impl[j + m_split_right];
                     z->impl.insert(buf[j]);
                 }
-                for(size_t j = 0; j < 4; j++) {
+                for(size_t j = 0; j < m_split_right; j++) {
                     y->impl.remove(buf[j]);
                 }
                 y->impl.remove(m);
             }
 
-            // move the last 5 children from y to z
+            // move the children right of middle from y to z
             if(!y->is_leaf()) {
-                for(size_t j = 4; j <= 8; j++) {
+                for(size_t j = m_split_right; j <= m_max_node_keys; j++) {
                     z->insert_child(z->num_children, y->children[j]);
                 }
-                y->num_children -= 5;
+                y->num_children -= (m_split_right + 1);
             }
 
             // insert middle into this and add z as child i+1
@@ -123,10 +133,10 @@ private:
             // some assertions
             assert(children[i] == y);
             assert(children[i+1] == z);
-            assert(z->impl.size() == 4);
-            if(!y->is_leaf()) assert(z->num_children == 5);
-            assert(y->impl.size() == 3);
-            if(!y->is_leaf()) assert(y->num_children == 4);
+            assert(z->impl.size() == m_split_right);
+            if(!y->is_leaf()) assert(z->num_children == m_split_right + 1);
+            assert(y->impl.size() == m_split_mid);
+            if(!y->is_leaf()) assert(y->num_children == m_split_mid + 1);
         }
         
         void insert(const uint64_t key) {
@@ -154,8 +164,6 @@ private:
         }
 
         bool remove(const uint64_t key) {
-            static constexpr size_t DELETION_THRESHOLD = 4;
-            
             assert(!is_empty());
 
             if(is_leaf()) {
@@ -168,14 +176,14 @@ private:
                 
                 if(r.exists && impl[r.pos] == key) {
                     // key is contained in this internal node
-                    assert(i < 9);
+                    assert(i < m_degree);
 
                     Node* y = children[i-1];
                     const size_t ysize = y->size();
                     Node* z = children[i];
                     const size_t zsize = z->size();
                     
-                    if(ysize >= DELETION_THRESHOLD) {
+                    if(ysize >= m_deletion_threshold) {
                         // find predecessor of key in y's subtree - i.e., the maximum
                         Node* c = y;
                         while(!c->is_leaf()) {
@@ -189,7 +197,7 @@ private:
 
                         // recursively delete key_pred from y
                         y->remove(key_pred);
-                    } else if(zsize >= DELETION_THRESHOLD) {
+                    } else if(zsize >= m_deletion_threshold) {
                         // find successor of key in z's subtree - i.e., its minimum
                         Node* c = z;
                         while(!c->is_leaf()) {
@@ -205,8 +213,8 @@ private:
                         z->remove(key_succ);
                     } else {
                         // assert balance
-                        assert(ysize == DELETION_THRESHOLD - 1);
-                        assert(zsize == DELETION_THRESHOLD - 1);
+                        assert(ysize == m_deletion_threshold - 1);
+                        assert(zsize == m_deletion_threshold - 1);
 
                         // remove key from this node
                         impl.remove(key);
@@ -244,15 +252,15 @@ private:
                     // get i-th child
                     Node* c = children[i];
 
-                    if(c->size() < DELETION_THRESHOLD) {
+                    if(c->size() < m_deletion_threshold) {
                         // preprocess child so we can safely remove from it
-                        assert(c->size() == DELETION_THRESHOLD - 1);
+                        assert(c->size() == m_deletion_threshold - 1);
                         
                         // get siblings
                         Node* left  = i > 0 ? children[i-1] : nullptr;
                         Node* right = i < num_children-1 ? children[i+1] : nullptr;
                         
-                        if(left && left->size() >= DELETION_THRESHOLD) {
+                        if(left && left->size() >= m_deletion_threshold) {
                             // there is a left child, so there must be a splitter
                             assert(i > 0);
                             
@@ -274,7 +282,7 @@ private:
                                 left->remove_child(left->num_children-1);
                                 c->insert_child(0, lrightmost);
                             }
-                        } else if(right && right->size() >= DELETION_THRESHOLD) {
+                        } else if(right && right->size() >= m_deletion_threshold) {
                             // there is a right child, so there must be a splitter
                             assert(i < impl.size());
                             
@@ -299,8 +307,8 @@ private:
                         } else {
                             // this node is not a leaf and is not empty, so there must be at least one sibling to the child
                             assert(left != nullptr || right != nullptr);
-                            assert(left == nullptr || left->size() == DELETION_THRESHOLD - 1);
-                            assert(right == nullptr || right->size() == DELETION_THRESHOLD - 1);
+                            assert(left == nullptr || left->size() == m_deletion_threshold - 1);
+                            assert(right == nullptr || right->size() == m_deletion_threshold - 1);
                             
                             // select the sibling and corresponding splitter to mergre with
                             if(right != nullptr) {

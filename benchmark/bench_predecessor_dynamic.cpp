@@ -269,14 +269,14 @@ int main(int argc, char** argv) {
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
     bench("fusion_btree",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode8>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode8, 9>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     bench("btree",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode8>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode8, 9>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
