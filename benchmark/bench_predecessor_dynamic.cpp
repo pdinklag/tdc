@@ -17,7 +17,7 @@
 
 #include <tdc/pred/dynamic/btree.hpp>
 #include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
-#include <tdc/pred/dynamic/btree/sorted_array_node_8.hpp>
+#include <tdc/pred/dynamic/btree/sorted_array_node.hpp>
 
 #include <tdc/util/literals.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
@@ -275,8 +275,15 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    bench("btree",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode8, 9>(); },
+    bench("btree<8>",
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<8>, 9>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
+    bench("btree<64>",
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<64>, 65>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -338,13 +345,13 @@ int main(int argc, char** argv) {
         [](auto& set, const uint64_t x){ set.erase(x); }
     );
     // Baseline for dense keys
-    // bench("pred_bv",
-        // [](const uint64_t){ return pred::dynamic::DynPredBV(); },
-        // [](const auto& ds){ return ds.size(); },
-        // [](auto& ds, const uint64_t x){ ds.insert(x); },
-        // [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        // [](auto& ds, const uint64_t x){ ds.remove(x); }
-    // );
+    bench("pred_bv",
+        [](const uint64_t){ return pred::dynamic::DynPredBV(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
         
 #ifdef PLADS_FOUND
     // TOO SLOW

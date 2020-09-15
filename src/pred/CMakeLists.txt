@@ -7,7 +7,6 @@ add_library(tdc-pred
     octrie.cpp
     octrie_top.cpp
     dynamic/dynamic_fusion_node_8.cpp
-    dynamic/sorted_array_node_8.cpp
     dynamic/btree.cpp
     dynamic/dynamic_rankselect.cpp)
 
