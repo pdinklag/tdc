@@ -62,12 +62,16 @@ private:
         Node& operator=(const Node&) = default;
         Node& operator=(Node&&) = default;
 
-        void insert_child(const size_t i, Node* node) {
-            assert(i <= num_children);
-            
+        inline void alloc_children() {
             if(children == nullptr) {
                 children = new Node*[m_degree];
             }
+        }
+
+        void insert_child(const size_t i, Node* node) {
+            assert(i <= num_children);
+            assert(num_children < m_degree);
+            alloc_children();
             
             // insert
             for(size_t j = num_children; j > i; j--) {
@@ -120,8 +124,9 @@ private:
 
             // move the children right of middle from y to z
             if(!y->is_leaf()) {
+                z->alloc_children();
                 for(size_t j = m_split_right; j <= m_max_node_keys; j++) {
-                    z->insert_child(z->num_children, y->children[j]);
+                    z->children[z->num_children++] = y->children[j];
                 }
                 y->num_children -= (m_split_right + 1);
             }
