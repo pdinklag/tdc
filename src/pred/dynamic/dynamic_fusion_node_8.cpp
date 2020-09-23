@@ -36,7 +36,7 @@ Result DynamicFusionNode8::predecessor(const uint64_t x) const {
     if(tdc_unlikely(sz == 0)) {
         return { false, 0 };
     } else {
-        return internal::predecessor(*this, x, { m_mask, m_branch, m_free });
+        return internal::predecessor(*this, x, m_mask, m_branch, m_free);
     }
 }
 
@@ -49,7 +49,7 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     size_t key_rank;
     if(sz > 0) {
         // find
-        xr = internal::predecessor_ext(*this, key, { m_mask, m_branch, m_free });
+        xr = internal::predecessor_ext(*this, key, m_mask, m_branch, m_free);
         key_rank = xr.r.exists ? xr.r.pos + 1 : 0;
     } else {
         // first key
@@ -185,7 +185,7 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
     assert(sz > 0);
 
     // find key
-    const auto r = internal::predecessor(*this, key, { m_mask, m_branch, m_free });
+    const auto r = internal::predecessor(*this, key, m_mask, m_branch, m_free);
     const size_t i = r.pos;
     
     if(tdc_unlikely(!r.exists || select(i) != key)) return false; // key does not exist
@@ -249,9 +249,8 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
             m_mask &= ~(1ULL << j);
         } else {
             // find sibling subtree
-            const internal::fnode8_t fnode8 = { m_mask, m_branch, m_free };
-            const size_t i0 = internal::match(key & (UINT64_MAX << (j+1)), fnode8);
-            const size_t i1 = internal::match(key | (UINT64_MAX >> (63ULL - j)), fnode8);
+            const size_t i0 = internal::match(key & (UINT64_MAX << (j+1)), m_mask, m_branch, m_free);
+            const size_t i1 = internal::match(key | (UINT64_MAX >> (63ULL - j)), m_mask, m_branch, m_free);
             //~ std::cout << "\ti0=" << std::dec << i0 << ", i1=" << i1 << std::endl;
 
             // set the h-bits in the subtree elements to be wildcards

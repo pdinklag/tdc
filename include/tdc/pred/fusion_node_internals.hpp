@@ -4,8 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-
-#include <mmintrin.h>
+#include <tuple>
 
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
@@ -17,22 +16,17 @@ namespace tdc {
 namespace pred {
 namespace internal {
 
-// a fusion tree node for eight items
-struct fnode8_t {
-    uint64_t mask, branch, free;
-};
-
 // compress a key using a mask (PEXT)
-uint64_t compress(const uint64_t key, const uint64_t mask);
+uint64_t compress(const uint64_t key, const uint64_t& mask);
 
 // repeat a byte eight times into a 64-bit word
-uint64_t repeat8(const uint8_t x);
+uint64_t repeat(const uint8_t x);
 
 // finds the rank of a repeated value in a packed array of eight bytes
-size_t rank(const __m64 cx_repeat, const __m64 array8);
+size_t rank(const uint64_t cx_repeat, const uint64_t array);
 
 // the match operation from Patrascu & Thorup, 2014
-size_t match(const uint64_t x, const fnode8_t& ctrie8);
+size_t match(const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free);
 
 // a very simple trie data structure
 struct trie_node {
@@ -46,7 +40,7 @@ struct trie_node {
 
 // constructs a fusion node for eight keys
 template<typename array_t>
-fnode8_t construct(const array_t& keys, const size_t num)
+std::tuple<uint64_t, uint64_t, uint64_t> construct(const array_t& keys, const size_t num)
 {
     assert(num > 0);
     assert(num <= 8);
@@ -142,10 +136,10 @@ fnode8_t construct(const array_t& keys, const size_t num)
 }
 
 template<typename array_t>
-Result predecessor(const array_t& keys, const uint64_t x, const internal::fnode8_t& fnode8) {
+Result predecessor(const array_t& keys, const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free) {
     // std::cout << "predecessor(" << x << "):" << std::endl;
     // find the predecessor candidate by matching the key against our maintained keys
-    const size_t i = internal::match(x, fnode8);
+    const size_t i = match(x, mask, branch, free);
     // std::cout << "\ti=" << i << std::endl;
     // lookup the key at the found position
     const uint64_t y = keys[i];
@@ -168,7 +162,7 @@ Result predecessor(const array_t& keys, const uint64_t x, const internal::fnode8
         };
         
         const bool x_lt_y = x < y;
-        const size_t ixj = internal::match(xj[!x_lt_y], fnode8);
+        const size_t ixj = match(xj[!x_lt_y], mask, branch, free);
         
         // branchless version of:
         // if(x < y) {
@@ -188,10 +182,10 @@ struct ExtResult {
 };
 
 template<typename array_t>
-ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const internal::fnode8_t& fnode8) {
+ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free) {
     // std::cout << "predecessor(" << x << "):" << std::endl;
     // find the predecessor candidate by matching the key against our maintained keys
-    const size_t i = internal::match(x, fnode8);
+    const size_t i = match(x, mask, branch, free);
     // std::cout << "\ti=" << i << std::endl;
     // lookup the key at the found position
     const uint64_t y = keys[i];
@@ -205,8 +199,8 @@ ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const internal:
         // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
         // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
         const size_t j = __builtin_clzll(x ^ y);
-        const size_t i0 = internal::match(x & (UINT64_MAX << (64ULL - j)), fnode8);
-        const size_t i1 = internal::match(x | (UINT64_MAX >> j), fnode8);
+        const size_t i0 = match(x & (UINT64_MAX << (64ULL - j)), mask, branch, free);
+        const size_t i1 = match(x | (UINT64_MAX >> j), mask, branch, free);
         
         ExtResult xr;
         xr.j = j;
