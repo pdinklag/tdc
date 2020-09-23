@@ -50,7 +50,7 @@ public:
     /// \brief Inserts the specified key.
     /// \param key the key to insert
     void insert(const uint64_t key) {
-        assert(m_size < 8);
+        assert(m_size < m_capacity);
         size_t i = 0;
         while(i < m_size && m_keys[i] < key) ++i;
         for(size_t j = m_size; j > i; j--) m_keys[j] = m_keys[j-1];
