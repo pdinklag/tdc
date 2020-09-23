@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <tdc/pred/dynamic/robin_hood.h>
+#include <robin_hood.h>
 
 namespace tdc {
 namespace pred {

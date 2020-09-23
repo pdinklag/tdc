@@ -4,3 +4,6 @@
 [submodule "extlib/json"]
 	path = extlib/json
 	url = https://github.com/nlohmann/json
+[submodule "extlib/robin-hood-hashing"]
+	path = extlib/robin-hood-hashing
+	url = https://github.com/martinus/robin-hood-hashing.git
