@@ -272,21 +272,21 @@ int main(int argc, char** argv) {
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
     bench("fusion_btree",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode<>, 9>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 9, pred::dynamic::DynamicFusionNode<uint64_t, 8>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     bench("btree_8",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<8>, 9>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 9, pred::dynamic::SortedArrayNode<8>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     bench("btree_64",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::SortedArrayNode<64>, 65>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 65, pred::dynamic::SortedArrayNode<64>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -371,6 +371,13 @@ int main(int argc, char** argv) {
 
 #ifdef BENCH_STREE
     if(options.universe <= INT32_MAX) {
+        bench("fusion_btree_32bit",
+            [](const uint64_t){ return pred::dynamic::BTree<uint32_t, 9, pred::dynamic::DynamicFusionNode<uint32_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
         bench("stree",
             [](const uint64_t first){
                 // STree cannot be empty
@@ -386,8 +393,6 @@ int main(int argc, char** argv) {
             },
             [](auto& stree, const uint64_t x){ stree.del(x); }
         );
-    } else {
-        std::cerr << "WARNING: STree only supports 31-bit universes and will therefore not be benchmarked" << std::endl;
     }
 #endif
 

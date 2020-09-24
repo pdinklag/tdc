@@ -43,7 +43,7 @@ private:
     static constexpr size_t m_ckey_bits = 8ULL * sizeof(ckey_t);
     static constexpr matrix_t m_matrix_max = std::numeric_limits<matrix_t>::max();
 
-    key_t m_key[m_max_keys];
+    key_t    m_key[m_max_keys];
     mask_t   m_mask;
     matrix_t m_branch, m_free;
     uint8_t  m_size;
@@ -130,7 +130,7 @@ public:
             
             //~ std::cout << "    j = " << j;
             
-            const key_t jmask = (key_t)1ULL << (key_t)(m_key_msb - j);
+            const mask_t jmask = (mask_t)1ULL << (mask_t)(m_key_msb - j);
             const bool new_significant_position = (m_mask & jmask) == 0;
             
             //~ if(new_significant_position) std::cout << " (new significant position)";
@@ -219,18 +219,23 @@ public:
         }
         
         // verify
-        //~ {
-            //~ auto fnode = internal::construct(*this, sz + 1);
-            //~ if(m_branch != fnode.branch || m_free != fnode.free || m_mask != fnode.mask) {
-                //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << fnode.mask << std::endl;
-                //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << fnode.branch << std::endl;
-                //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << fnode.free << std::endl;
-            //~ }
+        {
+            auto fnode = Internals::construct(*this, sz + 1);
+            
+            auto expected_mask = std::get<0>(fnode);
+            auto expected_branch = std::get<1>(fnode);
+            auto expected_free = std::get<2>(fnode);
+            
+            if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
+                std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
+                std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
+                std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
+            }
 
-            //~ assert(m_mask == fnode.mask);
-            //~ assert(m_branch == fnode.branch);
-            //~ assert(m_free == fnode.free);
-        //~ }
+            assert(m_mask == expected_mask);
+            assert(m_branch == expected_branch);
+            assert(m_free == expected_free);
+        }
     }
 
     /// \brief Removes the specified key.

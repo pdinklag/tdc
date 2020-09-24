@@ -12,9 +12,10 @@ namespace pred {
 namespace dynamic {
 
 /// \brief A B-Tree.
-/// \tparam node_impl_t node implementation; must be sorted and support array access, size, insert, remove and predecessor
+/// \tparam key_t the key type
 /// \tparam degree the maximum number of children per node
-template<typename node_impl_t, size_t m_degree>
+/// \tparam node_impl_t node implementation; must be sorted and support array access, size, insert, remove and predecessor
+template<typename key_t, size_t m_degree, typename node_impl_t>
 class BTree {
 private:
     static_assert((m_degree % 2) == 1); // we only allow odd maximum degrees for the sake of implementation simplicity
@@ -107,11 +108,11 @@ private:
             Node* z = new Node();
 
             // get the middle value
-            const uint64_t m = y->impl[m_split_mid];
+            const key_t m = y->impl[m_split_mid];
 
             // move the keys larger than middle from y to z and remove the middle
             {
-                uint64_t buf[m_split_right];
+                key_t buf[m_split_right];
                 for(size_t j = 0; j < m_split_right; j++) {
                     buf[j] = y->impl[j + m_split_right];
                     z->impl.insert(buf[j]);
@@ -144,7 +145,7 @@ private:
             if(!y->is_leaf()) assert(y->num_children == m_split_mid + 1);
         }
         
-        void insert(const uint64_t key) {
+        void insert(const key_t key) {
             assert(!is_full());
             
             if(is_leaf()) {
@@ -168,7 +169,7 @@ private:
             }
         }
 
-        bool remove(const uint64_t key) {
+        bool remove(const key_t key) {
             assert(!is_empty());
 
             if(is_leaf()) {
@@ -194,7 +195,7 @@ private:
                         while(!c->is_leaf()) {
                             c = c->children[c->num_children-1];
                         }
-                        const uint64_t key_pred = c->impl[c->size()-1];
+                        const key_t key_pred = c->impl[c->size()-1];
 
                         // replace key by predecssor in this node
                         impl.remove(key);
@@ -208,7 +209,7 @@ private:
                         while(!c->is_leaf()) {
                             c = c->children[0];
                         }
-                        const uint64_t key_succ = c->impl[0];
+                        const key_t key_succ = c->impl[0];
 
                         // replace key by successor in this node
                         impl.remove(key);
@@ -270,13 +271,13 @@ private:
                             assert(i > 0);
                             
                             // retrieve splitter and move it into c
-                            const uint64_t splitter = impl[i-1];
+                            const key_t splitter = impl[i-1];
                             assert(key > splitter); // sanity
                             impl.remove(splitter);
                             c->impl.insert(splitter);
                             
                             // move largest key from left sibling to this node
-                            const uint64_t llargest = left->impl[left->size()-1];
+                            const key_t llargest = left->impl[left->size()-1];
                             assert(splitter > llargest); // sanity
                             left->impl.remove(llargest);
                             impl.insert(llargest);
@@ -292,13 +293,13 @@ private:
                             assert(i < impl.size());
                             
                             // retrieve splitter and move it into c
-                            const uint64_t splitter = impl[i];
+                            const key_t splitter = impl[i];
                             assert(key < splitter); // sanity
                             impl.remove(splitter);
                             c->impl.insert(splitter);
                             
                             // move smallest key from right sibling to this node
-                            const uint64_t rsmallest = right->impl[0];
+                            const key_t rsmallest = right->impl[0];
                             assert(rsmallest > splitter); // sanity
                             right->impl.remove(rsmallest);
                             impl.insert(rsmallest);
@@ -318,7 +319,7 @@ private:
                             // select the sibling and corresponding splitter to mergre with
                             if(right != nullptr) {
                                 // merge child with right sibling
-                                const uint64_t splitter = impl[i];
+                                const key_t splitter = impl[i];
                                 assert(key < splitter); // sanity
                                 
                                 // move splitter into child as new median
@@ -347,7 +348,7 @@ private:
                                 delete right;
                             } else {
                                 // merge child with left sibling
-                                const uint64_t splitter = impl[i-1];
+                                const key_t splitter = impl[i-1];
                                 assert(key > splitter); // sanity
                                 
                                 // move splitter into child as new median
@@ -445,12 +446,12 @@ public:
 
     /// \brief Finds the \em value of the predecessor of the specified key in the trie.
     /// \param x the key in question
-    Result predecessor(const uint64_t x) const {
+    Result predecessor(const key_t x) const {
         Node* node = m_root;
         Result r;
         
         bool exists = false;
-        uint64_t value = UINT64_MAX;
+        key_t value = std::numeric_limits<key_t>::max();
         
         r = node->impl.predecessor(x);
         while(!node->is_leaf()) {
@@ -475,13 +476,13 @@ public:
 
     /// \brief Tests whether the given key is contained in the trie.
     /// \param x the key in question
-    inline bool contains(const uint64_t x) const {
+    inline bool contains(const key_t x) const {
         auto r = predecessor(x);
         return r.exists && r.pos == x;
     }
 
     /// \brief Reports the minimum key in the trie.
-    uint64_t min() const {
+    key_t min() const {
         Node* node = m_root;
         while(!node->is_leaf()) {
             node = node->children[0];
@@ -490,7 +491,7 @@ public:
     }
 
     /// \brief Reports the maximum key in the trie.
-    uint64_t max() const {
+    key_t max() const {
         Node* node = m_root;
         while(!node->is_leaf()) {
             node = node->children[node->num_children - 1];
@@ -500,7 +501,7 @@ public:
 
     /// \brief Inserts the specified key.
     /// \param key the key to insert
-    void insert(const uint64_t key) {
+    void insert(const key_t key) {
         if(m_root->is_full()) {
             // root is full, split it up
             Node* new_root = new Node();
@@ -516,7 +517,7 @@ public:
     /// \brief Removes the specified key.
     /// \param key the key to remove
     /// \return whether the item was found and removed
-    bool remove(const uint64_t key) {
+    bool remove(const key_t key) {
         assert(m_size > 0);
         
         bool result = m_root->remove(key);

@@ -21,6 +21,23 @@ namespace internal {
 uint64_t pext(const uint64_t x, const uint64_t mask);
 uint64_t pcmpgtub(const uint64_t a, const uint64_t b);
 
+template<typename key_t>
+struct CLZ;
+
+template<>
+struct CLZ<uint32_t> {
+    static constexpr size_t clz(uint32_t x) {
+        return __builtin_clz(x);
+    }
+};
+
+template<>
+struct CLZ<uint64_t> {
+    static constexpr size_t clz(uint64_t x) {
+        return __builtin_clzll(x);
+    }
+};
+
 struct ExtResult {
     Result r;
     size_t j;
@@ -39,6 +56,9 @@ public:
     using matrix_t = uint64_t; // matrix of compressed keys
     
     static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
+    
+    static constexpr size_t m_key_bits = 8ULL * sizeof(key_t);
+    static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
 private:
     // compress a key using a mask (PEXT)
@@ -97,13 +117,13 @@ public:
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
-            const size_t j = __builtin_clzll(x ^ y);
+            const size_t j = CLZ<key_t>::clz(x ^ y);
             
             // depending on whether x < y, we will find the smallest or largest key below the candidate, respectively
             // computing both match subjects is faster than branching and deciding
             const size_t xj[] = {
-                x & (UINT64_MAX << (64ULL - j)),
-                x | (UINT64_MAX >> j)
+                x & (m_key_max << (m_key_bits - j)),
+                x | (m_key_max >> j)
             };
             
             const bool x_lt_y = x < y;
@@ -137,9 +157,9 @@ public:
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
-            const size_t j = __builtin_clzll(x ^ y);
-            const size_t i0 = match(x & (UINT64_MAX << (64ULL - j)), mask, branch, free);
-            const size_t i1 = match(x | (UINT64_MAX >> j), mask, branch, free);
+            const size_t j = CLZ<key_t>::clz(x ^ y);
+            const size_t i0 = match(x & (m_key_max << (m_key_bits - j)), mask, branch, free);
+            const size_t i1 = match(x | (m_key_max >> j), mask, branch, free);
             
             ExtResult xr;
             xr.j = j;
