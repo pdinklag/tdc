@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fusion_node_8.hpp"
+#include "fusion_node.hpp"
 
 #include <tdc/math/idiv.hpp>
 #include <tdc/math/ilog2.hpp>
@@ -28,11 +28,11 @@ protected:
 
     struct octree_level_t {
         size_t first_node;
-        std::vector<FusionNode8> nodes;
+        std::vector<FusionNode> nodes;
     };
 
     std::vector<octree_level_t> m_octree;
-    FusionNode8* m_root;
+    FusionNode* m_root;
     
     size_t m_octree_size_ub;
     size_t m_height;

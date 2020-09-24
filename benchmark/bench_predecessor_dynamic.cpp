@@ -16,7 +16,7 @@
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 
 #include <tdc/pred/dynamic/btree.hpp>
-#include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
+#include <tdc/pred/dynamic/btree/dynamic_fusion_node.hpp>
 #include <tdc/pred/dynamic/btree/sorted_array_node.hpp>
 
 #include <tdc/util/literals.hpp>
@@ -272,7 +272,7 @@ int main(int argc, char** argv) {
         options.perm_queries = random::Permutation(options.universe, options.seed ^ 0x1234ABCD);
     }
     bench("fusion_btree",
-        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode8, 9>(); },
+        [](const uint64_t){ return pred::dynamic::BTree<pred::dynamic::DynamicFusionNode, 9>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },

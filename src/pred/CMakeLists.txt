@@ -1,12 +1,12 @@
 add_library(tdc-pred
     binary_search.cpp
     binary_search_hybrid.cpp
-    fusion_node_8.cpp
+    fusion_node.cpp
     fusion_node_internals.cpp
     index.cpp
     octrie.cpp
     octrie_top.cpp
-    dynamic/dynamic_fusion_node_8.cpp
+    dynamic/dynamic_fusion_node.cpp
     dynamic/btree.cpp
     dynamic/dynamic_rankselect.cpp)
 

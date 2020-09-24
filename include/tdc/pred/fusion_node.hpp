@@ -12,7 +12,7 @@ namespace tdc {
 namespace pred {
 
 /// \brief A compressed trie that can solve predecessor queries for up to 8 64-bit keys using only 128 bits.
-class FusionNode8 {
+class FusionNode {
 private:
     using Internals = internal::FusionNodeInternals<uint64_t, 8>;
     
@@ -21,7 +21,7 @@ private:
 
 public:
     /// \brief Constructs an empty compressed trie.
-    FusionNode8();
+    FusionNode();
 
     /// \brief Constructs a compressed trie for the given keys.
     ///
@@ -31,7 +31,7 @@ public:
     ///
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
-    FusionNode8(const uint64_t* keys, const size_t num);
+    FusionNode(const uint64_t* keys, const size_t num);
     
     /// \brief Constructs a compressed trie for the given keys.
     ///
@@ -41,7 +41,7 @@ public:
     ///
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
-    FusionNode8(const SkipAccessor<uint64_t>& keys, const size_t num);
+    FusionNode(const SkipAccessor<uint64_t>& keys, const size_t num);
 
     /// \brief Finds the rank of the predecessor of the specified key in the compressed trie.
     /// \param keys the keys that the compressed trie was constructed for

@@ -6,18 +6,17 @@
 constexpr size_t NUM_DEBUG_BITS = 24;
 
 #include <tdc/math/bit_mask.hpp>
-#include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
-#include <tdc/pred/util/packed_byte_array_8.hpp>
+#include <tdc/pred/dynamic/btree/dynamic_fusion_node.hpp>
 #include <tdc/util/likely.hpp>
 #include <tdc/util/rank_u64.hpp>
 #include <tdc/util/select_u64.hpp>
 
 using namespace tdc::pred::dynamic;
 
-DynamicFusionNode8::DynamicFusionNode8() : m_size(0) {
+DynamicFusionNode::DynamicFusionNode() : m_size(0) {
 }
 
-size_t DynamicFusionNode8::find(const uint64_t key) const {
+size_t DynamicFusionNode::find(const uint64_t key) const {
     // FIXME: naive, use data structure
     for(size_t i = 0; i < size(); i++) {
         if(m_key[i] == key) return i;
@@ -25,12 +24,12 @@ size_t DynamicFusionNode8::find(const uint64_t key) const {
     return SIZE_MAX;
 }
 
-uint64_t DynamicFusionNode8::select(const size_t i) const {
+uint64_t DynamicFusionNode::select(const size_t i) const {
     assert(i < size());
     return m_key[i];
 }
 
-Result DynamicFusionNode8::predecessor(const uint64_t x) const {
+Result DynamicFusionNode::predecessor(const uint64_t x) const {
     const size_t sz = size();
     if(tdc_unlikely(sz == 0)) {
         return { false, 0 };
@@ -39,7 +38,7 @@ Result DynamicFusionNode8::predecessor(const uint64_t x) const {
     }
 }
 
-void DynamicFusionNode8::insert(const uint64_t key) {
+void DynamicFusionNode::insert(const uint64_t key) {
     const size_t sz = size();
     assert(sz < 8);
 
@@ -179,7 +178,7 @@ void DynamicFusionNode8::insert(const uint64_t key) {
     //~ }
 }
 
-bool DynamicFusionNode8::remove(const uint64_t key) {
+bool DynamicFusionNode::remove(const uint64_t key) {
     const size_t sz = size();
     assert(sz > 0);
 
@@ -312,8 +311,8 @@ bool DynamicFusionNode8::remove(const uint64_t key) {
     return true;
 }
 
-void DynamicFusionNode8::print() const {
-    std::cout << "DynamicFusionNode8 (size=" << size() << "):" << std::endl;
+void DynamicFusionNode::print() const {
+    std::cout << "DynamicFusionNode (size=" << size() << "):" << std::endl;
 
     for(size_t i = 0; i < size(); i++) {
         std::cout << "\ti=" << i << " -> keys[i]=" << m_key[i] << std::endl;

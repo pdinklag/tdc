@@ -13,7 +13,7 @@ namespace dynamic {
 
 using Result = ::tdc::pred::Result;
 
-class DynamicFusionNode8 {
+class DynamicFusionNode {
 private:
     using Internals = tdc::pred::internal::FusionNodeInternals<uint64_t, 8>;
 
@@ -26,13 +26,13 @@ private:
 
 public:
     /// \brief Constructs an empty fusion node.
-    DynamicFusionNode8();
+    DynamicFusionNode();
 
-    DynamicFusionNode8(const DynamicFusionNode8&) = default;
-    DynamicFusionNode8(DynamicFusionNode8&&) = default;
+    DynamicFusionNode(const DynamicFusionNode&) = default;
+    DynamicFusionNode(DynamicFusionNode&&) = default;
 
-    DynamicFusionNode8& operator=(const DynamicFusionNode8&) = default;
-    DynamicFusionNode8& operator=(DynamicFusionNode8&&) = default;
+    DynamicFusionNode& operator=(const DynamicFusionNode&) = default;
+    DynamicFusionNode& operator=(DynamicFusionNode&&) = default;
 
     /// \brief Selects the key with the given rank.
     /// \param i the rank in question
@@ -66,6 +66,6 @@ public:
     void print() const;
 } __attribute__((__packed__));
 
-static_assert(sizeof(DynamicFusionNode8) == 89);
+static_assert(sizeof(DynamicFusionNode) == 89);
 
 }}} // namespace tdc::pred::dynamic
