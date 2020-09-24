@@ -10,7 +10,8 @@ add_library(tdc-pred
     dynamic/btree.cpp
     dynamic/dynamic_rankselect.cpp)
 
-target_compile_options(tdc-pred PUBLIC -mbmi2 -mlzcnt -mpopcnt)
+target_compile_options(tdc-pred PUBLIC -mlzcnt -mpopcnt)
+target_link_libraries(tdc-pred tdc-intrisics)
 
 if(PLADS_FOUND)
     target_include_directories(tdc-pred PUBLIC ${PLADS_INCLUDE_DIRS})

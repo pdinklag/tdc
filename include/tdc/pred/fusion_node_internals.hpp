@@ -6,6 +6,8 @@
 #include <cstring>
 #include <tuple>
 
+#include <tdc/intrisics/parallel_bits.hpp>
+#include <tdc/intrisics/parallel_compare.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/assert.hpp>
@@ -33,7 +35,7 @@ template<> class FusionNodeInternals<8> {
 private:
     // compress a key using a mask (PEXT)
     static uint64_t compress(const uint64_t key, const uint64_t& mask) {
-        return pext(key, mask);
+        return intrisics::pext(key, mask);
     }
 
     // repeat a byte eight times into a 64-bit word
@@ -46,7 +48,7 @@ private:
     static size_t rank(const uint64_t cx_repeat, const uint64_t array) {
         // compare it against the given array of 8 keys (in parallel)
 
-        const uint64_t cmp = pcmpgtub(array, cx_repeat);
+        const uint64_t cmp = intrisics::pcmpgtub(array, cx_repeat);
         
         // find the position of the first key greater than the compressed key
         // this is as easy as counting the trailing zeroes, of which there are a multiple of 8
