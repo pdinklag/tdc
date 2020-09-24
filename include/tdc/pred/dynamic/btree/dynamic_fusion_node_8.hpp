@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/util/skip_accessor.hpp>
 
@@ -14,8 +15,11 @@ using Result = ::tdc::pred::Result;
 
 class DynamicFusionNode8 {
 private:
+    using Internals = tdc::pred::internal::FusionNodeInternals<8>;
+
     uint64_t m_key[8];
-    uint64_t m_mask, m_branch, m_free;
+    uint64_t m_mask;
+    Internals::matrix_t m_branch, m_free;
     uint8_t  m_size;
 
     size_t find(const uint64_t key) const;

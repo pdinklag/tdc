@@ -6,7 +6,6 @@
 constexpr size_t NUM_DEBUG_BITS = 24;
 
 #include <tdc/math/bit_mask.hpp>
-#include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/dynamic/btree/dynamic_fusion_node_8.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/likely.hpp>
@@ -14,8 +13,6 @@ constexpr size_t NUM_DEBUG_BITS = 24;
 #include <tdc/util/select_u64.hpp>
 
 using namespace tdc::pred::dynamic;
-
-using Internals = tdc::pred::internal::FusionNodeInternals<8>;
 
 DynamicFusionNode8::DynamicFusionNode8() : m_size(0) {
 }

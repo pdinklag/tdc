@@ -32,6 +32,10 @@ template<size_t m_max_keys>
 class FusionNodeInternals;
 
 template<> class FusionNodeInternals<8> {
+public:
+    using ckey_t = uint8_t; // compressed key
+    using matrix_t = uint64_t; // matrix of compressed keys
+
 private:
     // compress a key using a mask (PEXT)
     static uint64_t compress(const uint64_t key, const uint64_t& mask) {
@@ -39,16 +43,16 @@ private:
     }
 
     // repeat a byte eight times into a 64-bit word
-    static uint64_t repeat(const uint8_t x) {
-        static constexpr uint64_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
-        return uint64_t(x) * REPEAT_MUL;
+    static matrix_t repeat(const ckey_t x) {
+        static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
+        return matrix_t(x) * REPEAT_MUL;
     }
 
     // finds the rank of a repeated value in a packed array of eight bytes
-    static size_t rank(const uint64_t cx_repeat, const uint64_t array) {
+    static size_t rank(const matrix_t cx_repeat, const matrix_t array) {
         // compare it against the given array of 8 keys (in parallel)
 
-        const uint64_t cmp = intrisics::pcmpgtub(array, cx_repeat);
+        const auto cmp = intrisics::pcmpgtub(array, cx_repeat);
         
         // find the position of the first key greater than the compressed key
         // this is as easy as counting the trailing zeroes, of which there are a multiple of 8
@@ -60,13 +64,13 @@ private:
 
 public:
     // the match operation from Patrascu & Thorup, 2014
-    static size_t match(const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free) {
+    static size_t match(const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
         // compress the key and repeat it eight times
-        const uint8_t cx = compress(x, mask);
-        const uint64_t cx_repeat = repeat(cx);
+        const ckey_t cx = compress(x, mask);
+        const matrix_t cx_repeat = repeat(cx);
         
         // construct our matching array by replacing all dontcares by the corresponding bits of the compressed key
-        const uint64_t match_array = branch | (cx_repeat & free);
+        const auto match_array = branch | (cx_repeat & free);
         
         // now find the rank of the key in that array
         return rank(cx_repeat, match_array);
@@ -74,7 +78,7 @@ public:
 
     // predecessor search
     template<typename array_t>
-    static Result predecessor(const array_t& keys, const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free) {
+    static Result predecessor(const array_t& keys, const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
@@ -114,7 +118,7 @@ public:
     
     // predecessor search, extended result
     template<typename array_t>
-    static ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const uint64_t& mask, const uint64_t& branch, const uint64_t& free) {
+    static ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
@@ -146,7 +150,7 @@ public:
 
     // constructs a fusion node for eight keys
     template<typename array_t>
-    static std::tuple<uint64_t, uint64_t, uint64_t> construct(const array_t& keys, const size_t num)
+    static std::tuple<uint64_t, matrix_t, matrix_t> construct(const array_t& keys, const size_t num)
     {
         // a very simple trie data structure
         struct trie_node {

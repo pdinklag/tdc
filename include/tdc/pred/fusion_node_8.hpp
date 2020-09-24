@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
+
+#include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/util/skip_accessor.hpp>
 
 #include "result.hpp"
@@ -12,7 +14,10 @@ namespace pred {
 /// \brief A compressed trie that can solve predecessor queries for up to 8 64-bit keys using only 128 bits.
 class FusionNode8 {
 private:
-    uint64_t m_mask, m_branch, m_free;
+    using Internals = internal::FusionNodeInternals<8>;
+    
+    uint64_t m_mask;
+    Internals::matrix_t m_branch, m_free;
 
 public:
     /// \brief Constructs an empty compressed trie.

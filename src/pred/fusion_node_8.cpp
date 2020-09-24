@@ -1,11 +1,8 @@
 #include <iostream> // FIXME: DEBUG
 
-#include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/fusion_node_8.hpp>
 
 using namespace tdc::pred;
-
-using Internals = internal::FusionNodeInternals<8>;
 
 FusionNode8::FusionNode8() : m_mask(0) {
 }
