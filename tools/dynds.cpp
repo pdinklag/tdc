@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
     std::uniform_int_distribution<uint64_t> random_from_universe(0ULL, u);
     
     // working set
-    pred::dynamic::BTree<pred::dynamic::DynamicFusionNode, 9> cur_set;
+    pred::dynamic::BTree<pred::dynamic::DynamicFusionNode<>, 9> cur_set;
     uint64_t* cur_arr = new uint64_t[max_num];
     
     uint64_t cur_num = 0;

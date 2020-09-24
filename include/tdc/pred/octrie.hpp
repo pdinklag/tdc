@@ -28,11 +28,11 @@ protected:
 
     struct octree_level_t {
         size_t first_node;
-        std::vector<FusionNode> nodes;
+        std::vector<FusionNode<>> nodes;
     };
 
     std::vector<octree_level_t> m_octree;
-    FusionNode* m_root;
+    FusionNode<>* m_root;
     
     size_t m_octree_size_ub;
     size_t m_height;

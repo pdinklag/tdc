@@ -37,6 +37,8 @@ public:
     using mask_t = key_t; // key compression mask
     using ckey_t = uint8_t; // compressed key
     using matrix_t = uint64_t; // matrix of compressed keys
+    
+    static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
 
 private:
     // compress a key using a mask (PEXT)
@@ -46,7 +48,6 @@ private:
 
     // repeat a byte eight times into a 64-bit word
     static matrix_t repeat(const ckey_t x) {
-        static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
         return matrix_t(x) * REPEAT_MUL;
     }
 
