@@ -28,17 +28,19 @@ struct ExtResult {
     size_t i_matched;
 };
 
-template<size_t m_max_keys>
+template<typename key_t, size_t m_max_keys>
 class FusionNodeInternals;
 
-template<> class FusionNodeInternals<8> {
+template<typename key_t>
+class FusionNodeInternals<key_t, 8> {
 public:
+    using mask_t = key_t; // key compression mask
     using ckey_t = uint8_t; // compressed key
     using matrix_t = uint64_t; // matrix of compressed keys
 
 private:
     // compress a key using a mask (PEXT)
-    static uint64_t compress(const uint64_t key, const uint64_t& mask) {
+    static ckey_t compress(const key_t key, const mask_t& mask) {
         return intrisics::pext(key, mask);
     }
 
@@ -64,7 +66,7 @@ private:
 
 public:
     // the match operation from Patrascu & Thorup, 2014
-    static size_t match(const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static size_t match(const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
         // compress the key and repeat it eight times
         const ckey_t cx = compress(x, mask);
         const matrix_t cx_repeat = repeat(cx);
@@ -78,13 +80,13 @@ public:
 
     // predecessor search
     template<typename array_t>
-    static Result predecessor(const array_t& keys, const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static Result predecessor(const array_t& keys, const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
         // std::cout << "\ti=" << i << std::endl;
         // lookup the key at the found position
-        const uint64_t y = keys[i];
+        const key_t y = keys[i];
         // std::cout << "\ty=" << y << std::endl;
         
         if(x == y) {
@@ -118,13 +120,13 @@ public:
     
     // predecessor search, extended result
     template<typename array_t>
-    static ExtResult predecessor_ext(const array_t& keys, const uint64_t x, const uint64_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static ExtResult predecessor_ext(const array_t& keys, const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
         // std::cout << "\ti=" << i << std::endl;
         // lookup the key at the found position
-        const uint64_t y = keys[i];
+        const key_t y = keys[i];
         // std::cout << "\ty=" << y << std::endl;
         
         if(x == y) {
@@ -150,7 +152,7 @@ public:
 
     // constructs a fusion node for eight keys
     template<typename array_t>
-    static std::tuple<uint64_t, matrix_t, matrix_t> construct(const array_t& keys, const size_t num)
+    static std::tuple<mask_t, matrix_t, matrix_t> construct(const array_t& keys, const size_t num)
     {
         // a very simple trie data structure
         struct trie_node {
@@ -173,7 +175,7 @@ public:
         uint16_t next_node = 1;
         const uint16_t root = 0;
         
-        size_t m_mask = 0;
+        mask_t m_mask = 0;
         PackedByteArray8 m_branch, m_free;
         
         for(size_t i = 0; i < num; i++) {
@@ -207,7 +209,7 @@ public:
         {
             size_t i = 0;
             for(; i < num; i++) {
-                const uint64_t key = keys[i];
+                const key_t key = keys[i];
                 uint64_t extract = 0x8000000000000000ULL; // bit extraction mask, which we will be shifting to the right bit by bit
                 uint16_t v = root; // starting at the root node
                 

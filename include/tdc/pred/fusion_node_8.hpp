@@ -14,9 +14,9 @@ namespace pred {
 /// \brief A compressed trie that can solve predecessor queries for up to 8 64-bit keys using only 128 bits.
 class FusionNode8 {
 private:
-    using Internals = internal::FusionNodeInternals<8>;
+    using Internals = internal::FusionNodeInternals<uint64_t, 8>;
     
-    uint64_t m_mask;
+    Internals::mask_t   m_mask;
     Internals::matrix_t m_branch, m_free;
 
 public:

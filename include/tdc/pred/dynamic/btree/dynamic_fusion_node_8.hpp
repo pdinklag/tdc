@@ -15,10 +15,10 @@ using Result = ::tdc::pred::Result;
 
 class DynamicFusionNode8 {
 private:
-    using Internals = tdc::pred::internal::FusionNodeInternals<8>;
+    using Internals = tdc::pred::internal::FusionNodeInternals<uint64_t, 8>;
 
     uint64_t m_key[8];
-    uint64_t m_mask;
+    Internals::mask_t   m_mask;
     Internals::matrix_t m_branch, m_free;
     uint8_t  m_size;
 
