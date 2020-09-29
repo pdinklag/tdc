@@ -6,5 +6,5 @@ using namespace tdc::pred::dynamic;
 
 // instances
 class BTree<uint64_t, 9, DynamicFusionNode<uint64_t, 8>>;
-class BTree<uint64_t, 9, SortedArrayNode<8>>;
-class BTree<uint64_t, 65, SortedArrayNode<64>>;
+class BTree<uint64_t, 9, SortedArrayNode<uint64_t, 8>>;
+class BTree<uint64_t, 65, SortedArrayNode<uint64_t, 64>>;
