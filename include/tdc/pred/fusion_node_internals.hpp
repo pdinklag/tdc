@@ -8,6 +8,7 @@
 
 #include <tdc/intrisics/parallel_bits.hpp>
 #include <tdc/intrisics/parallel_compare.hpp>
+#include <tdc/intrisics/lzcnt.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/assert.hpp>
@@ -21,23 +22,6 @@ namespace internal {
 
 uint64_t pext(const uint64_t x, const uint64_t mask);
 uint64_t pcmpgtub(const uint64_t a, const uint64_t b);
-
-template<typename key_t>
-struct CLZ;
-
-template<>
-struct CLZ<uint32_t> {
-    static constexpr size_t clz(uint32_t x) {
-        return __builtin_clz(x);
-    }
-};
-
-template<>
-struct CLZ<uint64_t> {
-    static constexpr size_t clz(uint64_t x) {
-        return __builtin_clzll(x);
-    }
-};
 
 struct ExtResult {
     Result r;
@@ -118,7 +102,7 @@ public:
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
-            const size_t j = CLZ<key_t>::clz(x ^ y);
+            const size_t j = intrisics::lzcnt<key_t>(x ^ y);
             
             // depending on whether x < y, we will find the smallest or largest key below the candidate, respectively
             // computing both match subjects is faster than branching and deciding
@@ -158,7 +142,7 @@ public:
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
-            const size_t j = CLZ<key_t>::clz(x ^ y);
+            const size_t j = intrisics::lzcnt<key_t>(x ^ y);
             const size_t i0 = match(x & (m_key_max << (m_key_bits - j)), mask, branch, free);
             const size_t i1 = match(x | (m_key_max >> j), mask, branch, free);
             
