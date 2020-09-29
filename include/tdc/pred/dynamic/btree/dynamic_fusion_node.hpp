@@ -31,8 +31,8 @@ private:
     static constexpr size_t NUM_DEBUG_BITS = 24; // FIXME: Debug
 
     static_assert(m_max_keys < 256);
-    static constexpr size_t m_key_bits = 8ULL * sizeof(key_t);
-    static constexpr size_t m_key_msb = m_key_bits - 1;
+    static constexpr size_t m_key_bits = int_type_traits<key_t>::num_bits();
+    static constexpr size_t m_key_msb = int_type_traits<key_t>::msb_pos();
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
     using Internals = tdc::pred::internal::FusionNodeInternals<key_t, m_max_keys>;

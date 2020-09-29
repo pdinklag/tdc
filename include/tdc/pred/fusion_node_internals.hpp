@@ -11,6 +11,7 @@
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/assert.hpp>
+#include <tdc/util/int_type_traits.hpp>
 
 /// \cond INTERNAL
 
@@ -57,7 +58,7 @@ public:
     
     static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
     
-    static constexpr size_t m_key_bits = 8ULL * sizeof(key_t);
+    static constexpr size_t m_key_bits = int_type_traits<key_t>::num_bits();
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
 private:
@@ -172,6 +173,7 @@ public:
     }
 
     // constructs a fusion node for eight keys
+    // currently supports 64-bit keys ONLY
     template<typename array_t>
     static std::tuple<mask_t, matrix_t, matrix_t> construct(const array_t& keys, const size_t num)
     {
