@@ -14,6 +14,7 @@
 #include <tdc/pred/dynamic/dynamic_index_map.hpp>
 #include <tdc/pred/dynamic/dynamic_pred_bv.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
+#include <tdc/pred/dynamic/yfast.hpp>
 
 #include <tdc/pred/dynamic/btree.hpp>
 #include <tdc/pred/dynamic/btree/dynamic_fusion_node.hpp>
@@ -321,6 +322,13 @@ int main(int argc, char** argv) {
     
     bench("index_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
+    bench("yfast_trie",
+        [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, 64, 10>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const uint64_t x){ ds.insert(x); },
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
