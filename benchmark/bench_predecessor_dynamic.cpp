@@ -383,6 +383,7 @@ int main(int argc, char** argv) {
         [](auto& set, const uint64_t x){ set.erase(x); }
     );
     // Baseline for dense keys
+    /*
     bench("pred_bv",
         [](const uint64_t){ return pred::dynamic::DynPredBV(); },
         [](const auto& ds){ return ds.size(); },
@@ -390,6 +391,7 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
+    */
         
 #ifdef PLADS_FOUND
     // TOO SLOW
