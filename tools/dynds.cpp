@@ -3,7 +3,7 @@
 #include <set>
 
 #include <tdc/pred/dynamic/btree.hpp>
-#include <tdc/pred/dynamic/btree/dynamic_fusion_node.hpp>
+#include <tdc/pred/dynamic/btree/sorted_array_node.hpp>
 #include <tdc/stat/time.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
 
@@ -24,8 +24,11 @@ int main(int argc, char** argv) {
     uint64_t u = 32;
     cp.add_bytes('u', "universe", u, "The base-2 logarithm of the universe to draw numbers from (default: 32).");
 
-    size_t seed = stat::time_nanos();
-    cp.add_size_t('s', "seed", seed, "The seed for random generation (default: timestamp).");
+    size_t key_seed = stat::time_nanos();
+    cp.add_size_t('s', "key-seed", key_seed, "The seed for random key generation (default: timestamp).");
+
+    size_t op_seed = stat::time_nanos();
+    cp.add_size_t('t', "op-seed", op_seed, "The seed for random operation generation (default: timestamp).");
     
     float p_base = 0.3f;
     cp.add_float('p', "p-base", p_base, "The base probability for inserts/deletes in the corresponding phase (default: 0.3)");
@@ -69,14 +72,14 @@ int main(int argc, char** argv) {
     }
 
     // random generator
-    std::mt19937 gen_op(seed);
+    std::mt19937 gen_op(op_seed);
     std::uniform_real_distribution<float>   random_op(0.0f, 1.0f);
     
-    std::mt19937 gen_val(seed);
+    std::mt19937 gen_val(key_seed);
     std::uniform_int_distribution<uint64_t> random_from_universe(0ULL, u);
     
     // working set
-    pred::dynamic::BTree<uint64_t, 9, pred::dynamic::DynamicFusionNode<>> cur_set;
+    pred::dynamic::BTree<uint64_t, 65, pred::dynamic::SortedArrayNode<uint64_t, 64>> cur_set;
     uint64_t* cur_arr = new uint64_t[max_num];
     
     uint64_t cur_num = 0;
@@ -219,7 +222,7 @@ int main(int argc, char** argv) {
         }
     }
     
-    std::cerr << "generated " << count_total << " operations (seed: " << seed << ", " << failed_inserts << " duplicates prevented): "
+    std::cerr << "generated " << count_total << " operations (key seed: " << key_seed << ", op seed: " << op_seed << ", " << failed_inserts << " duplicates prevented): "
         << count_insert << " inserts, "
         << count_delete << " deletes and "
         << count_query << " queries"
