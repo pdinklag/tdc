@@ -256,7 +256,7 @@ public:
         
         //
         if(sz > 2) {
-            // find least significant bit (in compressed key) of key that is not a wildcard
+            // find least significant distinguishing bit that is not a wildcard
             // to do that, check the number of trailing ones in free
             const ckey_t key_free = m_free >> (i * m_ckey_bits);
             const ckey_t key_branch = m_branch >> (i * m_ckey_bits);
