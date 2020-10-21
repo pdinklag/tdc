@@ -112,9 +112,9 @@ struct yfast_bucket {
 
   //returns predecessor in bucket. 
   //it is required that m_min <= key  
-  Result predecessor(uint64_t key) const {
+  KeyResult<uint64_t> predecessor(uint64_t key) const {
     if(key < m_min) {
-      return Result{false, 0};
+      return {false, 0};
     }
     uint64_t max_pred = m_min;
     for (size_t i = 0; i < size(); ++i) {
@@ -122,7 +122,7 @@ struct yfast_bucket {
         max_pred = std::max(m_elem[i], max_pred);
       }
     }
-    return Result{true, max_pred};
+    return {true, max_pred};
   }
 };  // namespace dynamic
 
@@ -357,9 +357,9 @@ class YFastTrie {
     }
   }
 
-  Result predecessor(uint64_t key) const {
+  KeyResult<uint64_t> predecessor(uint64_t key) const {
     if (m_size == 0) {
-      return Result{false, 0};
+      return {false, 0};
     }    
     return pred_bucket(key)->predecessor(key);
   }
@@ -381,8 +381,8 @@ class YFastTrie {
     std::cout << *this;
 
     for (size_t i = 0; i < (1ULL << t_key_width); ++i) {
-      Result r = predecessor(i);
-      std::cout << i << "->" << r.exists << "-" << r.pos << " ";
+      auto r = predecessor(i);
+      std::cout << i << "->" << r.exists << "-" << r.key << " ";
       std::cout << std::endl;
     }
 

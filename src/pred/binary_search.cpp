@@ -11,9 +11,9 @@ BinarySearch::BinarySearch(const uint64_t* keys, const size_t num) {
     m_max = keys[num-1];
 }
 
-Result BinarySearch::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
-    if(tdc_unlikely(x < m_min))  return Result { false, 0 };
-    if(tdc_unlikely(x >= m_max)) return Result { true, num-1 };
+PosResult BinarySearch::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
+    if(tdc_unlikely(x < m_min))  return PosResult { false, 0 };
+    if(tdc_unlikely(x >= m_max)) return PosResult { true, num-1 };
 
     size_t p = 0;
     size_t q = num - 1;
@@ -40,5 +40,5 @@ Result BinarySearch::predecessor(const uint64_t* keys, const size_t num, const u
         q = (gt_mask & m) | (le_mask & q);
     }
 
-    return Result { true, p };
+    return PosResult { true, p };
 }

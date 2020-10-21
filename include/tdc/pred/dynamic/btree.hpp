@@ -446,9 +446,9 @@ public:
 
     /// \brief Finds the \em value of the predecessor of the specified key in the trie.
     /// \param x the key in question
-    Result predecessor(const key_t x) const {
+    KeyResult<key_t> predecessor(const key_t x) const {
         Node* node = m_root;
-        Result r;
+        PosResult r;
         
         bool exists = false;
         key_t value = std::numeric_limits<key_t>::max();
@@ -478,7 +478,7 @@ public:
     /// \param x the key in question
     inline bool contains(const key_t x) const {
         auto r = predecessor(x);
-        return r.exists && r.pos == x;
+        return r.exists && r.key == x;
     }
 
     /// \brief Reports the minimum key in the trie.

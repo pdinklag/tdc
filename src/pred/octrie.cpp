@@ -59,14 +59,14 @@ Octrie::Octrie(const uint64_t* keys, const size_t num, const size_t max_height) 
 Octrie::Octrie(const uint64_t* keys, const size_t num) : Octrie(keys, num, log8_ceil(num)) {
 }
 
-Result Octrie::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
+PosResult Octrie::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
     // std::cout << "predecessor(" << x << ")" << std::endl;
     
     size_t k = eight_to_the(m_full_octree_height - 1); // sample distance
     size_t i = 0; // sample offset
     
     // first, check if there is a predecessor in the root node
-    Result r = m_root->predecessor(SkipAccessor<uint64_t>(keys, k, i), x);
+    PosResult r = m_root->predecessor(SkipAccessor<uint64_t>(keys, k, i), x);
     if(!r.exists) return r; // if not, there is no predecessor at all
     
     // std::cout << "root predecessor is " << r.pos << std::endl;
@@ -88,5 +88,5 @@ Result Octrie::predecessor(const uint64_t* keys, const size_t num, const uint64_
     }
     
     // compute position in original input
-    return Result { true, node - m_octree_size_ub };
+    return PosResult { true, node - m_octree_size_ub };
 }

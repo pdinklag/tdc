@@ -7,9 +7,9 @@ using namespace tdc::pred::dynamic;
 DynamicRankSelect::DynamicRankSelect() : m_size(0) {
 }
 
-tdc::pred::Result DynamicRankSelect::predecessor(const uint64_t x) const {
+tdc::pred::KeyResult<uint64_t> DynamicRankSelect::predecessor(const uint64_t x) const {
     const uint64_t rank = m_dbv.rank<1>(x);
-    return Result { rank > 0, m_dbv.select<1>(rank) };
+    return { rank > 0, m_dbv.select<1>(rank) };
 }
 
 void DynamicRankSelect::insert(const uint64_t key) {

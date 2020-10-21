@@ -20,7 +20,7 @@ namespace tdc {
 namespace pred {
 namespace dynamic {
 
-using Result = ::tdc::pred::Result;
+using PosResult = ::tdc::pred::PosResult;
 
 /// \brief A dynamic fusion node for B-trees as per Patrascu & Thorup, 2014.
 /// \tparam the key type
@@ -82,7 +82,7 @@ public:
     
     /// \brief Finds the rank of the predecessor of the specified key in the node.
     /// \param x the key in question
-    Result predecessor(const key_t x) const {
+    PosResult predecessor(const key_t x) const {
         const size_t sz = size();
         if(tdc_unlikely(sz == 0)) {
             return { false, 0 };

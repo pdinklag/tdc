@@ -54,9 +54,9 @@ class DynPredBV {
 
     if (key == m_max) {
       m_max = predecessor(key);
-      Result pred = predecessor(key);
+      auto pred = predecessor(key);
       assert(pred.exists);
-      m_bv.resize(pred.pos);
+      m_bv.resize(pred.key);
       m_bv.shrink_to_fit();
     }
 
@@ -65,37 +65,37 @@ class DynPredBV {
     }
   }
 
-  Result predecessor(uint64_t key) const {
+  KeyResult<uint64_t> predecessor(uint64_t key) const {
     if (tdc_unlikely(m_size == 0)) {
-      return Result{false, 0};
+      return {false, 0};
     }
     if (tdc_unlikely(key < m_min)) {
-      return Result{false, 1};
+      return {false, 1};
     }
     if (tdc_unlikely(key >= m_max)) {
-      return Result{true, m_max};
+      return {true, m_max};
     }
 
     while (!m_bv[key]) {
       --key;
     }
-    return Result{true, key};
+    return {true, key};
   }
 
-  Result successor(uint64_t key) const {
+  KeyResult<uint64_t> successor(uint64_t key) const {
     if (tdc_unlikely(m_size == 0)) {
-      return Result{false, 0};
+      return {false, 0};
     }
     if (tdc_unlikely(key > m_max)) {
-      return Result{false, 1};
+      return {false, 1};
     }
     if (tdc_unlikely(key <= m_min)) {
-      return Result{true, m_min};
+      return {true, m_min};
     }
     while (!m_bv[key]) {
       ++key;
     }
-    return Result{true, key};
+    return {true, key};
   }
 };
 }  // namespace dynamic

@@ -36,7 +36,7 @@ private:
         T* p = new T[num];
         
         if(initialize) {
-            memset(p, T(), num * s_item_size);
+            memset(p, 0, num * s_item_size);
         }
         
         return std::unique_ptr<T[]>(p);
@@ -45,7 +45,7 @@ private:
     size_t m_size;
     std::unique_ptr<T[]> m_data;
 
-    uint64_t get(const size_t i) const {
+    T get(const size_t i) const {
         return m_data[i];
     }
     

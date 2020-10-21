@@ -55,16 +55,16 @@ Index::Index(const uint64_t* keys, const size_t num, const size_t lo_bits) : m_l
     m_lo_pred = BinarySearchHybrid(keys, num);
 }
 
-Result Index::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
-    if(tdc_unlikely(x < m_min))  return Result { false, 0 };
-    if(tdc_unlikely(x >= m_max)) return Result { true, num - 1 };
+PosResult Index::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
+    if(tdc_unlikely(x < m_min))  return PosResult { false, 0 };
+    if(tdc_unlikely(x >= m_max)) return PosResult { true, num - 1 };
 
     const uint64_t key = hi(x) - m_key_min;
     assert(key + 1 < m_hi_idx.size());
     const size_t q = m_hi_idx[key+1];
 
     if(x == keys[q]) {
-        return Result { true, q };
+        return PosResult { true, q };
     } else {
         const size_t p = m_hi_idx[key];
         return m_lo_pred.predecessor_seeded(keys, p, q, x);

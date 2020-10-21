@@ -24,7 +24,7 @@ public:
     
     /// \brief Finds the \em value of the predecessor of the specified key in the trie.
     /// \param x the key in question
-    Result predecessor(const uint64_t x) const;
+    KeyResult<uint64_t> predecessor(const uint64_t x) const;
 
     /// \brief Inserts the specified key.
     /// \param key the key to insert

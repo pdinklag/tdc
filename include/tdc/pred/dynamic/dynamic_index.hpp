@@ -64,7 +64,7 @@ class DynIndex {
   }
 
   void insert(const uint64_t key) {
-    assert(!predecessor(key).exists || predecessor(key).pos != key);
+    assert(!predecessor(key).exists || predecessor(key).key != key);
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
     bucket *new_b;
@@ -94,7 +94,7 @@ class DynIndex {
         m_min = std::min(key, m_min);
         m_max = std::max(key, m_max);
         ++m_size;
-        assert(predecessor(key).pos == key);
+        assert(predecessor(key).key == key);
         return;
       } else {
         // if exact bucket does not exist
@@ -119,11 +119,11 @@ class DynIndex {
         }
       }
     }
-    assert(predecessor(key).pos == key);
+    assert(predecessor(key).key == key);
   }
 
   void remove(uint64_t key) {
-    assert(predecessor(key).pos == key);
+    assert(predecessor(key).key == key);
     --m_size;
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
@@ -174,13 +174,13 @@ class DynIndex {
   /// \param keys the keys that the compressed trie was constructed for
   /// \param num the number of keys
   /// \param x the key in question
-  Result predecessor(const uint64_t x) const {
+  KeyResult<uint64_t> predecessor(const uint64_t x) const {
     if (tdc_unlikely(m_size == 0))
-      return Result{false, 1};
+      return {false, 1};
     if (tdc_unlikely(x < m_min))
-      return Result{false, 0};
+      return {false, 0};
     if (tdc_unlikely(x >= m_max))
-      return Result{true, m_max};
+      return {true, m_max};
     return {true, m_top[prefix(x)]->predecessor(x)};
   }
 };

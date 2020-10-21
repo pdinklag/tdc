@@ -18,7 +18,8 @@ public:
     /// \param value the value to encode, must be less than <tt>UINT64_MAX-1</tt>
     template<typename T>
     void encode(BitOStream& out, T value) {
-        out.write_delta(value + T(1));
+        ++value;
+        out.write_delta(value);
     }
     
     /// \brief Decodes an integer from the given input stream.
@@ -26,7 +27,9 @@ public:
     /// \param in the input stream to read from
     template<typename T = uint64_t>
     T decode(BitIStream& in) {
-        return in.template read_delta<T>() - T(1);
+        T value = in.template read_delta<T>();
+        --value;
+        return value;
     }
 };
 

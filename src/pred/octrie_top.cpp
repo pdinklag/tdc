@@ -16,7 +16,7 @@ OctrieTop::OctrieTop(const uint64_t* keys, const size_t num, const size_t cut_le
     m_search = BinarySearchHybrid(keys, num);
 }
 
-Result OctrieTop::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
+PosResult OctrieTop::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
     auto r = Octrie::predecessor(keys, num, x);
     if(!r.exists) {
         return r;

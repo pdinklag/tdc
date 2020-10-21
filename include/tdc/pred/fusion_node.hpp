@@ -63,14 +63,14 @@ public:
     /// \brief Finds the rank of the predecessor of the specified key in the compressed trie.
     /// \param keys the keys that the compressed trie was constructed for
     /// \param x the key in question
-    Result predecessor(const key_t* keys, const key_t x) const {
+    PosResult predecessor(const key_t* keys, const key_t x) const {
         return Internals::predecessor(keys, x, m_mask, m_branch, m_free);
     }
     
     /// \brief Finds the rank of the predecessor of the specified key in the compressed trie.
     /// \param keys the keys that the compressed trie was constructed for
     /// \param x the key in question
-    Result predecessor(const SkipAccessor<key_t>& keys, const key_t x) const {
+    PosResult predecessor(const SkipAccessor<key_t>& keys, const key_t x) const {
         return Internals::predecessor(keys, x, m_mask, m_branch, m_free);
     }
 };

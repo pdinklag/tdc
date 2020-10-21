@@ -55,27 +55,27 @@ namespace tdc {
         uint40_t& operator=(uint40_t&&) = default;
 
         /// \brief Convert to a 64-bit integer.
-        inline uint64_t u64() const {
+        inline constexpr uint64_t u64() const {
             return ((uint64_t)m_hi << 32ULL) | (uint64_t)m_lo;
         }
 
         /// \brief Cast to a 64-bit integer.
-        inline operator uint64_t() const {
+        explicit inline constexpr operator uint64_t() const {
             return u64();
         }
 
         /// \brief Cast to boolean.
-        inline operator bool() const {
+        explicit inline constexpr operator bool() const {
             return m_lo > 0 || m_hi > 0;
         }
 
         /// \brief Unary plus.
-        inline uint40_t operator+() {
+        inline constexpr uint40_t operator+() {
             return uint40_t(m_lo, m_hi);
         }
 
         /// \brief Unary minus.
-        inline uint40_t operator-() {
+        inline constexpr uint40_t operator-() {
             return uint40_t(0) - *this;
         }
 
@@ -108,7 +108,7 @@ namespace tdc {
         }
 
         /// \brief Addition.
-        inline uint40_t operator+(const uint40_t& other) const {
+        inline constexpr uint40_t operator+(const uint40_t& other) const {
             uint64_t sum64 = (uint64_t)m_lo + (uint64_t)other.m_lo;
             return uint40_t(sum64, m_hi + other.m_hi + (uint8_t)(sum64 >> 32ULL));
         }
@@ -120,7 +120,7 @@ namespace tdc {
         }
 
         /// \brief Subtraction.
-        inline uint40_t operator-(const uint40_t& other) const {
+        inline constexpr uint40_t operator-(const uint40_t& other) const {
             uint64_t diff64 = (uint64_t)m_lo - (uint64_t)other.m_lo;
             return uint40_t(diff64, m_hi - other.m_hi + (uint8_t)(diff64 >> 32ULL));
         }
@@ -132,7 +132,7 @@ namespace tdc {
         }
 
         /// \brief Multiplication.
-        inline uint40_t operator*(const uint40_t& other) const {
+        inline constexpr uint40_t operator*(const uint40_t& other) const {
             return uint40_t(u64() * other.u64());
         }
 
@@ -143,7 +143,7 @@ namespace tdc {
         }
 
         /// \brief Integer division.
-        inline uint40_t operator/(const uint40_t& other) const {
+        inline constexpr uint40_t operator/(const uint40_t& other) const {
             return uint40_t(u64() / other.u64());
         }
 
@@ -154,7 +154,7 @@ namespace tdc {
         }
 
         /// \brief Modulo.
-        inline uint40_t operator%(const uint40_t& other) const {
+        inline constexpr uint40_t operator%(const uint40_t& other) const {
             return uint40_t(u64() % other.u64());
         }
 
@@ -165,7 +165,7 @@ namespace tdc {
         }
 
         /// \brief Bitwise OR.
-        inline uint40_t operator|(const uint40_t& other) const {
+        inline constexpr uint40_t operator|(const uint40_t& other) const {
             return uint40_t(m_lo | other.m_lo, m_hi | other.m_hi);
         }
 
@@ -176,12 +176,12 @@ namespace tdc {
         }
 
         /// \brief Bit negation.
-        inline uint40_t operator~() const {
+        inline constexpr uint40_t operator~() const {
             return uint40_t(~m_lo, ~m_hi);
         }
 
         /// \brief Bitwise AND.
-        inline uint40_t operator&(const uint40_t& other) const {
+        inline constexpr uint40_t operator&(const uint40_t& other) const {
             return uint40_t(m_lo & other.m_lo, m_hi & other.m_hi);
         }
 
@@ -192,7 +192,7 @@ namespace tdc {
         }
 
         /// \brief Bitwise XOR.
-        inline uint40_t operator^(const uint40_t& other) const {
+        inline constexpr uint40_t operator^(const uint40_t& other) const {
             return uint40_t(m_lo ^ other.m_lo, m_hi ^ other.m_hi);
         }
 
@@ -203,7 +203,7 @@ namespace tdc {
         }
 
         /// \brief Left shift.
-        inline uint40_t operator<<(const uint64_t& lsh) const {
+        inline constexpr uint40_t operator<<(const uint64_t& lsh) const {
             if(tdc_likely(lsh)) {
                 const uint8_t  hi = (m_hi << lsh) | (uint8_t)(m_lo >> (32ULL - lsh));
                 const uint32_t lo = m_lo << lsh;
@@ -220,7 +220,7 @@ namespace tdc {
         }
 
         /// \brief Right shift.
-        inline uint40_t operator>>(const uint64_t& rsh) const {
+        inline constexpr uint40_t operator>>(const uint64_t& rsh) const {
             if(tdc_likely(rsh)) {
                 const uint32_t lo = (m_lo >> rsh) | (((uint32_t)m_hi & rsh) << (32ULL - rsh));
                 const uint8_t  hi = m_hi >> rsh;
@@ -236,42 +236,40 @@ namespace tdc {
             return *this;
         }
 
+        inline constexpr uint40_t operator<<(const uint40_t& lsh) const { return *this << lsh.u64(); }
+        inline uint40_t& operator<<=(const uint40_t& lsh) const { return (*this <<= lsh.u64()); }
+        inline constexpr uint40_t operator>>(const uint40_t& rsh) const { return *this >> rsh.u64(); }
+        inline uint40_t& operator>>=(const uint40_t& rsh) const { return (*this >>= rsh.u64()); }
+
         /// \brief Equality check.
-        inline bool operator==(const uint40_t& other) const {
+        inline constexpr bool operator==(const uint40_t& other) const {
             return (m_lo == other.m_lo) && (m_hi == other.m_hi);
         }
 
         /// \brief Non-equality check.
-        inline bool operator!=(const uint40_t& other) const {
+        inline constexpr bool operator!=(const uint40_t& other) const {
             return (m_lo != other.m_lo) || (m_hi != other.m_hi);
         }
 
         /// \brief Less-than check.
-        inline bool operator<(const uint40_t& other) const {
+        inline constexpr bool operator<(const uint40_t& other) const {
             return (m_hi < other.m_hi) || (m_hi == other.m_hi && m_lo < other.m_lo);
         }
 
         /// \brief Less-than-or-equal check.
-        inline bool operator<=(const uint40_t& other) const {
+        inline constexpr bool operator<=(const uint40_t& other) const {
             return (m_hi <= other.m_hi) || (m_hi == other.m_hi && m_lo <= other.m_lo);
         }
 
         /// \brief Greater-than check.
-        inline bool operator>(const uint40_t& other) const {
+        inline constexpr bool operator>(const uint40_t& other) const {
             return (m_hi > other.m_hi) || (m_hi == other.m_hi && m_lo > other.m_lo);
         }
 
         /// \brief Greater-than-or-equal check.
-        inline bool operator>=(const uint40_t& other) const {
+        inline constexpr bool operator>=(const uint40_t& other) const {
             return (m_hi >= other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
         }
-
-        /// \brief Support for \c std::ostream output.
-        friend std::ostream& operator<<(std::ostream&, const uint40_t&);
-
-        /// \brief Support for \c std::istream input.
-        friend std::istream& operator>>(std::istream&, uint40_t&);
-        
     } /** \cond INTERNAL */ __attribute__ ((packed)) /** \endcond */;
     #if defined(_MSC_VER)
     #pragma pack(pop)
@@ -283,8 +281,6 @@ namespace tdc {
 #include <limits>
 
 namespace std {
-
-using uint40_t = tdc::uint40_t;
 
 /// \brief Numeric limits support for \ref tdc::uint40_t.
 ///
@@ -305,7 +301,7 @@ public:
     static constexpr bool is_iec559 = false;
     static constexpr bool is_bounded = true;
     static constexpr bool is_modulo = true;
-    static constexpr int digits = CHAR_BIT * sizeof(uint40_t);
+    static constexpr int digits = CHAR_BIT * sizeof(tdc::uint40_t);
     static constexpr int digits10 = digits * log10(2);
     static constexpr int max_digits10 = 0;
     static constexpr int radix = 2;
@@ -315,26 +311,26 @@ public:
     static constexpr int max_exponent10 = 0;
     static constexpr bool traps = numeric_limits<uint64_t>::traps; // act like \c uint64_t    
     static constexpr bool tinyness_before = false;
-    static constexpr uint40_t min() noexcept { return uint40_t(0); }
-    static constexpr uint40_t lowest() noexcept { return uint40_t(0); }
-    static constexpr uint40_t max() noexcept { return uint40_t(UINT32_MAX, UINT8_MAX); }
-    static constexpr uint40_t epsilon() noexcept { return uint40_t(0); }
-    static constexpr uint40_t round_error() noexcept { return uint40_t(0); }
-    static constexpr uint40_t infinity() noexcept { return uint40_t(0); }
-    static constexpr uint40_t quiet_NaN() noexcept { return uint40_t(0); }
-    static constexpr uint40_t signaling_NaN() noexcept { return uint40_t(0); }
-    static constexpr uint40_t denorm_min() noexcept { return uint40_t(0); }
+    static constexpr tdc::uint40_t min() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t lowest() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t max() noexcept { return tdc::uint40_t(UINT32_MAX, UINT8_MAX); }
+    static constexpr tdc::uint40_t epsilon() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t round_error() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t infinity() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t quiet_NaN() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t signaling_NaN() noexcept { return tdc::uint40_t(0); }
+    static constexpr tdc::uint40_t denorm_min() noexcept { return tdc::uint40_t(0); }
 };
 
-inline ostream& operator<<(ostream& out, const uint40_t& v) {
-    out << v.u64();
+inline ostream& operator<<(ostream& out, const tdc::uint40_t& v) {
+    out << (uint64_t)v;
     return out;
 }
 
-inline istream& operator>>(istream& in, uint40_t& v) {
+inline istream& operator>>(istream& in, tdc::uint40_t& v) {
     uint64_t u64;
     in >> u64;
-    v = uint40_t(u64);
+    v = tdc::uint40_t(u64);
     return in;
 }
 

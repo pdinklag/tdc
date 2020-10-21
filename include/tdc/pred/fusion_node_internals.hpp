@@ -24,7 +24,7 @@ uint64_t pext(const uint64_t x, const uint64_t mask);
 uint64_t pcmpgtub(const uint64_t a, const uint64_t b);
 
 struct ExtResult {
-    Result r;
+    PosResult r;
     size_t j;
     size_t i0, i1;
     size_t i_matched;
@@ -91,7 +91,7 @@ public:
 
     // predecessor search
     template<typename array_t>
-    static Result predecessor(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
+    static PosResult predecessor(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const ckey_t cx = compress(x, mask);
@@ -103,7 +103,7 @@ public:
         
         if(x == y) {
             // exact match - the predecessor is the key itself
-            return Result { true, i };
+            return PosResult { true, i };
         } else {
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
@@ -129,7 +129,7 @@ public:
             // } else {
                 // return Result { true, ixj };
             // }
-            return Result { !x_lt_y || ixj > 0, ixj - x_lt_y  };
+            return PosResult { !x_lt_y || ixj > 0, ixj - x_lt_y  };
         }
     }
     
@@ -147,7 +147,7 @@ public:
         
         if(x == y) {
             // exact match - the predecessor is the key itself
-            return ExtResult { Result { true, i }, SIZE_MAX, SIZE_MAX, SIZE_MAX, i };
+            return ExtResult { PosResult { true, i }, SIZE_MAX, SIZE_MAX, SIZE_MAX, i };
         } else {
             // mismatch
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
@@ -165,7 +165,7 @@ public:
             xr.i0 = i0;
             xr.i1 = i1;
             xr.i_matched = (x < y) ? i0 : i1;
-            xr.r = Result { x >= y || i0 > 0, x < y ? i0 - 1 : i1 };
+            xr.r = PosResult { x >= y || i0 > 0, x < y ? i0 - 1 : i1 };
             return xr;
         }
     }

@@ -51,7 +51,7 @@ public:
 
     /// \brief Reads the referred item.
     inline operator uint64_t() const {
-        return base_t::m_vec->get(base_t::m_i);
+        return (uint64_t)base_t::m_vec->get(base_t::m_i);
     }
 
     /// \brief Writes the referred integer.

@@ -298,13 +298,13 @@ struct map_bucket_bv {
     return m_size;
   }
 
-  Result predecessor(int64_t suf) const {
+  KeyResult<uint64_t> predecessor(int64_t suf) const {
     for (; suf >= 0; --suf) {
       if (m_bits[suf]) {
-        return Result{true, suf};
+        return {true, suf};
       }
     }
-    return Result{false, 0};
+    return {false, 0};
   }
 };
 
@@ -343,10 +343,10 @@ struct map_bucket_list {
     return m_size;
   }
 
-  Result predecessor(int64_t suf) const {
+  KeyResult<uint64_t> predecessor(int64_t suf) const {
     auto p = std::find_if(m_list.begin(), m_list.end(), [suf](const uint64_t x) { return x <= suf; });
     if (p == m_list.end()) {
-      return Result{false, 0};
+      return {false, 0};
     }
     uint16_t max_pred = *p;
     for (; p != m_list.end(); ++p) {
@@ -354,7 +354,7 @@ struct map_bucket_list {
         max_pred = std::max(*p, max_pred);
       }
     }
-    return Result{true, max_pred};
+    return {true, max_pred};
   }
 };
 
@@ -424,11 +424,11 @@ struct map_bucket_hybrid {
     return m_size;
   }
 
-  Result predecessor(int64_t suf) const {
+  KeyResult<uint64_t> predecessor(int64_t suf) const {
     if (m_is_list) {
       auto p = std::find_if(m_list.begin(), m_list.end(), [suf](const uint64_t x) { return x <= suf; });
       if (p == m_list.end()) {
-        return Result{false, 0};
+        return {false, 0};
       }
       uint16_t max_pred = *p;
       for (; p != m_list.end(); ++p) {
@@ -436,14 +436,14 @@ struct map_bucket_hybrid {
           max_pred = std::max(*p, max_pred);
         }
       }
-      return Result{true, max_pred};
+      return {true, max_pred};
     } else {
       for (; suf >= 0; --suf) {
         if ((*m_bits)[suf]) {
-          return Result{true, static_cast<uint64_t>(suf)};
+          return {true, static_cast<uint64_t>(suf)};
         }
       }
-      return Result{false, 0};
+      return {false, 0};
     }
   }
 

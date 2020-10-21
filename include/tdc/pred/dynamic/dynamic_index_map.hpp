@@ -48,7 +48,7 @@ class DynIndexMap {
   }
 
   void insert(uint64_t key) {
-    assert(!predecessor(key).exists || predecessor(key).pos != key);
+    assert(!predecessor(key).exists || predecessor(key).key != key);
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
 
@@ -57,13 +57,13 @@ class DynIndexMap {
     m_min = std::min(key, m_min);
     m_max = std::max(key, m_max);
     assert(predecessor(key).exists);
-    assert(predecessor(key).pos == key);
+    assert(predecessor(key).key == key);
   }
 
   void remove(uint64_t key) {
     const uint64_t key_pre = prefix(key);
     const uint64_t key_suf = suffix(key);
-    assert(predecessor(key).exists && predecessor(key).pos == key);
+    assert(predecessor(key).exists && predecessor(key).key == key);
     //start here
     bucket& b = m_map.at(key_pre);
     b.remove(key_suf);
@@ -83,7 +83,7 @@ class DynIndexMap {
 
     if (key == m_max) {
       assert(predecessor(key - 1).exists);
-      m_max = predecessor(key - 1).pos;
+      m_max = predecessor(key - 1).key;
     }
     if (key == m_min) {
       uint64_t i = key_pre;
@@ -94,31 +94,31 @@ class DynIndexMap {
     }
   }
 
-  Result predecessor(uint64_t key) const {
+  KeyResult<uint64_t> predecessor(uint64_t key) const {
     if (tdc_unlikely(m_size == 0)) {
-      return Result{false, 0};
+      return {false, 0};
     }
     if (tdc_unlikely(key < m_min)) {
-      return Result{false, 1};
+      return {false, 1};
     }
     if (tdc_unlikely(key >= m_max)) {
-      return Result{true, m_max};
+      return {true, m_max};
     }
     uint64_t key_pre = prefix(key);
     auto p = m_map.find(key_pre);
     if (p != m_map.end()) {
-      Result r = p->second.predecessor(suffix(key));
+      auto r = p->second.predecessor(suffix(key));
       if (r.exists) {
-        return Result{true, (key_pre << b_wordl) + r.pos};
+        return {true, (key_pre << b_wordl) + r.key};
       }
     }
     do {
       --key_pre;
       p = m_map.find(key_pre);
     } while (p == m_map.end());
-    Result r = p->second.predecessor(b_max);
+    auto r = p->second.predecessor(b_max);
     assert(r.exists);
-    return Result{true, (key_pre << b_wordl) + r.pos};
+    return {true, (key_pre << b_wordl) + r.key};
   }
 };
 }  // namespace dynamic

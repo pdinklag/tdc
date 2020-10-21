@@ -11,7 +11,7 @@ namespace tdc {
 namespace pred {
 namespace dynamic {
 
-using Result = ::tdc::pred::Result;
+using PosResult = ::tdc::pred::PosResult;
 
 template<typename key_t, size_t m_capacity>
 class SortedArrayNode {
@@ -34,19 +34,19 @@ public:
 
     /// \brief Accesses the element with given rank
     /// \param i the rank in question    
-    inline uint64_t operator[](const size_t i) const {
+    inline key_t operator[](const size_t i) const {
         return m_keys[i];
     }
     
     /// \brief Finds the rank of the predecessor of the specified key in the node.
     /// \param x the key in question
-    Result predecessor(const key_t x) const {
-        if(tdc_unlikely(x < m_keys[0]))  return Result { false, 0 };
-        if(tdc_unlikely(x >= m_keys[m_size-1])) return Result { true, m_size - 1ULL };
+    PosResult predecessor(const key_t x) const {
+        if(tdc_unlikely(x < m_keys[0]))  return { false, 0 };
+        if(tdc_unlikely(x >= m_keys[m_size-1])) return { true, m_size - 1ULL };
         
         size_t i = 1;
         while(m_keys[i] <= x) ++i;
-        return Result { true, i-1 };
+        return { true, i-1 };
     }
 
     /// \brief Inserts the specified key.

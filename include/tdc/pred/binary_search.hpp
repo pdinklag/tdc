@@ -31,7 +31,7 @@ public:
     /// \param keys the keys that the compressed trie was constructed for
     /// \param num the number of keys
     /// \param x the key in question
-    Result predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const;
+    PosResult predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const;
 };
 
 }} // namespace tdc::pred
