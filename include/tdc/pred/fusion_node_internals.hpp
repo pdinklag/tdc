@@ -46,15 +46,8 @@ public:
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
 private:
-    // computes a bitmask from j (included) to the MSBF
-    // j must be < m_key_bits
-    static constexpr key_t hi_mask(const size_t j) {
-        // WRONG: return (m_key_max << (m_key_bits - j)); // <- this would cause undefined behaviour for j == 0
-        return (m_key_max << (m_key_bits - 1 - j)) << 1ULL;
-    }
-
     // compress a key using a mask (PEXT)
-    static ckey_t compress(const key_t key, const mask_t& mask) {
+    static ckey_t compress(const key_t key, const mask_t mask) {
         return intrisics::pext(key, mask);
     }
 
@@ -79,7 +72,7 @@ private:
 
 public:
     // the match operation from Patrascu & Thorup, 2014
-    static size_t match(const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static size_t match(const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // compress the key and repeat it eight times
         const ckey_t cx = compress(x, mask);
         const matrix_t cx_repeat = repeat(cx);
@@ -93,7 +86,7 @@ public:
 
     // predecessor search
     template<typename array_t>
-    static Result predecessor(const array_t& keys, const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static Result predecessor(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
@@ -110,12 +103,14 @@ public:
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
             const size_t j = intrisics::lzcnt<key_t>(x ^ y);
+            const key_t jmask_lo = m_key_max >> j;
+            const key_t jmask_hi = ~jmask_lo;
             
             // depending on whether x < y, we will find the smallest or largest key below the candidate, respectively
             // computing both match subjects is faster than branching and deciding
             const size_t xj[] = {
-                x & hi_mask(j),
-                x | (m_key_max >> j)
+                x & jmask_hi,
+                x | jmask_lo
             };
             
             const bool x_lt_y = x < y;
@@ -133,7 +128,7 @@ public:
     
     // predecessor search, extended result
     template<typename array_t>
-    static ExtResult predecessor_ext(const array_t& keys, const key_t x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
+    static ExtResult predecessor_ext(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
         const size_t i = match(x, mask, branch, free);
@@ -150,8 +145,11 @@ public:
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
             const size_t j = intrisics::lzcnt<key_t>(x ^ y);
-            const size_t i0 = match(x & hi_mask(j), mask, branch, free);
-            const size_t i1 = match(x | (m_key_max >> j), mask, branch, free);
+            const key_t jmask_lo = m_key_max >> j;
+            const key_t jmask_hi = ~jmask_lo;
+            
+            const size_t i0 = match(x & jmask_hi, mask, branch, free);
+            const size_t i1 = match(x | jmask_lo, mask, branch, free);
             
             ExtResult xr;
             xr.j = j;
