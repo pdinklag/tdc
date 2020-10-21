@@ -70,11 +70,9 @@ private:
         return ctz - 1;
     }
 
-public:
     // the match operation from Patrascu & Thorup, 2014
-    static size_t match(const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
-        // compress the key and repeat it eight times
-        const ckey_t cx = compress(x, mask);
+    static size_t match_compressed(const ckey_t cx, const matrix_t branch, const matrix_t free) {
+        // repeat the compressed key
         const matrix_t cx_repeat = repeat(cx);
         
         // construct our matching array by replacing all dontcares by the corresponding bits of the compressed key
@@ -84,12 +82,20 @@ public:
         return rank(cx_repeat, match_array);
     }
 
+public:
+    // the match operation from Patrascu & Thorup, 2014
+    static size_t match(const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
+        const ckey_t cx = compress(x, mask);
+        return match_compressed(cx, branch, free);
+    }
+
     // predecessor search
     template<typename array_t>
     static Result predecessor(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
-        const size_t i = match(x, mask, branch, free);
+        const ckey_t cx = compress(x, mask);
+        const size_t i = match_compressed(cx, branch, free);
         // std::cout << "\ti=" << i << std::endl;
         // lookup the key at the found position
         const key_t y = keys[i];
@@ -114,7 +120,8 @@ public:
             };
             
             const bool x_lt_y = x < y;
-            const size_t ixj = match(xj[!x_lt_y], mask, branch, free);
+            const ckey_t cx_masked = compress(xj[!x_lt_y], mask);
+            const size_t ixj = match_compressed(cx_masked, branch, free);
             
             // branchless version of:
             // if(x < y) {
@@ -131,7 +138,8 @@ public:
     static ExtResult predecessor_ext(const array_t& keys, const key_t x, const mask_t mask, const matrix_t branch, const matrix_t free) {
         // std::cout << "predecessor(" << x << "):" << std::endl;
         // find the predecessor candidate by matching the key against our maintained keys
-        const size_t i = match(x, mask, branch, free);
+        const ckey_t cx = compress(x, mask);
+        const size_t i = match_compressed(cx, branch, free);
         // std::cout << "\ti=" << i << std::endl;
         // lookup the key at the found position
         const key_t y = keys[i];
@@ -146,10 +154,11 @@ public:
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
             const size_t j = intrisics::lzcnt<key_t>(x ^ y);
             const key_t jmask_lo = m_key_max >> j;
-            const key_t jmask_hi = ~jmask_lo;
-            
-            const size_t i0 = match(x & jmask_hi, mask, branch, free);
-            const size_t i1 = match(x | jmask_lo, mask, branch, free);
+            const ckey_t cjmask_lo = compress(jmask_lo, mask); // compress the mask and compute the other from it - saves one PEXT instruction
+            const ckey_t cjmask_hi = ~cjmask_lo;
+
+            const size_t i0 = match_compressed(cx & cjmask_hi, branch, free);
+            const size_t i1 = match_compressed(cx | cjmask_lo, branch, free);
             
             ExtResult xr;
             xr.j = j;
