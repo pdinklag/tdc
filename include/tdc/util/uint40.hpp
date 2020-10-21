@@ -258,7 +258,7 @@ namespace tdc {
 
         /// \brief Less-than-or-equal check.
         inline constexpr bool operator<=(const uint40_t& other) const {
-            return (m_hi <= other.m_hi) || (m_hi == other.m_hi && m_lo <= other.m_lo);
+            return (m_hi < other.m_hi) || (m_hi == other.m_hi && m_lo <= other.m_lo);
         }
 
         /// \brief Greater-than check.
@@ -268,7 +268,7 @@ namespace tdc {
 
         /// \brief Greater-than-or-equal check.
         inline constexpr bool operator>=(const uint40_t& other) const {
-            return (m_hi >= other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
+            return (m_hi > other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
         }
     } /** \cond INTERNAL */ __attribute__ ((packed)) /** \endcond */;
     #if defined(_MSC_VER)
