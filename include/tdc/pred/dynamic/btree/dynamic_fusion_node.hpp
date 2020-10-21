@@ -264,7 +264,7 @@ public:
             const size_t h = __builtin_ctz(~key_free); // free contains a 1 for every wildcard, so invert free and count the trailing zeroes
             //~ std::cout << "\th=" << h << std::endl;
 
-            // find j, the position (h+1)-th set bit in the mask
+            // find j, the position of the (h+1)-th set bit in the mask
             const size_t j = select1_u64(m_mask, h+1);
             //~ std::cout << "\tj=" << j << std::endl;
 
@@ -310,7 +310,7 @@ public:
                 m_mask &= ~((mask_t)1ULL << j);
             } else {
                 // find sibling subtree
-                const size_t i0 = Internals::match(key & (m_key_max << (key_t)(j+1)), m_mask, m_branch, m_free);
+                const size_t i0 = Internals::match(key & ((m_key_max << (key_t)j) << key_t(1)), m_mask, m_branch, m_free); // don't shift by j+1, as j may be m_key_msb-1
                 const size_t i1 = Internals::match(key | (m_key_max >> (key_t)(m_key_msb - j)), m_mask, m_branch, m_free);
                 //~ std::cout << "\ti0=" << std::dec << i0 << ", i1=" << i1 << std::endl;
 
