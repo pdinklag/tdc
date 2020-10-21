@@ -359,16 +359,21 @@ public:
 
         // verify
         //~ if(sz > 1) {
-            //~ auto fnode = internal::construct(*this, size());
-            //~ if(m_branch != fnode.branch || m_free != fnode.free || m_mask != fnode.mask) {
-                //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << fnode.mask << std::endl;
-                //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << fnode.branch << std::endl;
-                //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << fnode.free << std::endl;
-            //~ }
+            //~ auto fnode = Internals::construct(*this, size());
             
-            //~ assert(m_mask == fnode.mask);
-            //~ assert(m_branch == fnode.branch);
-            //~ assert(m_free == fnode.free);
+            //~ auto expected_mask = std::get<0>(fnode);
+            //~ auto expected_branch = std::get<1>(fnode);
+            //~ auto expected_free = std::get<2>(fnode);
+            
+            //~ if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
+                //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
+                //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
+                //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
+            //~ }
+
+            //~ assert(m_mask == expected_mask);
+            //~ assert(m_branch == expected_branch);
+            //~ assert(m_free == expected_free);
         //~ }
         
         return true;

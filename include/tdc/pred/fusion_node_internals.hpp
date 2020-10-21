@@ -46,6 +46,13 @@ public:
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
 private:
+    // computes a bitmask from j (included) to the MSBF
+    // j must be < m_key_bits
+    static constexpr key_t hi_mask(const size_t j) {
+        // WRONG: return (m_key_max << (m_key_bits - j)); // <- this would cause undefined behaviour for j == 0
+        return (m_key_max << (m_key_bits - 1 - j)) << 1ULL;
+    }
+
     // compress a key using a mask (PEXT)
     static ckey_t compress(const key_t key, const mask_t& mask) {
         return intrisics::pext(key, mask);
@@ -107,7 +114,7 @@ public:
             // depending on whether x < y, we will find the smallest or largest key below the candidate, respectively
             // computing both match subjects is faster than branching and deciding
             const size_t xj[] = {
-                x & (m_key_max << (m_key_bits - j)),
+                x & hi_mask(j),
                 x | (m_key_max >> j)
             };
             
@@ -143,7 +150,7 @@ public:
             // find the common prefix between the predecessor candidate -- which is the longest between x and any trie entry [Fredman and Willard '93]
             // this can be done by finding the most significant bit of the XOR result (which practically marks all bits that are different)
             const size_t j = intrisics::lzcnt<key_t>(x ^ y);
-            const size_t i0 = match(x & (m_key_max << (m_key_bits - j)), mask, branch, free);
+            const size_t i0 = match(x & hi_mask(j), mask, branch, free);
             const size_t i1 = match(x | (m_key_max >> j), mask, branch, free);
             
             ExtResult xr;
