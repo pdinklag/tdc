@@ -79,7 +79,7 @@ public:
             const size_t in_bits = bits;
 
             bits -= bits_left_in_current;
-            uint64_t v = uint64_t(m_current) & math::bit_mask(bits_left_in_current);
+            uint64_t v = uint64_t(m_current) & math::bit_mask<uint64_t>(bits_left_in_current);
             v <<= bits;
 
             // read as many full bytes as possible

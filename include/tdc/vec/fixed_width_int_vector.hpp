@@ -42,7 +42,7 @@ public:
 private:
     friend class ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
 
-    static constexpr uint64_t m_mask = math::bit_mask(m_width);
+    static constexpr uint64_t m_mask = math::bit_mask<uint64_t>(m_width);
 
     size_t m_size;
     std::unique_ptr<uint64_t[]> m_data;
@@ -84,8 +84,8 @@ private:
             const size_t db = 64ULL - wb;
 
             // combine the da lowest bits from a and the wa lowest bits of v
-            const uint64_t a_lo = m_data[a] & math::bit_mask(da);
-            const uint64_t v_lo = v & math::bit_mask(wa);
+            const uint64_t a_lo = m_data[a] & math::bit_mask<uint64_t>(da);
+            const uint64_t v_lo = v & math::bit_mask<uint64_t>(wa);
             m_data[a] = (v_lo << da) | a_lo;
 
             // combine the db highest bits of b and the wb highest bits of v
@@ -95,7 +95,7 @@ private:
         } else {
             const size_t dl = j & 63ULL;
             const uint64_t xa = m_data[a];
-            const uint64_t mask_lo = math::bit_mask(dl);
+            const uint64_t mask_lo = math::bit_mask<uint64_t>(dl);
             const uint64_t mask_hi = ~mask_lo << m_width;
             
             m_data[a] = (xa & mask_lo) | (v << dl) | (xa & mask_hi);

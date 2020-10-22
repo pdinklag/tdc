@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <tdc/util/likely.hpp>
+#include <tdc/util/int_type_traits.hpp>
 
 namespace tdc {
 namespace math {
@@ -12,10 +14,12 @@ namespace math {
 ///
 /// To retrieve a bit mask for high bits, simply compute the bit negation of the result, ie., <tt>~bit_mask(bits)</tt>.
 ///
+/// \tparam T the type of the bit mask
 /// \param bits the number of low bits to mask, must be greater than zero
-inline constexpr uint64_t bit_mask(const uint64_t bits) {
-    if(tdc_unlikely(bits >= 64ULL)) return UINT64_MAX;
-    return ~(UINT64_MAX << bits);
+template<typename T>
+constexpr T bit_mask(const size_t bits) {
+    if(tdc_unlikely(bits >= int_type_traits<T>::num_bits())) return std::numeric_limits<T>::max();
+    return ~(std::numeric_limits<T>::max() << bits);
 }
 
 }} // namespace tdc::math

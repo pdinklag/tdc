@@ -48,7 +48,7 @@ public:
 private:
     // compress a key using a mask (PEXT)
     static ckey_t compress(const key_t key, const mask_t mask) {
-        return intrisics::pext(key, mask);
+        return (ckey_t)intrisics::pext(key, mask);
     }
 
     // repeat a byte eight times into a 64-bit word
@@ -114,7 +114,7 @@ public:
             
             // depending on whether x < y, we will find the smallest or largest key below the candidate, respectively
             // computing both match subjects is faster than branching and deciding
-            const size_t xj[] = {
+            const key_t xj[] = {
                 x & jmask_hi,
                 x | jmask_lo
             };

@@ -2,26 +2,33 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <tdc/util/uint40.hpp>
 
 namespace tdc {
 namespace intrisics {
 
 /// \brief Counts the number of leading zero bits in an integer.
-/// \tparam T the integer type.
+/// \tparam T the integer type
+/// \param x the integer
 template<typename T>
-constexpr size_t lzcnt(T x);
+constexpr size_t lzcnt(const T x);
 
-/// \brief Counts the number of leading zero bits in a 32-bit integer.
+/// \cond INTERNAL
 template<>
-constexpr size_t lzcnt<uint32_t>(uint32_t x) {
+constexpr size_t lzcnt(const uint32_t x) {
     return __builtin_clz(x);
 };
 
-/// \brief Counts the number of leading zero bits in a 64-bit integer.
 template<>
-constexpr size_t lzcnt<uint64_t>(uint64_t x) {
+constexpr size_t lzcnt(const uint40_t x) {
+        return __builtin_clzll((uint64_t)x);
+};
+
+template<>
+constexpr size_t lzcnt(const uint64_t x) {
         return __builtin_clzll(x);
 };
+/// \endcond
 
 }} // namespace tdc::intrisics
 

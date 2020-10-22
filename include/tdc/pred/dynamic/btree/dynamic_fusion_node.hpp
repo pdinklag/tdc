@@ -10,8 +10,8 @@
 
 #include <tdc/math/bit_mask.hpp>
 #include <tdc/util/likely.hpp>
-#include <tdc/util/rank_u64.hpp>
-#include <tdc/util/select_u64.hpp>
+#include <tdc/intrisics/popcnt.hpp>
+#include <tdc/intrisics/select.hpp>
 
 #include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/result.hpp>
@@ -141,10 +141,10 @@ public:
             //~ std::cout << "    i1 = " << i1 << std::endl;
 
             // find rank h of bit j (in old mask)
-            const size_t h = j < m_key_msb ? rank1_u64(m_mask << (j+1)) : 0;
+            const size_t h = j < m_key_msb ? intrisics::popcnt(m_mask << (j+1)) : 0;
             const ckey_t hset = (ckey_t)1U << h;
             const ckey_t hclear = ~hset;
-            const ckey_t hmask_lo = math::bit_mask(h);
+            const ckey_t hmask_lo = math::bit_mask<ckey_t>(h);
             const ckey_t hmask_hi = ~hmask_lo;
 
             const matrix_t matrix_hset = Internals::REPEAT_MUL << h;
@@ -174,7 +174,7 @@ public:
                 const bool y_j = (y & jmask) != 0;
 
                 // create a mask for rows i0 to i1
-                const matrix_t matrix_i0_i1 = math::bit_mask((i1+1) * m_ckey_bits) - math::bit_mask(i0 * m_ckey_bits); // FIXME: bit_mask currently always returns 64-bit values!
+                const matrix_t matrix_i0_i1 = math::bit_mask<matrix_t>((i1+1) * m_ckey_bits) - math::bit_mask<matrix_t>(i0 * m_ckey_bits);
 
                 // mask out bit h
                 const matrix_t matrix_h_i0_i1 = matrix_i0_i1 & matrix_hset;
@@ -198,7 +198,7 @@ public:
                 const matrix_t row_branch = (matched_branch & (~hmask_lo << 1U)) | ((matrix_t)((key & jmask) != 0) << h);
                 const matrix_t row_free = (matched_free & hclear) | (UINT8_MAX & hmask_lo);
 
-                const matrix_t lo = math::bit_mask(i * m_ckey_bits); // FIXME: bit_mask currently always returns 64-bit values!
+                const matrix_t lo = math::bit_mask<matrix_t>(i * m_ckey_bits);
                 m_branch = (m_branch & lo) | ((m_branch & ~lo) << m_ckey_bits) | (row_branch << (i * m_ckey_bits));
                 m_free   = (m_free & lo)   | ((m_free & ~lo) << m_ckey_bits)   | (row_free << (i * m_ckey_bits));
             }
@@ -265,11 +265,11 @@ public:
             //~ std::cout << "\th=" << h << std::endl;
 
             // find j, the position of the (h+1)-th set bit in the mask
-            const size_t j = select1_u64(m_mask, h+1);
+            const size_t j = intrisics::select(m_mask, h+1);
             //~ std::cout << "\tj=" << j << std::endl;
 
             // create masks for removal of i-th column
-            const matrix_t rm_lo = math::bit_mask(i * m_ckey_bits); // FIXME: bit_mask currently always returns 64-bit values!
+            const matrix_t rm_lo = math::bit_mask<matrix_t>(i * m_ckey_bits);
             const matrix_t rm_hi = ~rm_lo << m_ckey_bits;
 
             // extract h-th column from branch and free (where column i is already removed!)
@@ -278,7 +278,7 @@ public:
                 const matrix_t branch_rm = (m_branch & rm_lo) | ((m_branch & rm_hi) >> m_ckey_bits);
                 const matrix_t free_rm   = (m_free & rm_lo)   | ((m_free & rm_hi) >> m_ckey_bits);
                 
-                const matrix_t szmask = math::bit_mask((sz - 1) * m_ckey_bits); // FIXME: bit_mask currently always returns 64-bit values!
+                const matrix_t szmask = math::bit_mask<matrix_t>((sz - 1) * m_ckey_bits);
                 const matrix_t hextract = (Internals::REPEAT_MUL << h) & szmask;
                 
                 const matrix_t hbranch = (branch_rm & hextract) & szmask;
@@ -297,7 +297,7 @@ public:
             
             if(remove_column) {
                 // remove column h
-                const ckey_t hmask_lo = math::bit_mask(h);
+                const ckey_t hmask_lo = math::bit_mask<ckey_t>(h);
                 const ckey_t hmask_hi = ~hmask_lo << 1ULL;
                 
                 const matrix_t matrix_hmask_lo = hmask_lo * Internals::REPEAT_MUL;
@@ -317,7 +317,7 @@ public:
                 // set the h-bits in the subtree elements to be wildcards
 
                 // create a mask for rows i0 to i1
-                const matrix_t matrix_i0_i1 = math::bit_mask((i1+1) * m_ckey_bits) - math::bit_mask(i0 * m_ckey_bits); // FIXME: bit_mask currently always returns 64-bit values!
+                const matrix_t matrix_i0_i1 = math::bit_mask<matrix_t>((i1+1) * m_ckey_bits) - math::bit_mask<matrix_t>(i0 * m_ckey_bits);
 
                 // mask out bit h
                 const matrix_t matrix_hset = Internals::REPEAT_MUL << h;

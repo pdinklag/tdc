@@ -50,7 +50,7 @@ public:
     inline IntVector(const size_t size, const size_t width, const bool initialize = true) {
         m_size = size;
         m_width = width;
-        m_mask = math::bit_mask(width);
+        m_mask = math::bit_mask<size_t>(width);
         m_data = allocate_integers(size, width, initialize);
     }
 

@@ -43,7 +43,7 @@ void bench(C constructor, const size_t check_bits) {
         auto guard = phase.suppress();
         if(options.check) {
             size_t num_errors = 0;
-            const auto check_mask = math::bit_mask(check_bits);
+            const auto check_mask = math::bit_mask<uint64_t>(check_bits);
             for(size_t i = 0; i < options.num; i++) {
                 if(iv[i] != (options.data[i] & check_mask)) {
                     ++num_errors;

@@ -63,6 +63,21 @@ namespace tdc {
         explicit inline constexpr operator uint64_t() const {
             return u64();
         }
+        
+        /// \brief Cast to a 32-bit integer.
+        explicit inline constexpr operator uint32_t() const {
+            return m_lo;
+        }
+        
+        /// \brief Cast to a 16-bit integer.
+        explicit inline constexpr operator uint16_t() const {
+            return m_lo;
+        }
+        
+        /// \brief Cast to a 8-bit integer.
+        explicit inline constexpr operator uint8_t() const {
+            return m_lo;
+        }
 
         /// \brief Cast to boolean.
         explicit inline constexpr operator bool() const {

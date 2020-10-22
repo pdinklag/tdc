@@ -6,9 +6,14 @@
 #include <nmmintrin.h>
 
 #ifdef __BMI2__
-uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) {
+template<> uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) {
     return _pext_u64(x, mask);
 }
+
+template<> uint8_t tdc::intrisics::pext(const uint8_t x, const uint8_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint16_t tdc::intrisics::pext(const uint16_t x, const uint16_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint32_t tdc::intrisics::pext(const uint32_t x, const uint32_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> tdc::uint40_t tdc::intrisics::pext(const tdc::uint40_t x, const tdc::uint40_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
 #endif
 
 // nb: this function CANNOT be inlined for whatever reason
