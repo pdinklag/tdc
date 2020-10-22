@@ -117,7 +117,7 @@ void bench(
             {
                 stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
-                    chk_q += pred_func(ds, options.perm_queries(i)).pos;
+                    chk_q += pred_func(ds, options.perm_queries(i)).key;
                 }
             }
             result.log("chk", chk_q);
@@ -134,11 +134,11 @@ void bench(
                 // make sure that the result equals that of a simple binary search on the input
                 auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
                 assert(correct_result.exists);
-                if(r.pos == options.data[correct_result.pos]) {
+                if(r.key == options.data[correct_result.pos]) {
                     // OK
                 } else {
                     // nah, count an error
-                    //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.pos << std::endl;
+                    //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.key << std::endl;
                     ++num_errors;
                 }
             }
@@ -207,7 +207,7 @@ void bench(
                         
                     case benchmark::OPCODE_QUERY:
                         ++ops_q;
-                        ops_chk += pred_func(ds, op.key).pos;
+                        ops_chk += pred_func(ds, op.key).key;
                         break;
                 }
             }
@@ -378,7 +378,7 @@ int main(int argc, char** argv) {
         [](auto& set, const uint64_t x){ set.insert(x); },
         [](const auto& set, const uint64_t x){
             auto it = set.upper_bound(x);
-            return pred::Result { it != set.begin(), *(--it) };
+            return pred::KeyResult<uint64_t> { it != set.begin(), *(--it) };
         },
         [](auto& set, const uint64_t x){ set.erase(x); }
     );
@@ -419,7 +419,7 @@ int main(int argc, char** argv) {
             [](auto& stree, const uint64_t x){
                 // STree seems to look for the largest value STRICTLY LESS THAN the input
                 // and crashes if there is no predecessor...
-                return pred::Result { true, (size_t)stree.pred(x+1) };
+                return pred::KeyResult<uint64_t> { true, (uint64_t)stree.pred(x+1) };
             },
             [](auto& stree, const uint64_t x){ stree.del(x); }
         );
