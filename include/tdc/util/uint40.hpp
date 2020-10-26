@@ -219,13 +219,7 @@ namespace tdc {
 
         /// \brief Left shift.
         inline constexpr uint40_t operator<<(const uint64_t& lsh) const {
-            if(tdc_likely(lsh)) {
-                const uint8_t  hi = (m_hi << lsh) | (uint8_t)(m_lo >> (32ULL - lsh));
-                const uint32_t lo = m_lo << lsh;
-                return uint40_t(lo, hi);
-            } else {
-                return uint40_t(m_lo, m_hi);
-            }
+            return uint40_t(u64() << lsh);
         }
 
         /// \brief Left shift assignment.
@@ -236,13 +230,7 @@ namespace tdc {
 
         /// \brief Right shift.
         inline constexpr uint40_t operator>>(const uint64_t& rsh) const {
-            if(tdc_likely(rsh)) {
-                const uint32_t lo = (m_lo >> rsh) | (((uint32_t)m_hi & rsh) << (32ULL - rsh));
-                const uint8_t  hi = m_hi >> rsh;
-                return uint40_t(lo, hi);
-            } else {
-                return uint40_t(m_lo, m_hi);
-            }
+            return uint40_t(u64() >> rsh);
         }
         
         /// \brief Right shift assignment.
