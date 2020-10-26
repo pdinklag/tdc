@@ -76,7 +76,7 @@ struct yfast_bucket {
 
   std::vector<xfast_update> merge() {
     std::vector<xfast_update> updates;
-    if (m_prev != nullptr) {
+    if (false && m_prev != nullptr) {
       m_prev->m_next = m_next;
       if (m_next != nullptr) {
         m_next->m_prev = m_prev;
