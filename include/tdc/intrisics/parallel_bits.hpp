@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <tdc/util/uint40.hpp>
 
 namespace tdc {
 namespace intrisics {

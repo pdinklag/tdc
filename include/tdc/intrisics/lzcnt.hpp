@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <tdc/util/uint40.hpp>
+#include <tdc/util/uint128.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -37,6 +38,12 @@ constexpr size_t lzcnt(const uint40_t x) {
 template<>
 constexpr size_t lzcnt(const uint64_t x) {
     return __builtin_clzll(x);
+};
+
+template<>
+constexpr size_t lzcnt(const uint128_t x) {
+    const size_t hi = __builtin_clzll(x >> 64);
+    return hi == 64ULL ? 64ULL + __builtin_clzll(x) : hi;
 };
 /// \endcond
 

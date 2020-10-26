@@ -1,9 +1,13 @@
 #include <tdc/intrisics/parallel_bits.hpp>
 #include <tdc/intrisics/parallel_compare.hpp>
+#include <tdc/intrisics/popcnt.hpp>
 
 #include <immintrin.h>
 #include <mmintrin.h>
 #include <nmmintrin.h>
+
+#include <tdc/util/uint40.hpp>
+#include <tdc/util/uint128.hpp>
 
 #ifdef __BMI2__
 template<> uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) {
@@ -13,7 +17,29 @@ template<> uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) 
 template<> uint8_t tdc::intrisics::pext(const uint8_t x, const uint8_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
 template<> uint16_t tdc::intrisics::pext(const uint16_t x, const uint16_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
 template<> uint32_t tdc::intrisics::pext(const uint32_t x, const uint32_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
-template<> tdc::uint40_t tdc::intrisics::pext(const tdc::uint40_t x, const tdc::uint40_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint40_t tdc::intrisics::pext(const uint40_t x, const uint40_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+
+template<> uint128_t tdc::intrisics::pext(const uint128_t x, const uint128_t mask) {
+    const size_t lo_cnt = popcnt((uint64_t)mask);
+    const uint64_t pext_lo = _pext_u64(x, mask);
+    const uint64_t pext_hi = _pext_u64(x >> 64, mask >> 64);
+    return (uint128_t)pext_hi << lo_cnt | pext_lo;
+    
+    // TODO: benchmark against naive approach:
+    /*
+    uint128_t check = 1;
+    uint128_t result = 0;
+    uint128_t result_lsh = 0;
+    for(size_t i = 0; i < 128; i++) {
+        if(mask & check) {
+            const auto bit = (x & check) >> i;
+            result |= bit << result_lsh++;
+        }
+        check <<= 1;
+    }
+    return result;
+    */
+}
 #endif
 
 // nb: this function CANNOT be inlined for whatever reason
