@@ -344,13 +344,6 @@ int main(int argc, char** argv) {
         );
     }
     
-    bench("index_hybrid",
-        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
     bench("yfast_trie",
         [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, 64, 10>(); },
         [](const auto& ds){ return ds.size(); },
@@ -358,7 +351,14 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
-    
+    bench("index_hybrid",
+        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const uint64_t x){ ds.insert(x); },
+        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    );
+    /*
     bench("index_bv",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_bv, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -373,6 +373,7 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
+    */
     
     bench("map_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
@@ -381,6 +382,7 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
+    /*
     bench("map_bv",
         [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_bv, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -395,6 +397,7 @@ int main(int argc, char** argv) {
         [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
+    */
     
     bench("set",
         [](const uint64_t){ return std::set<uint64_t>(); },
