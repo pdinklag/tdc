@@ -8,6 +8,7 @@
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
+#include <tdc/util/uint40.hpp>
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
@@ -117,7 +118,7 @@ void bench(
             {
                 stat::Phase phase("predecessor_rnd");
                 for(size_t i = 0; i < options.num_queries; i++) {
-                    chk_q += pred_func(ds, options.perm_queries(i)).key;
+                    chk_q += (uint64_t)pred_func(ds, options.perm_queries(i)).key;
                 }
             }
             result.log("chk", chk_q);
@@ -207,7 +208,7 @@ void bench(
                         
                     case benchmark::OPCODE_QUERY:
                         ++ops_q;
-                        ops_chk += pred_func(ds, op.key).key;
+                        ops_chk += (uint64_t)pred_func(ds, op.key).key;
                         break;
                 }
             }
@@ -291,6 +292,29 @@ int main(int argc, char** argv) {
         );
         bench("btree_64",
             [](const uint64_t){ return pred::dynamic::BTree<uint32_t, 65, pred::dynamic::SortedArrayNode<uint32_t, 64>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+    } else if(options.universe <= UINT40_MAX) {
+        // use 40-bit keys
+        bench("fusion_btree",
+            [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 9, pred::dynamic::DynamicFusionNode<uint40_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("btree_8",
+            [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 9, pred::dynamic::SortedArrayNode<uint40_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("btree_64",
+            [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 65, pred::dynamic::SortedArrayNode<uint40_t, 64>>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
