@@ -301,7 +301,7 @@ struct map_bucket_bv {
   KeyResult<uint64_t> predecessor(int64_t suf) const {
     for (; suf >= 0; --suf) {
       if (m_bits[suf]) {
-        return {true, suf};
+        return {true, static_cast<uint64_t>(suf)};
       }
     }
     return {false, 0};

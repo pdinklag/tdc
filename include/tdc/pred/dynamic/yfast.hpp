@@ -74,8 +74,34 @@ struct yfast_bucket {
     return next_b;
   }
 
-  xfast_update remove(const uint64_t x) {
-    xfast_update update;
+  std::vector<xfast_update> merge() {
+    std::vector<xfast_update> updates;
+    if (m_prev != nullptr) {
+      m_prev->m_next = m_next;
+      if (m_next != nullptr) {
+        m_next->m_prev = m_prev;
+      }
+      for (size_t i = 0; i < m_elem.size(); ++i) {
+        m_prev->m_elem.push_back(m_elem[i]);
+      }
+      updates.push_back(xfast_update());
+      updates.back().remove_repr.push_back(m_min);
+      updates.push_back(m_prev->insert(m_min));
+      assert((updates.back().insert_repr.size() <= 1) && (updates.back().remove_repr.size() == 0));
+    } else if (false && m_next != nullptr) {
+      for (size_t i = 0; i < m_elem.size(); ++i) {
+        m_next->m_elem.push_back(m_elem[i]);
+      }
+      m_next->m_prev = nullptr;
+      updates.push_back(xfast_update());
+      updates.back().remove_repr.push_back(m_min);
+      updates.push_back(m_next->insert(m_min));
+    }
+    return updates;
+  }
+
+  std::vector<xfast_update> remove(const uint64_t x) {
+    std::vector<xfast_update> updates;
     // if it is the last element
     if (size() == 0) {
       if (m_prev != nullptr) {
@@ -84,30 +110,33 @@ struct yfast_bucket {
       if (m_next != nullptr) {
         m_next->m_prev = m_prev;
       }
-      update.remove_repr.push_back(x);
-      return update;
+      updates.push_back(xfast_update());
+      updates.back().remove_repr.push_back(x);
+      return updates;
     }
+
+    //remove the element, if it was the representant,
+    //choose the new representant
     if (x == m_min) {
-      update.remove_repr.push_back(m_min);
+      updates.push_back(xfast_update());
+      updates.back().remove_repr.push_back(m_min);
       auto new_min = std::min_element(m_elem.begin(), m_elem.end());
       m_min = *new_min;
       *new_min = m_elem.back();
       m_elem.pop_back();
-      update.insert_repr.push_back(this);
+      updates.back().insert_repr.push_back(this);
     } else {
       auto del = std::find(m_elem.begin(), m_elem.end(), x);
       *del = m_elem.back();
       m_elem.pop_back();
     }
 
-    // if(m_elem.size() == BUCKET_SIZE/4) {
-    //   update.remove_repr(merge());
-    // }
-    return update;
-    //   // remove every item from this bucket
-    //   for(size_t i = 0; i < m_elem.size(); ++i) {
-    //     //...
-    //   }
+    //if the bucket is too small, merge
+    if (m_elem.size() <= BUCKET_SIZE / 4) {
+      std::vector<xfast_update> merge_updates = merge();
+      updates.insert(updates.end(), merge_updates.begin(), merge_updates.end());
+    }
+    return updates;
   }
 
   //returns predecessor in bucket. 
@@ -247,11 +276,11 @@ class YFastTrie {
   }
 
   ~YFastTrie() {
-    if(m_size != 0) {
+    if (m_size != 0) {
       //get bucket with maximal representative and delete every bucket from last to first
       bucket* b = max_repr(t_key_width, 0);
-      bucket* p;  
-      while(b != nullptr) {
+      bucket* p;
+      while (b != nullptr) {
         p = b->m_prev;
         delete b;
         b = p;
@@ -288,13 +317,13 @@ class YFastTrie {
       prefix >>= 1;
     }
     // update xfast
-    for (auto new_bucket : xfu.insert_repr) {
-      //std::cout << "u" << ((bucket*)new_bucket)->m_min << "\n";
-      insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
-    }
     for (auto old_repr : xfu.remove_repr) {
       //std::cout << "d" << old_repr << "\n";
       remove_repr(old_repr);
+    }
+    for (auto new_bucket : xfu.insert_repr) {
+      //std::cout << "u" << ((bucket*)new_bucket)->m_min << "\n";
+      insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
     }
   }
 
@@ -310,7 +339,7 @@ class YFastTrie {
       key >>= 1;
     }
     */
-   auto repr_bucket = m_xfast[0].find(key);
+    auto repr_bucket = m_xfast[0].find(key);
     if (repr_bucket != m_xfast[0].end()) {
       return repr_bucket->second;
     }
@@ -341,19 +370,24 @@ class YFastTrie {
   void remove(uint64_t key) {
     --m_size;
     bucket* p_bucket = pred_bucket(key);
-    xfast_update xfu = p_bucket->remove(key);
+    std::vector<xfast_update> updates = p_bucket->remove(key);
     // update xfast
-    for (auto new_bucket : xfu.insert_repr) {
-      //std::cout << "u" << ((bucket*)new_bucket)->m_min << "\n";
-      insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
-    }
-    for (auto old_repr : xfu.remove_repr) {
-      //std::cout << "d" << old_repr << "\n";
-      auto b = m_xfast[0].find(old_repr);
-      if(b != m_xfast[0].end() && b->second->m_min == key) {
-        delete b->second;
+    for (auto update : updates) {
+      for (auto old_repr : update.remove_repr) {
+        //std::cout << "d" << old_repr << "\n";
+        auto b = m_xfast[0].find(old_repr);
+        if (b != m_xfast[0].end() && b->second->m_min == key) {
+          delete b->second;
+        }
+        remove_repr(old_repr);
       }
-      remove_repr(old_repr);
+      for (auto new_bucket : update.insert_repr) {
+        //std::cout << "u" << ((bucket*)new_bucket)->m_min << "\n";
+        insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
+      }
+      // if(xfu.insert_repr.size() + update.remove_repr.size() > 2) {
+      //   std::cout << "YRSJDSOIFNFO" << std::endl;
+      // }
     }
   }
 
@@ -394,8 +428,7 @@ class YFastTrie {
     std::cout << *this;
   }
 
-  friend std::ostream&
-  operator<<(std::ostream& o, const YFastTrie& yfast) {
+  friend std::ostream& operator<<(std::ostream& o, const YFastTrie& yfast) {
     // General information
     size_t x = t_key_width;
     size_t y = t_bucket_width;
