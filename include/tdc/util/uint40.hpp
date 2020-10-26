@@ -82,12 +82,12 @@ namespace tdc {
         }
 
         /// \brief Unary plus.
-        inline constexpr uint40_t operator+() {
+        inline constexpr uint40_t operator+() const {
             return uint40_t(m_lo, m_hi);
         }
 
         /// \brief Unary minus.
-        inline constexpr uint40_t operator-() {
+        inline constexpr uint40_t operator-() const {
             return uint40_t(0) - *this;
         }
 
@@ -208,7 +208,7 @@ namespace tdc {
             return uint40_t(m_lo ^ other.m_lo, m_hi ^ other.m_hi);
         }
 
-        /// \brief Bitwise AND assignment.
+        /// \brief Bitwise XOR assignment.
         inline uint40_t& operator^=(const uint40_t& other) {
             *this = *this ^ other;
             return *this;

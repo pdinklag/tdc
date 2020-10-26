@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <tdc/util/uint40.hpp>
 #include <tdc/util/uint128.hpp>
+#include <tdc/util/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -44,6 +45,12 @@ template<>
 constexpr size_t lzcnt(const uint128_t x) {
     const size_t hi = __builtin_clzll(x >> 64);
     return hi == 64ULL ? 64ULL + __builtin_clzll(x) : hi;
+};
+
+template<>
+constexpr size_t lzcnt(const uint256_t x) {
+    const size_t hi = lzcnt((uint128_t)(x >> 128));
+    return hi == 128ULL ? 128ULL + lzcnt((uint128_t)x) : hi;
 };
 /// \endcond
 

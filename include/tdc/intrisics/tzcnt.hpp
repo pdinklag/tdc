@@ -5,6 +5,7 @@
 #include <tdc/math/iminmax.hpp>
 #include <tdc/util/uint40.hpp>
 #include <tdc/util/uint128.hpp>
+#include <tdc/util/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -45,6 +46,12 @@ template<>
 constexpr size_t tzcnt(const uint128_t x) {
     const size_t lo = __builtin_ctzll(x);
     return lo == 64ULL ? 64ULL + __builtin_ctzll(x >> 64) : lo;
+};
+
+template<>
+constexpr size_t tzcnt(const uint256_t x) {
+    const size_t lo = tzcnt((uint128_t)x);
+    return lo == 128ULL ? 128ULL + tzcnt((uint128_t)(x >> 128)) : lo;
 };
 /// \endcond
 

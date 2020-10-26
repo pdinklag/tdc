@@ -46,4 +46,7 @@ inline ostream& operator<<(ostream& out, uint128_t v) {
     return out;
 }
 
+#include <climits>
+#define UINT128_MAX std::numeric_limits<uint128_t>::max()
+
 }

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <tdc/util/uint40.hpp>
 #include <tdc/util/uint128.hpp>
+#include <tdc/util/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -33,6 +34,11 @@ constexpr size_t popcnt(const uint64_t x) {
 template<>
 constexpr size_t popcnt(const uint128_t x) {
     return __builtin_popcountll(x) + __builtin_popcountll(x >> 64);
+};
+
+template<>
+constexpr size_t popcnt(const uint256_t x) {
+    return popcnt((uint128_t)x) + popcnt((uint128_t)(x >> 128));
 };
 /// \endcond
 
