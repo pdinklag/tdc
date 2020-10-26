@@ -27,7 +27,7 @@ namespace tdc {
 
         /// \brief Construct from an 32-bit signed integer.
         /// \param v the integer to construct from
-        inline constexpr uint40_t(const int v) : uint40_t(v, v >= 0 ? 0 : hi_max) {
+        inline constexpr uint40_t(const int v) : uint40_t(v, v >= 0 ? 0 : UINT8_MAX) {
         }
 
         /// \brief Construct from a 32-bit unsigned integer.
