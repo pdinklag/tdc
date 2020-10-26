@@ -342,3 +342,9 @@ inline istream& operator>>(istream& in, tdc::uint40_t& v) {
 // sanity checks
 static_assert(sizeof(tdc::uint40_t) == 5);
 static_assert(std::numeric_limits<tdc::uint40_t>::digits == 40);
+
+/// \brief Globally define 40-bit integers.
+using uint40_t = tdc::uint40_t;
+
+/// \brief The maximum value for 40-bit integers.
+#define UINT40_MAX 0xFFFFFFFFFFULL
