@@ -9,6 +9,8 @@
 #include <tdc/intrisics/parallel_bits.hpp>
 #include <tdc/intrisics/parallel_compare.hpp>
 #include <tdc/intrisics/lzcnt.hpp>
+#include <tdc/intrisics/tzcnt.hpp>
+#include <tdc/intrisics/popcnt.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/assert.hpp>
@@ -64,7 +66,7 @@ private:
         
         // find the position of the first key greater than the compressed key
         // this is as easy as counting the trailing zeroes, of which there are a multiple of 8
-        const size_t ctz = __builtin_ctzll(cmp) / 8;
+        const size_t ctz = intrisics::tzcnt(cmp) / 8;
         
         // the rank of our key is at the position before
         return ctz - 1;
@@ -175,6 +177,8 @@ public:
     template<typename array_t>
     static std::tuple<mask_t, matrix_t, matrix_t> construct(const array_t& keys, const size_t num)
     {
+        static_assert(sizeof(matrix_t) <= 8);
+        
         // a very simple trie data structure
         struct trie_node {
             uint16_t child[2]; // TODO: why 16 bits??
@@ -223,7 +227,7 @@ public:
         // std::cout << "m_mask = " << std::bitset<12>(m_mask) << std::endl;
         
         // sanity check: mask must not have more than num set bits, because there cannot be more inner nodes in the trie
-        const size_t num_relevant = __builtin_popcountll(m_mask);
+        const size_t num_relevant = intrisics::popcnt(m_mask);
         assert(num_relevant <= num);
         
         // do a second walk over the trie and build compressed keys with dontcares
