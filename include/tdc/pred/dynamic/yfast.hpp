@@ -1,3 +1,5 @@
+#include <robin_hood.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -11,6 +13,7 @@ namespace dynamic {
 struct xfast_update {
   std::vector<uint64_t> remove_repr;
   std::vector<void*> insert_repr;
+  std::vector<void*> delete_bucket;
 };
 
 template <uint8_t t_bucket_width>
@@ -41,10 +44,6 @@ struct yfast_bucket {
     } else {
       m_elem.push_back(x);
     }
-    for (size_t i = 0; i < size(); ++i) {
-      //std::cout << m_elem[i] << " ";
-    }
-    //std::cout << std::endl;
     if (m_elem.size() >= 2 * BUCKET_SIZE) {
       update.insert_repr.push_back(split());
     }
@@ -76,7 +75,7 @@ struct yfast_bucket {
 
   std::vector<xfast_update> merge() {
     std::vector<xfast_update> updates;
-    if (false && m_prev != nullptr) {
+    if (m_prev != nullptr) {
       m_prev->m_next = m_next;
       if (m_next != nullptr) {
         m_next->m_prev = m_prev;
@@ -86,15 +85,17 @@ struct yfast_bucket {
       }
       updates.push_back(xfast_update());
       updates.back().remove_repr.push_back(m_min);
+      updates.back().delete_bucket.push_back(this);
       updates.push_back(m_prev->insert(m_min));
       assert((updates.back().insert_repr.size() <= 1) && (updates.back().remove_repr.size() == 0));
-    } else if (false && m_next != nullptr) {
+    } else if (m_next != nullptr) {
       for (size_t i = 0; i < m_elem.size(); ++i) {
         m_next->m_elem.push_back(m_elem[i]);
       }
       m_next->m_prev = nullptr;
       updates.push_back(xfast_update());
       updates.back().remove_repr.push_back(m_min);
+      updates.back().delete_bucket.push_back(this);
       updates.push_back(m_next->insert(m_min));
     }
     return updates;
@@ -112,6 +113,7 @@ struct yfast_bucket {
       }
       updates.push_back(xfast_update());
       updates.back().remove_repr.push_back(x);
+      updates.back().delete_bucket.push_back(this);
       return updates;
     }
 
@@ -139,10 +141,10 @@ struct yfast_bucket {
     return updates;
   }
 
-  //returns predecessor in bucket. 
-  //it is required that m_min <= key  
+  //returns predecessor in bucket.
+  //it is required that m_min <= key
   KeyResult<uint64_t> predecessor(uint64_t key) const {
-    if(key < m_min) {
+    if (key < m_min) {
       return {false, 0};
     }
     uint64_t max_pred = m_min;
@@ -161,44 +163,43 @@ class YFastTrie {
   using bucket = t_bucket<t_bucket_width>;
   size_t m_size = 0;
 
-  std::array<std::unordered_map<uint64_t, bucket*>, t_key_width + 1> m_xfast;
+  std::array<robin_hood::unordered_map<uint64_t, bucket*>, t_key_width + 1> m_xfast;
 
   void insert_repr(uint64_t key, bucket* b) {
     m_xfast[0][key] = b;
 
     uint64_t level = 1;
+    uint64_t last_bit = key & 0x1;
     key >>= 1;
     // we first find zeroes
     while (level <= t_key_width && (m_xfast[level].find(key) == m_xfast[level].end())) {
       m_xfast[level][key] = b;
       ++level;
+      last_bit = key & 0x1;
       key >>= 1;
     }
-
+    if (level <= t_key_width) {
+      m_xfast[level][key] = nullptr;
+      ++level;
+      last_bit = key & 0x1;
+      key >>= 1;
+    }
     // then we find ones; if one children is a zero, we update the pointer
     while (level <= t_key_width) {
-      auto l_child = m_xfast[level - 1].find((key << 1) + 0);
-      if (l_child == m_xfast[level - 1].end()) {
-        if (m_xfast[level][key]->get_repr() > b->get_repr()) {
+      auto other_child = m_xfast[level - 1].find((key << 1) + (1 - last_bit));
+      if (other_child == m_xfast[level - 1].end()) {
+        if ((m_xfast[level][key]->get_repr() < b->get_repr()) ^ last_bit) {
           m_xfast[level][key] = b;
         }
         ++level;
-        key >>= 1;
-        continue;
-      }
-
-      auto r_child = m_xfast[level - 1].find((key << 1) + 1);
-      if (r_child == m_xfast[level - 1].end()) {
-        if (m_xfast[level][key]->get_repr() < b->get_repr()) {
-          m_xfast[level][key] = b;
-        }
-        ++level;
+        last_bit = key & 0x1;
         key >>= 1;
         continue;
       }
       // if both children are ones, we remove the pointer
       m_xfast[level][key] = nullptr;
       ++level;
+      last_bit = key & 0x1;
       key >>= 1;
     }
   }
@@ -240,28 +241,25 @@ class YFastTrie {
 
   // returns the bucket with the smallest representant in the subtree from the node
   // that corrospondents to (level, key)
-  // TODO: speedup by jumping
   bucket* min_repr(uint64_t level, uint64_t key) {
     while (level > 0) {
+      if (m_xfast[level - 1].find(key << 1) == m_xfast[level - 1].end()) {
+        return m_xfast[level].at(key);
+      }
       --level;
       key <<= 1;
-      if (m_xfast[level].find(key) == m_xfast[level].end()) {
-        ++key;
-      }
     }
     return m_xfast[0].at(key);
   }
   // returns the bucket with the biggest representant in the subtree from the node
   // that corrospondents to (level, key)
-  // TODO: speedup by jumping
   bucket* max_repr(uint64_t level, uint64_t key) {
     while (level > 0) {
-      --level;
-      key <<= 1;
-      ++key;
-      if (m_xfast[level].find(key) == m_xfast[level].end()) {
-        --key;
+      if (m_xfast[level - 1].find((key << 1) + 1) == m_xfast[level - 1].end()) {
+        return m_xfast[level].at(key);
       }
+      --level;
+      key = (key << 1) + 1;
     }
     return m_xfast[0].at(key);
   }
@@ -375,15 +373,18 @@ class YFastTrie {
     for (auto update : updates) {
       for (auto old_repr : update.remove_repr) {
         //std::cout << "d" << old_repr << "\n";
-        auto b = m_xfast[0].find(old_repr);
+        /*auto b = m_xfast[0].find(old_repr);
         if (b != m_xfast[0].end() && b->second->m_min == key) {
           delete b->second;
-        }
+        }*/
         remove_repr(old_repr);
       }
       for (auto new_bucket : update.insert_repr) {
         //std::cout << "u" << ((bucket*)new_bucket)->m_min << "\n";
         insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
+      }
+      for (auto delete_bucket : update.delete_bucket) {
+        delete (bucket*)delete_bucket;
       }
       // if(xfu.insert_repr.size() + update.remove_repr.size() > 2) {
       //   std::cout << "YRSJDSOIFNFO" << std::endl;
@@ -394,7 +395,7 @@ class YFastTrie {
   KeyResult<uint64_t> predecessor(uint64_t key) const {
     if (m_size == 0) {
       return {false, 0};
-    }    
+    }
     return pred_bucket(key)->predecessor(key);
   }
 
