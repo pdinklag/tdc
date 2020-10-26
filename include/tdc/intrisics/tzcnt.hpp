@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <tdc/math/iminmax.hpp>
 #include <tdc/util/uint40.hpp>
 
 namespace tdc {
@@ -16,12 +17,12 @@ constexpr size_t tzcnt(const T x);
 /// \cond INTERNAL
 template<>
 constexpr size_t tzcnt(const uint8_t x) {
-    return __builtin_ctz(x) - 24ULL;
+    return math::imin((size_t)__builtin_ctz(x), size_t(8)); // there can be at most 8 trailing zeroes
 };
 
 template<>
 constexpr size_t tzcnt(const uint16_t x) {
-    return __builtin_ctz(x) - 16ULL;
+    return math::imin((size_t)__builtin_ctz(x), size_t(16)); // there can be at most 16 trailing zeroes
 };
 
 template<>
@@ -31,12 +32,12 @@ constexpr size_t tzcnt(const uint32_t x) {
 
 template<>
 constexpr size_t tzcnt(const uint40_t x) {
-        return __builtin_ctzll((uint64_t)x) - 24ULL;
+    return math::imin((size_t)__builtin_ctzll((uint64_t)x), size_t(40));  // there can be at most 40 trailing zeroes
 };
 
 template<>
 constexpr size_t tzcnt(const uint64_t x) {
-        return __builtin_ctzll(x);
+    return __builtin_ctzll(x);
 };
 /// \endcond
 
