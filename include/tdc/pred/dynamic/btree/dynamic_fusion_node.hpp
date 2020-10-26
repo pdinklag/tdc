@@ -12,6 +12,7 @@
 #include <tdc/util/likely.hpp>
 #include <tdc/intrisics/popcnt.hpp>
 #include <tdc/intrisics/select.hpp>
+#include <tdc/intrisics/tzcnt.hpp>
 
 #include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/result.hpp>
@@ -261,7 +262,7 @@ public:
             const ckey_t key_free = m_free >> (i * m_ckey_bits);
             const ckey_t key_branch = m_branch >> (i * m_ckey_bits);
             
-            const size_t h = __builtin_ctz(~key_free); // free contains a 1 for every wildcard, so invert free and count the trailing zeroes
+            const size_t h = intrisics::tzcnt((ckey_t)~key_free); // free contains a 1 for every wildcard, so invert free and count the trailing zeroes
             //~ std::cout << "\th=" << h << std::endl;
 
             // find j, the position of the (h+1)-th set bit in the mask
