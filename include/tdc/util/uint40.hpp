@@ -11,9 +11,6 @@ namespace tdc {
     #endif
     class uint40_t {
     private:
-        static constexpr uint32_t lo_max = UINT32_MAX;
-        static constexpr uint8_t hi_max = UINT8_MAX;
-    
         uint32_t m_lo;
         uint8_t  m_hi;
 
@@ -97,7 +94,7 @@ namespace tdc {
         /// \brief Prefix increment.
         inline uint40_t& operator++() {
             ++m_lo;
-            if(tdc_unlikely(!m_lo)) ++m_hi;
+            if(!m_lo) ++m_hi;
             return *this;
         }
 
@@ -111,7 +108,7 @@ namespace tdc {
         /// \brief Prefix decrement.
         inline uint40_t& operator--() {
             --m_lo;
-            if(tdc_unlikely(m_lo == lo_max)) ++m_hi;
+            if(m_lo == UINT32_MAX) --m_hi;
             return *this;
         }
 
