@@ -8,9 +8,7 @@
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
-#include <tdc/uint/uint40.hpp>
-#include <tdc/uint/uint128.hpp>
-#include <tdc/uint/uint256.hpp>
+#include <tdc/util/uint40.hpp>
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
@@ -231,15 +229,6 @@ void bench(
 }
 
 int main(int argc, char** argv) {
-    //assert(tdc::intrisics::lzcnt<uint256_t>(0) == 256);
-
-    uint256_t p = 2126125344634ULL;
-    std::cout << p << std::endl;
-
-    pred::dynamic::BTree<uint256_t, 9, pred::dynamic::DynamicFusionNode<uint256_t, 8>> btree;
-}
-
-int _main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
     cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
