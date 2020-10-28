@@ -16,9 +16,9 @@ struct xfast_update {
   std::vector<void*> delete_bucket;
 };
 
-template <uint8_t t_bucket_width>
+template <uint8_t t_bucket_width, uint8_t t_merge_threshold>
 struct yfast_bucket {
-  static constexpr size_t BUCKET_SIZE = 1ULL << t_bucket_width;
+  static constexpr size_t c_bucket_size = 1ULL << t_bucket_width;
   yfast_bucket* m_prev = nullptr;
   yfast_bucket* m_next = nullptr;
   uint64_t m_min;
@@ -44,30 +44,30 @@ struct yfast_bucket {
     } else {
       m_elem.push_back(x);
     }
-    if (m_elem.size() >= 2 * BUCKET_SIZE) {
+    if (m_elem.size() >= 2 * c_bucket_size) {
       update.insert_repr.push_back(split());
     }
     return update;
   }
 
-  //splits the 2*BUCKET_SIZE big bucket into two equal sized ones
+  //splits the 2*c_bucket_size big bucket into two equal sized ones
   //and returns the pointer to the new one, so it can be inserted
   //into the xfast trie
   yfast_bucket* split() {
     std::sort(m_elem.begin(), m_elem.end());
 
     // construct next bucket and adjust pointers
-    yfast_bucket* next_b = new yfast_bucket(m_elem[BUCKET_SIZE], this, m_next);
+    yfast_bucket* next_b = new yfast_bucket(m_elem[c_bucket_size], this, m_next);
     if (m_next != nullptr) {
       m_next->m_prev = next_b;
     }
     m_next = next_b;
 
     // move elements bigger than the median into the new bucket
-    for (size_t i = BUCKET_SIZE + 1; i < BUCKET_SIZE * 2; ++i) {
+    for (size_t i = c_bucket_size + 1; i < 2*c_bucket_size; ++i) {
       next_b->insert(m_elem[i]);
     }
-    m_elem.resize(BUCKET_SIZE);
+    m_elem.resize(c_bucket_size);
 
     // return new bucket
     return next_b;
@@ -134,7 +134,7 @@ struct yfast_bucket {
     }
 
     //if the bucket is too small, merge
-    if (m_elem.size() <= BUCKET_SIZE / 4) {
+    if (m_elem.size() <= c_bucket_size / t_merge_threshold) {
       std::vector<xfast_update> merge_updates = merge();
       updates.insert(updates.end(), merge_updates.begin(), merge_updates.end());
     }
@@ -157,10 +157,10 @@ struct yfast_bucket {
   }
 };  // namespace dynamic
 
-template <template <uint8_t> class t_bucket, uint8_t t_key_width, uint8_t t_bucket_width>
+template <template <uint8_t, uint8_t> class t_bucket, uint8_t t_key_width, uint8_t t_bucket_width, uint8_t t_merge_threshold = 4>
 class YFastTrie {
  private:
-  using bucket = t_bucket<t_bucket_width>;
+  using bucket = t_bucket<t_bucket_width, t_merge_threshold>;
   size_t m_size = 0;
 
   std::array<robin_hood::unordered_map<uint64_t, bucket*>, t_key_width + 1> m_xfast;
@@ -355,7 +355,7 @@ class YFastTrie {
       }
       m = (l + r) / 2;
     }
-    bucket* b = m_xfast[r].at(key >> r);
+    bucket* b = m_xfast[r].at((key >> 1) >> r-1);
 
     if (((key >> l) & 1) == 1) {
       return b;
