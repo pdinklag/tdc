@@ -1,5 +1,5 @@
-#include <tdc/intrisics/parallel_bits.hpp>
-#include <tdc/intrisics/parallel_compare.hpp>
+#include <tdc/intrisics/pext.hpp>
+#include <tdc/intrisics/pcmp.hpp>
 #include <tdc/intrisics/popcnt.hpp>
 
 #include <immintrin.h>

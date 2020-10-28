@@ -1,5 +1,9 @@
 #pragma once
 
+#include <tdc/intrisics/lzcnt.hpp>
+#include <tdc/intrisics/popcnt.hpp>
+#include <tdc/intrisics/tzcnt.hpp>
+
 #include <tdc/uint/uint128.hpp>
 #include <tdc/uint/print_uint.hpp>
 
@@ -287,6 +291,29 @@ public:
     }
 };
 
+/// \cond INTERNAL
+namespace intrisics {
+
+template<>
+constexpr size_t lzcnt(const uint256_t x) {
+    const size_t hi = lzcnt((uint128_t)(x >> 128));
+    return hi == 128ULL ? 128ULL + lzcnt((uint128_t)x) : hi;
+};
+
+template<>
+constexpr size_t popcnt(const uint256_t x) {
+    return popcnt((uint128_t)x) + popcnt((uint128_t)(x >> 128));
+};
+
+template<>
+constexpr size_t tzcnt(const uint256_t x) {
+    const size_t lo = tzcnt((uint128_t)x);
+    return lo == 128ULL ? 128ULL + tzcnt((uint128_t)(x >> 128)) : lo;
+};
+
+} //namespace intrisics
+/// \endcond INTERNAL
+
 } // namespace tdc
 
 #include <climits>
@@ -295,8 +322,6 @@ public:
 namespace std {
 
 /// \brief Numeric limits support for \ref tdc::uint256_t.
-///
-/// In general, we want to act like \c uint64_t with some additional constraints on the value range.
 template<>
 class numeric_limits<tdc::uint256_t> {
 public:
@@ -334,6 +359,7 @@ public:
     static constexpr tdc::uint256_t denorm_min() noexcept { return tdc::uint256_t(0); }
 };
 
+/// \brief Standard output support  for \ref tdc::uint256_t.
 inline ostream& operator<<(ostream& out, tdc::uint256_t v) {
     return tdc::print_uint(out, v);
 }

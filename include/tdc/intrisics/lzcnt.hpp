@@ -2,9 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <tdc/uint/uint40.hpp>
-#include <tdc/uint/uint128.hpp>
-#include <tdc/uint/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -32,26 +29,10 @@ constexpr size_t lzcnt(const uint32_t x) {
 };
 
 template<>
-constexpr size_t lzcnt(const uint40_t x) {
-    return __builtin_clzll((uint64_t)x) - 24ULL; // don't account for 24 padded bits
-};
-
-template<>
 constexpr size_t lzcnt(const uint64_t x) {
     return __builtin_clzll(x);
 };
 
-template<>
-constexpr size_t lzcnt(const uint128_t x) {
-    const size_t hi = lzcnt((uint64_t)(x >> 64));
-    return hi == 64ULL ? 64ULL + lzcnt((uint64_t)x) : hi;
-};
-
-template<>
-constexpr size_t lzcnt(const uint256_t x) {
-    const size_t hi = lzcnt((uint128_t)(x >> 128));
-    return hi == 128ULL ? 128ULL + lzcnt((uint128_t)x) : hi;
-};
 /// \endcond
 
 }} // namespace tdc::intrisics

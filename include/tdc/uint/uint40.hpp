@@ -1,14 +1,20 @@
 #pragma once
 
+#include <climits>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 #include <iostream>
+
+#include <tdc/intrisics/lzcnt.hpp>
+#include <tdc/intrisics/popcnt.hpp>
+#include <tdc/intrisics/tzcnt.hpp>
+
+#include <tdc/vec/item_ref.hpp>
 #include <tdc/util/likely.hpp>
 
 namespace tdc {
     /// \brief 40-bit unsigned integer type.
-    #if defined(_MSC_VER)
-    #pragma pack(push, 1)
-    #endif
     class uint40_t {
     private:
         uint32_t m_lo;
@@ -271,20 +277,70 @@ namespace tdc {
             return (m_hi > other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
         }
     } /** \cond INTERNAL */ __attribute__ ((packed)) /** \endcond */;
-    #if defined(_MSC_VER)
-    #pragma pack(pop)
-    #endif
-} // namespace tdc
 
-#include <climits>
-#include <cmath>
-#include <limits>
+/// \cond INTERNAL
+namespace intrisics {
+
+template<>
+constexpr size_t lzcnt(const uint40_t x) {
+    return __builtin_clzll((uint64_t)x) - 24ULL; // don't account for 24 padded bits
+};
+
+template<>
+constexpr size_t popcnt(const uint40_t x) {
+    return __builtin_popcountll((uint64_t)x);
+};
+
+template<>
+constexpr size_t tzcnt(const uint40_t x) {
+    return math::imin((size_t)__builtin_ctzll((uint64_t)x), size_t(40));  // there can be at most 40 trailing zeroes
+};
+
+} // namespace intrisics
+
+namespace vec {
+    
+/// \brief Specialization of \ref ItemRef for \ref uint40_t items.
+///
+/// The reason this exists is to resolve issues concerning automatic casts.
+template<typename vector_t>
+class ItemRef<vector_t, uint40_t> : public ItemRef<vector_t, uint64_t> {
+private:
+    using base_t = ItemRef<vector_t, uint64_t>;
+    
+public:
+    using base_t::ItemRef;
+
+    /// \brief Reads the referred item.
+    inline operator uint40_t() const {
+        return base_t::m_vec->get(base_t::m_i);
+    }
+
+    /// \brief Reads the referred item.
+    inline operator uint64_t() const {
+        return (uint64_t)base_t::m_vec->get(base_t::m_i);
+    }
+
+    /// \brief Writes the referred integer.
+    /// \param v the value to write
+    inline void operator=(const uint40_t v) {
+        base_t::m_vec->set(base_t::m_i, v);
+    }
+
+    /// \brief Writes the referred integer.
+    /// \param v the value to write
+    inline void operator=(const uint64_t v) {
+        base_t::m_vec->set(base_t::m_i, v);
+    }
+};
+
+} // namespace vec
+/// \endcond
+} // namespace tdc
 
 namespace std {
 
 /// \brief Numeric limits support for \ref tdc::uint40_t.
-///
-/// In general, we want to act like \c uint64_t with some additional constraints on the value range.
 template<>
 class numeric_limits<tdc::uint40_t> {
 public:
@@ -322,11 +378,13 @@ public:
     static constexpr tdc::uint40_t denorm_min() noexcept { return tdc::uint40_t(0); }
 };
 
+/// \brief Standard output support  for \ref tdc::uint40_t.
 inline ostream& operator<<(ostream& out, const tdc::uint40_t& v) {
     out << (uint64_t)v;
     return out;
 }
 
+/// \brief Standard input support for \ref tdc::uint40_t.
 inline istream& operator>>(istream& in, tdc::uint40_t& v) {
     uint64_t u64;
     in >> u64;

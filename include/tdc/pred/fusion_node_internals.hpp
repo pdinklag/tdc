@@ -6,11 +6,11 @@
 #include <cstring>
 #include <tuple>
 
-#include <tdc/intrisics/parallel_bits.hpp>
-#include <tdc/intrisics/parallel_compare.hpp>
 #include <tdc/intrisics/lzcnt.hpp>
-#include <tdc/intrisics/tzcnt.hpp>
+#include <tdc/intrisics/pcmp.hpp>
+#include <tdc/intrisics/pext.hpp>
 #include <tdc/intrisics/popcnt.hpp>
+#include <tdc/intrisics/tzcnt.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/pred/util/packed_byte_array_8.hpp>
 #include <tdc/util/assert.hpp>
