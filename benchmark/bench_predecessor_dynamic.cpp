@@ -8,7 +8,7 @@
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
