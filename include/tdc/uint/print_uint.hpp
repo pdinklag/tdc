@@ -8,6 +8,8 @@ namespace tdc {
 template<typename T>
 inline std::ostream& print_uint(std::ostream& out, T v) {
     static_assert(sizeof(T) <= 128); // support up to 1024-bit values
+
+    if(v == 0) return out << '0';
     
     auto flags = out.flags();
     
