@@ -6,9 +6,9 @@
 #include <mmintrin.h>
 #include <nmmintrin.h>
 
-#include <tdc/util/uint40.hpp>
-#include <tdc/util/uint128.hpp>
-#include <tdc/util/uint256.hpp>
+#include <tdc/uint/uint40.hpp>
+#include <tdc/uint/uint128.hpp>
+#include <tdc/uint/uint256.hpp>
 
 #ifdef __BMI2__
 template<> uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) {

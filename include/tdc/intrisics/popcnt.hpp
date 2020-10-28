@@ -2,9 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <tdc/util/uint40.hpp>
-#include <tdc/util/uint128.hpp>
-#include <tdc/util/uint256.hpp>
+#include <tdc/uint/uint40.hpp>
+#include <tdc/uint/uint128.hpp>
+#include <tdc/uint/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -33,7 +33,7 @@ constexpr size_t popcnt(const uint64_t x) {
 
 template<>
 constexpr size_t popcnt(const uint128_t x) {
-    return __builtin_popcountll(x) + __builtin_popcountll(x >> 64);
+    return popcnt((uint64_t)x) + popcnt((uint64_t)(x >> 64));
 };
 
 template<>

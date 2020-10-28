@@ -1,8 +1,7 @@
 #include <tdc/io/bit_ostream.hpp>
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 using namespace tdc::io;
-using tdc::uint40_t;
 
 void BitOStream::reset() {
     m_next = 0;

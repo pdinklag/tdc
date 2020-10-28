@@ -1,5 +1,5 @@
 #include <tdc/io/load_file.hpp>
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 template std::vector<uint8_t> tdc::io::load_file_as_vector<uint8_t>(const std::filesystem::path&, const size_t);
 template std::vector<uint16_t> tdc::io::load_file_as_vector<uint16_t>(const std::filesystem::path&, const size_t);

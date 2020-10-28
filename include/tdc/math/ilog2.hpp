@@ -1,8 +1,8 @@
 #pragma once
 
 #include <tdc/intrisics/lzcnt.hpp>
+#include <tdc/util/int_type_traits.hpp>
 #include <tdc/util/likely.hpp>
-#include <tdc/util/uint40.hpp>
 #include <cstdint>
 
 namespace tdc {
@@ -16,32 +16,8 @@ namespace math {
 /// \tparam T the integer type
 /// \param x the number in question
 template<typename T>
-constexpr size_t ilog2_ceil(const T x);
-
-/// \cond INTERNAL
-template<>
-constexpr size_t ilog2_ceil(const uint64_t x) {
-    return 64ULL - __builtin_clzll(x);
-}
-
-template<>
-constexpr size_t ilog2_ceil(const uint40_t x) {
-    return 64ULL - __builtin_clzll((uint64_t)x);
-}
-
-template<>
-constexpr size_t ilog2_ceil(const uint32_t x) {
-    return 64ULL - __builtin_clzll(x);
-}
-
-template<>
-constexpr size_t ilog2_ceil(const uint16_t x) {
-    return 64ULL - __builtin_clzll(x);
-}
-
-template<>
-constexpr size_t ilog2_ceil(const uint8_t x) {
-    return 64ULL - __builtin_clzll(x);
+constexpr size_t ilog2_ceil(const T x) {
+    return int_type_traits<T>::num_bits() - intrisics::lzcnt(x);
 }
 /// \endcond
 

@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <tdc/intrisics/tzcnt.hpp>
-#include <tdc/util/uint40.hpp>
 #include <tdc/util/int_type_traits.hpp>
 
 namespace tdc {

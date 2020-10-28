@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 namespace tdc {
 namespace vec {

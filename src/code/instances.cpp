@@ -3,7 +3,7 @@
 #include <tdc/code/delta0_coder.hpp>
 #include <tdc/code/rice_coder.hpp>
 
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 using namespace tdc::code;
 using tdc::uint40_t;

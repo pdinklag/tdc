@@ -13,7 +13,7 @@
 
 #include <tdc/math/idiv.hpp>
 #include <tdc/math/bit_mask.hpp>
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 namespace tdc {
 namespace vec {

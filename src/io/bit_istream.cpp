@@ -1,8 +1,7 @@
 #include <tdc/io/bit_istream.hpp>
-#include <tdc/util/uint40.hpp>
+#include <tdc/uint/uint40.hpp>
 
 using namespace tdc::io;
-using tdc::uint40_t;
 
 void BitIStream::read_next_from_stream() {
     char c;

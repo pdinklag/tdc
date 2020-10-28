@@ -1,6 +1,11 @@
 #pragma once
 
-#include <tdc/util/uint128.hpp>
+#include <tdc/uint/uint128.hpp>
+#include <tdc/uint/print_uint.hpp>
+
+#include <cmath>
+#include <stdexcept>
+#include <utility>
 
 namespace tdc {
 
@@ -8,9 +13,11 @@ namespace tdc {
 
 /// \brief 256-bit unsigned integer type.
 class uint256_t {
-private:    
+private:
     uint128_t m_lo, m_hi;
-    
+
+    static std::pair<uint256_t, uint256_t> divmod(const uint256_t& a, const uint256_t& b);
+        
 public:
     /// \brief Default initialization to zero.
     inline constexpr uint256_t() : uint256_t(0, 0) {
@@ -41,7 +48,6 @@ public:
     /// \param v the integer to construct from
     inline constexpr uint256_t(const unsigned long long int v) : uint256_t(v, 0) {
     }
-    
     
     /// \brief Construct from a 128-bit unsigned integer
     /// \param v the integer to construct from
@@ -79,7 +85,7 @@ public:
 
     /// \brief Unary minus.
     inline constexpr uint256_t operator-() const {
-        return uint256_t(0) - *this;
+        return ~*this + 1;
     }
     
     /// \brief Prefix increment.
@@ -132,6 +138,39 @@ public:
     /// \brief Subtraction assignment.
     inline uint256_t& operator-=(const uint256_t& other) {
         *this = *this - other;
+        return *this;
+    }
+
+    /// \brief Multiplication.
+    uint256_t operator*(const uint256_t& other) const;
+
+    /// \brief Multiplication assignment.
+    inline uint256_t& operator*=(const uint256_t& other) {
+        *this = *this * other;
+        return *this;
+    }
+
+    /// \brief Division.
+    uint256_t operator/(const uint256_t& other) const {
+        auto qr = divmod(*this, other);
+        return qr.first;
+    }
+
+    /// \brief Division assignment.
+    inline uint256_t& operator/=(const uint256_t& other) {
+        *this = *this / other;
+        return *this;
+    }
+
+    /// \brief Modulo.
+    uint256_t operator%(const uint256_t& other) const {
+        auto qr = divmod(*this, other);
+        return qr.second;
+    }
+
+    /// \brief Modulo assignment.
+    inline uint256_t& operator%=(const uint256_t& other) {
+        *this = *this % other;
         return *this;
     }
     
@@ -250,6 +289,9 @@ public:
 
 } // namespace tdc
 
+#include <climits>
+#include <ostream>
+
 namespace std {
 
 /// \brief Numeric limits support for \ref tdc::uint256_t.
@@ -292,15 +334,19 @@ public:
     static constexpr tdc::uint256_t denorm_min() noexcept { return tdc::uint256_t(0); }
 };
 
+inline ostream& operator<<(ostream& out, tdc::uint256_t v) {
+    return tdc::print_uint(out, v);
+}
+
 } // namespace std
 
 // sanity checks
 static_assert(sizeof(tdc::uint256_t) == 32);
 static_assert(std::numeric_limits<tdc::uint256_t>::digits == 256);
 
-/// \brief Globally define 40-bit integers.
+/// \brief Globally define 256-bit integers.
 using uint256_t = tdc::uint256_t;
 
-/// \brief The maximum value for 40-bit integers.
+/// \brief The maximum value for 256-bit integers.
 #define UINT256_MAX std::numeric_limits<uint256_t>::max()
 

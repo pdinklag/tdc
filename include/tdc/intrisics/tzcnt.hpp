@@ -3,9 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <tdc/math/iminmax.hpp>
-#include <tdc/util/uint40.hpp>
-#include <tdc/util/uint128.hpp>
-#include <tdc/util/uint256.hpp>
+#include <tdc/uint/uint40.hpp>
+#include <tdc/uint/uint128.hpp>
+#include <tdc/uint/uint256.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -44,8 +44,8 @@ constexpr size_t tzcnt(const uint64_t x) {
 
 template<>
 constexpr size_t tzcnt(const uint128_t x) {
-    const size_t lo = __builtin_ctzll(x);
-    return lo == 64ULL ? 64ULL + __builtin_ctzll(x >> 64) : lo;
+    const size_t lo = tzcnt((uint64_t)x);
+    return lo == 64ULL ? 64ULL + tzcnt((uint64_t)(x >> 64)) : lo;
 };
 
 template<>
