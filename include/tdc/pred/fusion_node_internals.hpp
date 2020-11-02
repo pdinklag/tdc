@@ -62,7 +62,7 @@ private:
     static size_t rank(const matrix_t cx_repeat, const matrix_t array) {
         // compare it against the given array of 8 keys (in parallel)
 
-        const auto cmp = intrisics::pcmpgtub(array, cx_repeat);
+        const auto cmp = intrisics::pcmpgtu<matrix_t, ckey_t>(array, cx_repeat);
         
         // find the position of the first key greater than the compressed key
         // this is as easy as counting the trailing zeroes, of which there are a multiple of 8

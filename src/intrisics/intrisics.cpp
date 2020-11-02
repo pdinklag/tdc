@@ -51,13 +51,30 @@ template<> uint256_t tdc::intrisics::pext(const uint256_t x, const uint256_t mas
 }
 #endif
 
-// nb: this function CANNOT be inlined for whatever reason
-uint64_t tdc::intrisics::pcmpgtub(const uint64_t a, const uint64_t b) {
+template<>
+uint64_t tdc::intrisics::pcmpgtu<uint64_t, uint8_t>(uint64_t a, uint64_t b) {
     // _m_pcmpgtb is a comparison for SIGNED bytes, but we want an unsigned comparison
     // this is reached by XORing every value in our array with 0x80
     // this approach was micro-benchmarked against using an SSE max variant, as well as simple byte-wise comparison
-    static constexpr __m64 XOR_MASK = (__m64)0x8080808080808080ULL;
+    static constexpr __m64 XOR_MASK_64 = (__m64)0x8080808080808080ULL;
     return (uint64_t)_m_pcmpgtb(
-        _mm_xor_si64((__m64)a, XOR_MASK),
-        _mm_xor_si64((__m64)b, XOR_MASK));
+        _mm_xor_si64((__m64)a, XOR_MASK_64),
+        _mm_xor_si64((__m64)b, XOR_MASK_64));
+}
+
+template<>
+uint256_t tdc::intrisics::pcmpgtu<uint256_t, uint16_t>(uint256_t a, uint256_t b) {
+    // the instruction we use is a comparison for SIGNED bytes, but we want an unsigned comparison
+    // this is reached by XORing every value in our array with 0x80
+    // this approach was micro-benchmarked against using an SSE max variant, as well as simple byte-wise comparison
+    static constexpr uint256_t XOR_MASK_256 = uint256_t(0x8080808080808080ULL, 0x8080808080808080ULL, 0x8080808080808080ULL, 0x8080808080808080ULL);
+    
+    a ^= XOR_MASK_256;
+    b ^= XOR_MASK_256;
+    
+    __m256i _a = *((__m256i*)&a);
+    __m256i _b = *((__m256i*)&b);
+    _a = _mm256_cmpgt_epi16(_a, _b);
+    
+    return *((uint256_t*)&_a);
 }

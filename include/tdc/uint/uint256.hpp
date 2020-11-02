@@ -33,6 +33,14 @@ public:
     inline constexpr uint256_t(uint128_t lo, uint128_t hi) : m_lo(lo), m_hi(hi) {
     }
     
+    /// \brief Constructs a 256-bit value.
+    /// \param lo the 128 low bits.
+    /// \param hi the 128 high bits.
+    inline constexpr uint256_t(uint64_t x0, uint64_t x1, uint64_t x2, uint64_t x3)
+        : m_lo(uint128_t(x1) << 64ULL | uint128_t(x0)),
+          m_hi(uint128_t(x3) << 64ULL | uint128_t(x2)) {
+    }
+    
     /// \brief Construct from a 32-bit signed integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const int v) : uint256_t(v, v >= 0 ? 0 : UINT128_MAX) {
