@@ -157,8 +157,8 @@ public:
             // update matrix
             if(new_significant_position) {
                 // insert a column of dontcares (0 in branch, 1 in free)
-                const matrix_t matrix_hmask_lo = hmask_lo * Internals::REPEAT_MUL;
-                const matrix_t matrix_hmask_hi = hmask_hi * Internals::REPEAT_MUL;
+                const matrix_t matrix_hmask_lo = Internals::repeat(hmask_lo);
+                const matrix_t matrix_hmask_hi = Internals::repeat(hmask_hi);
 
                 // make sure compressed keys that aren't used stay at the maximum possible value
                 const matrix_t unused = m_matrix_max << (m_ckey_bits * sz);
@@ -181,7 +181,7 @@ public:
                 const matrix_t matrix_h_i0_i1 = matrix_i0_i1 & matrix_hset;
 
                 // set branch bits according to bit in matched key
-                m_branch |= (matrix_h_i0_i1 * y_j);
+                m_branch |= (matrix_h_i0_i1 & (-matrix_t(y_j))); // AND with -y_j corresponds to a multiplication with y_j, since y_j is a bool
 
                 // clear free bits
                 m_free &= ~matrix_h_i0_i1;
@@ -196,8 +196,8 @@ public:
                 // - the h-1 lowest bits are dontcares (branch 0, free 1)
                 // - the h-bit equals the j-th bit in the key
                 // - the remaining high bits equal that of the matched key
-                const matrix_t row_branch = (matched_branch & (~hmask_lo << 1U)) | ((matrix_t)((key & jmask) != 0) << h);
-                const matrix_t row_free = (matched_free & hclear) | (UINT8_MAX & hmask_lo);
+                const matrix_t row_branch = matrix_t(matched_branch & (~hmask_lo << 1U)) | ((matrix_t)((key & jmask) != 0) << h);
+                const matrix_t row_free = matrix_t(matched_free & hclear) | matrix_t(std::numeric_limits<ckey_t>::max() & hmask_lo);
 
                 const matrix_t lo = math::bit_mask<matrix_t>(i * m_ckey_bits);
                 m_branch = (m_branch & lo) | ((m_branch & ~lo) << m_ckey_bits) | (row_branch << (i * m_ckey_bits));
@@ -220,23 +220,31 @@ public:
         }
         
         // verify
-        //~ {
-            //~ auto fnode = Internals::construct(*this, sz + 1);
+#ifndef NDEBUG
+        /*
+        {
+            auto fnode = Internals::construct(*this, sz + 1);
             
-            //~ auto expected_mask = std::get<0>(fnode);
-            //~ auto expected_branch = std::get<1>(fnode);
-            //~ auto expected_free = std::get<2>(fnode);
+            auto expected_mask = std::get<0>(fnode);
+            auto expected_branch = std::get<1>(fnode);
+            auto expected_free = std::get<2>(fnode);
             
-            //~ if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
-                //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
-                //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
-                //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
-            //~ }
+            if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
+                std::cout << "key to be inserted is " << std::dec << key << std::endl;
+                std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
+                std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
+                std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
+                std::cout << "keys after insert are";
+                for(size_t i = 0; i < m_size; i++) std::cout << " " << std::dec << m_key[i];
+                std::cout << std::endl;
+            }
 
-            //~ assert(m_mask == expected_mask);
-            //~ assert(m_branch == expected_branch);
-            //~ assert(m_free == expected_free);
-        //~ }
+            assert(m_mask == expected_mask);
+            assert(m_branch == expected_branch);
+            assert(m_free == expected_free);
+        }
+        */
+#endif
     }
 
     /// \brief Removes the specified key.
@@ -301,8 +309,8 @@ public:
                 const ckey_t hmask_lo = math::bit_mask<ckey_t>(h);
                 const ckey_t hmask_hi = ~hmask_lo << 1ULL;
                 
-                const matrix_t matrix_hmask_lo = hmask_lo * Internals::REPEAT_MUL;
-                const matrix_t matrix_hmask_hi = hmask_hi * Internals::REPEAT_MUL;
+                const matrix_t matrix_hmask_lo = Internals::repeat(hmask_lo);
+                const matrix_t matrix_hmask_hi = Internals::repeat(hmask_hi);
                 
                 m_branch = ((m_branch & matrix_hmask_hi) >> (matrix_t)1ULL) | (m_branch & matrix_hmask_lo);
                 m_free   = ((m_free   & matrix_hmask_hi) >> (matrix_t)1ULL) | (m_free   & matrix_hmask_lo);
@@ -359,23 +367,31 @@ public:
         --m_size;
 
         // verify
-        //~ if(sz > 1) {
-            //~ auto fnode = Internals::construct(*this, size());
+#ifndef NDEBUG
+        /*
+        if(sz > 1) {
+            auto fnode = Internals::construct(*this, size());
             
-            //~ auto expected_mask = std::get<0>(fnode);
-            //~ auto expected_branch = std::get<1>(fnode);
-            //~ auto expected_free = std::get<2>(fnode);
+            auto expected_mask = std::get<0>(fnode);
+            auto expected_branch = std::get<1>(fnode);
+            auto expected_free = std::get<2>(fnode);
             
-            //~ if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
-                //~ std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
-                //~ std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
-                //~ std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
-            //~ }
+            if(m_branch != expected_branch || m_free != expected_free || m_mask != expected_mask) {
+                std::cout << "key to be removed is " << std::dec << key << std::endl;
+                std::cout << "m_mask   is 0x" << std::hex << m_mask << ", should be 0x" << expected_mask << std::endl;
+                std::cout << "m_branch is 0x" << std::hex << m_branch << ", should be 0x" << expected_branch << std::endl;
+                std::cout << "m_free   is 0x" << std::hex << m_free << ", should be 0x" << expected_free << std::endl;
+                std::cout << "keys after removal are";
+                for(size_t i = 0; i < m_size; i++) std::cout << " " << std::dec << m_key[i];
+                std::cout << std::endl;
+            }
 
-            //~ assert(m_mask == expected_mask);
-            //~ assert(m_branch == expected_branch);
-            //~ assert(m_free == expected_free);
-        //~ }
+            assert(m_mask == expected_mask);
+            assert(m_branch == expected_branch);
+            assert(m_free == expected_free);
+        }
+        */
+#endif
         
         return true;
     }
@@ -385,14 +401,42 @@ public:
         return m_size;
     }
 
-    // FIXME DEBUG
+#ifndef NDEBUG
     void print() const {
         std::cout << "DynamicFusionNode (size=" << size() << "):" << std::endl;
 
+        // print table
+        const size_t dbits = intrisics::popcnt(m_mask);
+        
+        std::cout << "distinguishing bits: " << std::dec << dbits << std::endl;
+        std::cout << "M      = 0x" << std::hex << m_mask << std::endl;
+        std::cout << "BRANCH = 0x" << std::hex << m_branch << std::endl;
+        std::cout << "FREE   = 0x" << std::hex << m_free << std::endl;
+        
+        std::cout << std::endl;
+        std::cout << "i\t| key\t| ckey" << std::endl;
+        std::cout << "---------------------------------" << std::endl;
         for(size_t i = 0; i < size(); i++) {
-            std::cout << "\ti=" << i << " -> keys[i]=" << m_key[i] << std::endl;
+            std::cout << std::dec << i << "\t| " << m_key[i] << "\t| ";
+            
+            const ckey_t branch_i = (ckey_t)(m_branch >> (i * m_ckey_bits));
+            const ckey_t   free_i = (ckey_t)(m_free   >> (i * m_ckey_bits));
+            
+            ckey_t extract = 1ULL << (dbits - 1);
+            while(extract) {
+                if(free_i & extract) {
+                    std::cout << '?';
+                } else {
+                    std::cout << ((branch_i & extract) ? '1' : '0');
+                }
+                extract >>= 1ULL;
+            }
+            
+            std::cout << std::endl;
+            // BRANCH=0x" << std::hex << uint64_t(branch_i) << ", FREE=0x" << uint64_t(free_i) << std::endl;
         }
     }
+#endif
 } __attribute__((__packed__));
 
 }}} // namespace tdc::pred::dynamic
