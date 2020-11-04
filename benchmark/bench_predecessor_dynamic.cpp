@@ -297,6 +297,13 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
+        bench("yfast_trie",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint32_t, 32, 9>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
     } else if(options.universe <= UINT40_MAX) {
         // use 40-bit keys
         bench("fusion_btree",
@@ -342,15 +349,15 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
+        bench("yfast_trie",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint64_t, 64, 9>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
     }
     
-    bench("yfast_trie",
-        [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, 64, 10>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
     bench("index_hybrid",
         [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
