@@ -276,8 +276,15 @@ int main(int argc, char** argv) {
 
     if(options.universe <= UINT32_MAX) {
         // use 32-bit keys
-        bench("fusion_btree",
+        bench("fusion_btree_8",
             [](const uint64_t){ return pred::dynamic::BTree<uint32_t, 9, pred::dynamic::DynamicFusionNode<uint32_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("fusion_btree_16",
+            [](const uint64_t){ return pred::dynamic::BTree<uint32_t, 17, pred::dynamic::DynamicFusionNode<uint32_t, 16>>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -306,8 +313,15 @@ int main(int argc, char** argv) {
         );
     } else if(options.universe <= UINT40_MAX) {
         // use 40-bit keys
-        bench("fusion_btree",
+        bench("fusion_btree_8",
             [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 9, pred::dynamic::DynamicFusionNode<uint40_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("fusion_btree_16",
+            [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 17, pred::dynamic::DynamicFusionNode<uint40_t, 16>>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -328,8 +342,15 @@ int main(int argc, char** argv) {
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
     } else {
-        bench("fusion_btree",
+        bench("fusion_btree_8",
             [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 9, pred::dynamic::DynamicFusionNode<uint64_t, 8>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("fusion_btree_16",
+            [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 17, pred::dynamic::DynamicFusionNode<uint64_t, 16>>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
