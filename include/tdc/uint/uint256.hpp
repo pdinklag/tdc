@@ -297,7 +297,7 @@ public:
     inline constexpr bool operator>=(const uint256_t& other) const {
         return (m_hi > other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
     }
-};
+} __attribute__((__packed__));
 
 /// \cond INTERNAL
 namespace intrisics {
