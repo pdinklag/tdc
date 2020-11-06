@@ -314,7 +314,7 @@ constexpr size_t popcnt(const uint256_t x) {
 };
 
 template<>
-inline size_t tzcnt(const uint256_t x) {
+constexpr size_t tzcnt(const uint256_t x) {
     const size_t lo = tzcnt((uint128_t)x);
     return lo == 128ULL ? 128ULL + tzcnt((uint128_t)(x >> 128)) : lo;
 };
