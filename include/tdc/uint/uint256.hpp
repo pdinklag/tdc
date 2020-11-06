@@ -304,8 +304,8 @@ namespace intrisics {
 
 template<>
 constexpr size_t lzcnt(const uint256_t x) {
-    const size_t hi = lzcnt((uint128_t)(x >> 128));
-    return hi == 128ULL ? 128ULL + lzcnt((uint128_t)x) : hi;
+    const size_t hi = lzcnt0((uint128_t)(x >> 128));
+    return hi == 128ULL ? 128ULL + lzcnt0((uint128_t)x) : hi;
 };
 
 template<>
@@ -315,8 +315,8 @@ constexpr size_t popcnt(const uint256_t x) {
 
 template<>
 constexpr size_t tzcnt(const uint256_t x) {
-    const size_t lo = tzcnt((uint128_t)x);
-    return lo == 128ULL ? 128ULL + tzcnt((uint128_t)(x >> 128)) : lo;
+    const size_t lo = tzcnt0((uint128_t)x);
+    return lo == 128ULL ? 128ULL + tzcnt0((uint128_t)(x >> 128)) : lo;
 };
 
 } //namespace intrisics

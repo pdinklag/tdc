@@ -16,6 +16,7 @@
 #include <tdc/uint/uint256.hpp>
 #include <tdc/util/assert.hpp>
 #include <tdc/util/int_type_traits.hpp>
+#include <tdc/util/likely.hpp>
 
 /// \cond INTERNAL
 
@@ -178,9 +179,15 @@ private:
         
         // find the position of the first key greater than the compressed key
         // this is as easy as counting the trailing zeroes, of which there are a multiple of 8
-        const size_t ctz = intrisics::tzcnt(cmp) / 8;
+        const size_t ctz = intrisics::tzcnt0(cmp) / 8;
         
         // the rank of our key is at the position before
+        /*
+            nb: there are two potential edge cases that may cause trouble since ctz then becomes zero:
+            (1) the node is full and the compressed key to rank is greater or equal to all compressed keys
+            (2) the node is not full, but the compressed key is CKEY_MAX
+        */
+        assert(ctz > 0);
         return ctz - 1;
     }
 
@@ -324,10 +331,15 @@ private:
         const auto cmp = intrisics::pcmpgtu<matrix_t, ckey_t>(array, cx_repeat);
         
         // find the position of the first key greater than the compressed key
-        // this is as easy as counting the trailing zeroes, of which there are a multiple of 16
-        const size_t ctz = intrisics::tzcnt(cmp) / 16;
+        const size_t ctz = intrisics::tzcnt0(cmp) / 16;
         
         // the rank of our key is at the position before
+        /*
+            nb: there are two potential edge cases that may cause trouble since ctz then becomes zero:
+            (1) the node is full and the compressed key to rank is greater or equal to all compressed keys
+            (2) the node is not full, but the compressed key is CKEY_MAX
+        */
+        assert(ctz > 0);
         return ctz - 1;
     }
 

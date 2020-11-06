@@ -17,7 +17,7 @@ namespace math {
 /// \param x the number in question
 template<typename T>
 constexpr size_t ilog2_ceil(const T x) {
-    return int_type_traits<T>::num_bits() - intrisics::lzcnt(x);
+    return int_type_traits<T>::num_bits() - intrisics::lzcnt0(x);
 }
 /// \endcond
 
