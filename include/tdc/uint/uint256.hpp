@@ -51,17 +51,17 @@ public:
     inline constexpr uint256_t(const unsigned int v) : uint256_t(v, 0) {
     }
 
-    /// \brief Construct from a ??-bit unsigned integer
+    /// \brief Construct from a ??-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const unsigned long int v) : uint256_t(v, 0) {
     }
     
-    /// \brief Construct from an 64-bit unsigned integer
+    /// \brief Construct from an 64-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const unsigned long long int v) : uint256_t(v, 0) {
     }
     
-    /// \brief Construct from a 128-bit unsigned integer
+    /// \brief Construct from a 128-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const uint128_t v) : uint256_t(v, 0) {
     }
@@ -367,7 +367,34 @@ public:
     static constexpr tdc::uint256_t denorm_min() noexcept { return tdc::uint256_t(0); }
 };
 
-/// \brief Standard output support  for \ref tdc::uint256_t.
+/// \brief STL definitions.
+template<>
+struct is_arithmetic<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_integral<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_scalar<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief Standard output support for \ref tdc::uint256_t.
 inline ostream& operator<<(ostream& out, tdc::uint256_t v) {
     return tdc::print_uint(out, v);
 }

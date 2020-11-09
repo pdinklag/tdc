@@ -378,6 +378,33 @@ public:
     static constexpr tdc::uint40_t denorm_min() noexcept { return tdc::uint40_t(0); }
 };
 
+/// \brief STL definitions.
+template<>
+struct is_arithmetic<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_integral<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_scalar<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
 /// \brief Standard output support  for \ref tdc::uint40_t.
 inline ostream& operator<<(ostream& out, const tdc::uint40_t& v) {
     out << (uint64_t)v;
