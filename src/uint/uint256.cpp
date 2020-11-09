@@ -48,9 +48,9 @@ uint256_t uint256_t::operator*(const uint256_t& other) const {
     first64  += uint128_t(lo64(products[3][3]));
 
     // combines the values, taking care of carry over
-    return uint256_t(first64 << 64, 0) +
-           uint256_t(hi64(third64), third64 << 64) +
-           uint256_t(second64, 0) +
+    return uint256_t(0, first64 << 64) +
+           uint256_t(third64 << 64, hi64(third64)) +
+           uint256_t(0, second64) +
            uint256_t(fourth64);
 }
 
