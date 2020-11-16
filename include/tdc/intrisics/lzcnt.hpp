@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <tdc/util/int_type_traits.hpp>
+#include <limits>
 
 namespace tdc {
 namespace intrisics {
@@ -23,7 +23,7 @@ constexpr size_t lzcnt(const T x);
 /// \param x the integer
 template<typename T>
 constexpr size_t lzcnt0(const T x) {
-    return x == T(0) ? int_type_traits<T>::num_bits() : lzcnt(x);
+    return x == T(0) ? std::numeric_limits<T>::digits : lzcnt(x);
 }
 
 /// \cond INTERNAL

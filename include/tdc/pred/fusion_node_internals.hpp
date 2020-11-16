@@ -15,7 +15,6 @@
 #include <tdc/pred/result.hpp>
 #include <tdc/uint/uint256.hpp>
 #include <tdc/util/assert.hpp>
-#include <tdc/util/int_type_traits.hpp>
 #include <tdc/util/likely.hpp>
 
 /// \cond INTERNAL
@@ -28,9 +27,9 @@ namespace internal {
 template<typename key_t, typename ckey_t, typename mask_t, typename matrix_t, typename array_t>
 std::tuple<mask_t, matrix_t, matrix_t> construct_static(const array_t& keys, const size_t num)
 {
-    assert(int_type_traits<matrix_t>::num_bits() == int_type_traits<ckey_t>::num_bits() * int_type_traits<ckey_t>::num_bits());
+    assert(std::numeric_limits<matrix_t>::digits == std::numeric_limits<ckey_t>::digits * std::numeric_limits<ckey_t>::digits);
     
-    const size_t key_bits = int_type_traits<key_t>::num_bits();
+    const size_t key_bits = std::numeric_limits<key_t>::digits;
     
     // a very simple trie data structure
     using node_t = uint16_t; // we assume we deal with tries with at most 65536 nodes - may be altered at will
@@ -44,7 +43,7 @@ std::tuple<mask_t, matrix_t, matrix_t> construct_static(const array_t& keys, con
     };
     
     assert(num > 0);
-    assert(num * num <= int_type_traits<matrix_t>::num_bits());
+    assert(num * num <= std::numeric_limits<matrix_t>::digits);
     tdc::assert_sorted_ascending(keys, num);
 
     // insert keys into binary trie and compute mask
@@ -56,7 +55,7 @@ std::tuple<mask_t, matrix_t, matrix_t> construct_static(const array_t& keys, con
     const node_t root = 0;
     
     mask_t m_mask = 0;
-    const mask_t extract_init = mask_t(1) << int_type_traits<key_t>::msb_pos(); // bit extraction mask, which we will be shifting to the right bit by bit
+    const mask_t extract_init = mask_t(1) << (key_bits - 1); // bit extraction mask, which we will be shifting to the right bit by bit
     
     const size_t max_keys = sizeof(matrix_t) / sizeof(ckey_t);
     ckey_t m_branch[max_keys];
@@ -157,7 +156,7 @@ public:
     
     static constexpr matrix_t REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
     
-    static constexpr size_t m_key_bits = int_type_traits<key_t>::num_bits();
+    static constexpr size_t m_key_bits = std::numeric_limits<key_t>::digits;
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
     // repeat a byte eight times into a 64-bit word
@@ -309,7 +308,7 @@ public:
     static constexpr uint64_t REPEAT_MUL64 = 0x0001'0001'0001'0001ULL;
     static constexpr matrix_t REPEAT_MUL = uint256_t(REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64);
     
-    static constexpr size_t m_key_bits = int_type_traits<key_t>::num_bits();
+    static constexpr size_t m_key_bits = std::numeric_limits<key_t>::digits;
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
     // repeat a compressed key into a matrix

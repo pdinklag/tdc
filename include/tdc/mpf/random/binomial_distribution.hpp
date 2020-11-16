@@ -1,9 +1,10 @@
 #pragma once
 
+#include <limits>
+
 #include <tdc/mpf/mpfloat.hpp>
 #include <tdc/mpf/random/uniform_distribution.hpp>
 #include <tdc/mpf/random/normal_distribution.hpp>
-#include <tdc/util/int_type_traits.hpp>
 
 namespace tdc {
 namespace mpf {
@@ -16,7 +17,7 @@ class BinomialDistribution {
 private:
     // use a mantissa with a precision matching the amount of bits in T
     // however, use at least double precision (53-bit mantissa)
-    static constexpr mpfr_prec_t m_prec = std::max(DOUBLE_PRECISION, (mpfr_prec_t)int_type_traits<T>::num_bits());
+    static constexpr mpfr_prec_t m_prec = std::max(DOUBLE_PRECISION, (mpfr_prec_t)std::numeric_limits<T>::digits);
 
     using F = mpfloat_t<m_prec, m_rnd>;
     using urand_t = Uniform01Distribution<m_prec, m_rnd>;

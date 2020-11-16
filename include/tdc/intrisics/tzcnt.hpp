@@ -3,8 +3,8 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <tdc/math/iminmax.hpp>
-#include <tdc/util/int_type_traits.hpp>
 
 namespace tdc {
 namespace intrisics {
@@ -24,7 +24,7 @@ constexpr size_t tzcnt(const T x);
 /// \param x the integer
 template<typename T>
 constexpr size_t tzcnt0(const T x) {
-    return x == T(0) ? int_type_traits<T>::num_bits() : tzcnt(x);
+    return x == T(0) ? std::numeric_limits<T>::digits : tzcnt(x);
 }
 
 /// \cond INTERNAL
