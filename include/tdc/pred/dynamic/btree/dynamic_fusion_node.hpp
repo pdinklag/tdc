@@ -223,7 +223,7 @@ public:
 #ifndef NDEBUG
         /*
         {
-            auto fnode = Internals::construct(*this, sz + 1);
+            auto fnode = Internals::template construct<key_t>(*this, sz + 1);
             
             auto expected_mask = std::get<0>(fnode);
             auto expected_branch = std::get<1>(fnode);
@@ -370,7 +370,7 @@ public:
 #ifndef NDEBUG
         /*
         if(sz > 1) {
-            auto fnode = Internals::construct(*this, size());
+            auto fnode = Internals::template construct<key_t>(*this, size());
             
             auto expected_mask = std::get<0>(fnode);
             auto expected_branch = std::get<1>(fnode);

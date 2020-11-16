@@ -39,7 +39,7 @@ public:
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
     FusionNode(const key_t* keys, const size_t num) {
-        auto fnode8 = Internals::construct(keys, num);
+        auto fnode8 = Internals::template construct<key_t>(keys, num);
         m_mask = std::get<0>(fnode8);
         m_branch = std::get<1>(fnode8);
         m_free = std::get<2>(fnode8);
@@ -54,7 +54,7 @@ public:
     /// \param keys a pointer to the keys, that must be in ascending order
     /// \param num the number of keys, must be at most \ref MAX_KEYS
     FusionNode(const SkipAccessor<key_t>& keys, const size_t num) {
-        auto fnode8 = Internals::construct(keys, num);
+        auto fnode8 = Internals::template construct<key_t>(keys, num);
         m_mask = std::get<0>(fnode8);
         m_branch = std::get<1>(fnode8);
         m_free = std::get<2>(fnode8);
