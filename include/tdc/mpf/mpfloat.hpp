@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include <tdc/math/idiv.hpp>
+
 #ifdef MPFR_FOUND
 
 #include <mpfr.h>
@@ -30,6 +32,9 @@ constexpr mpfr_prec_t DOUBLE_PRECISION = 53;
 /// \tparam m_rnd the rounding to use for operations, using \em nearest as the default setting. Refer to the MPFR documentation for details.
 template<mpfr_prec_t m_precision, mpfr_rnd_t m_rnd = MPFR_RNDN>
 class mpfloat_t {
+private:
+    using this_t = mpfloat_t<m_precision, m_rnd>;
+
 public:
     /// \brief Constructs an mpfloat that equals PI.
     static mpfloat_t pi() {
@@ -54,6 +59,18 @@ public:
     static mpfloat_t exp(const mpfloat_t& x) {
         mpfloat_t r(x);
         return r.exp();
+    }
+
+    /// \brief Raise an mpfloat to another mpfloat's power in a new mpfloat.
+    static mpfloat_t pow(const mpfloat_t& a, const mpfloat_t& b) {
+        mpfloat_t r(a);
+        return r.pow(b);
+    }
+
+    /// \brief Raise an mpfloat to the given power in a new mpfloat.
+    static mpfloat_t pow(const mpfloat_t& a, const unsigned long& b) {
+        mpfloat_t r(a);
+        return r.pow(b);
     }
 
     /// \brief Computes the natural logarithm of the absolute value of the gamma function of an mpfloat in a new mpfloat.
@@ -111,6 +128,12 @@ public:
     mpfloat_t(const double d) : mpfloat_t() {
         *this = d;
     }
+    
+    /// \brief Constructs an mpfloat from an unsigned integer.
+    template<typename uint_t>
+    mpfloat_t(const uint_t& x) : mpfloat_t() {
+        *this = x;
+    }
 
     /// \brief Destructor.
     ~mpfloat_t() {
@@ -134,12 +157,25 @@ public:
     }
 
     /// \brief Assigns an integer value to this mpfloat.
-    template<typename int_t>
-    mpfloat_t& operator=(const int_t& x) {
-        static_assert(std::numeric_limits<int_t>::is_integer);
+    template<typename uint_t>
+    mpfloat_t& operator=(const uint_t& x) {
+        static_assert(std::numeric_limits<uint_t>::is_integer && !std::numeric_limits<uint_t>::is_signed);
         
-        // TODO: support arbitrary-width integer types
-        mpfr_set_uj(m_value, x, m_rnd);
+        if constexpr(std::numeric_limits<uint_t>::digits <= 64) {
+            mpfr_set_uj(m_value, x, m_rnd);
+        } else {
+            this_t p64, f;
+            
+            p64.power_of_two(64);
+            *this = (uint64_t)0;
+            
+            const size_t num_words = math::idiv_ceil(std::numeric_limits<uint_t>::digits, 64);
+            for(size_t i = 0; i < num_words; i++) {
+                f = (uint64_t)(x >> ((num_words - i - 1) * 64));
+                (*this) += f;
+                if(i + 1 < num_words) (*this) *= p64;
+            }
+        }
         return *this;
     }
 
@@ -169,12 +205,30 @@ public:
         return mpfr_get_d(m_value, m_rnd);
     }
 
-    /// \brief Rounds this mpfloat to the nearest integer.
-    template<typename int_t>
-    explicit operator int_t() const {
-        static_assert(std::numeric_limits<int_t>::is_integer);
-        // TODO: support arbitrary-width integer types
-        return mpfr_get_uj(m_value, m_rnd);
+    /// \brief Rounds this mpfloat to the nearest unsigned integer.
+    template<typename uint_t>
+    explicit operator uint_t() const {
+        static_assert(std::numeric_limits<uint_t>::is_integer && !std::numeric_limits<uint_t>::is_signed);
+        
+        if constexpr(std::numeric_limits<uint_t>::digits <= 64) {
+            return mpfr_get_uj(m_value, m_rnd);
+        } else {
+            this_t f = *this;
+            this_t m, p64;
+            uint_t r(0);
+            
+            p64.power_of_two(64);
+            
+            const size_t num_words = math::idiv_ceil(std::numeric_limits<uint_t>::digits, 64);
+            for(size_t i = 0; i < num_words; i++) {
+                m = f;
+                m %= p64;
+                const uint64_t word = (uint64_t)m;
+                r |= ((uint_t)word) << (i * 64);
+                f /= p64;
+            }
+            return r;
+        }
     }
 
     /// \brief Negates this mpfloat in a new mpfloat.
@@ -288,6 +342,19 @@ public:
         r /= d;
         return r;
     }
+    
+    /// \brief Modulo assignment.
+    mpfloat_t& operator%=(const mpfloat_t& other) {
+        mpfr_fmod(m_value, m_value, other.m_value, m_rnd);
+        return *this;
+    }
+
+    /// \brief Modulo in a new mpfloat.
+    mpfloat_t operator%(const mpfloat_t& other) const {
+        mpfloat_t r(*this);
+        r %= other;
+        return r;
+    }
 
     /// \brief Assigns the negation of this mpfloat.
     mpfloat_t& neg() {
@@ -316,6 +383,18 @@ public:
     /// \brief Assigns Euler's number to the mpfloat's power.
     mpfloat_t& exp() {
         mpfr_exp(m_value, m_value, m_rnd);
+        return *this;
+    }
+    
+    /// \brief Raise the mpfloat to the given power.
+    mpfloat_t& pow(const mpfloat_t& other) {
+        mpfr_pow(m_value, m_value, other.m_value, m_rnd);
+        return *this;
+    }
+    
+    /// \brief Raise the mpfloat to the given power.
+    mpfloat_t& pow(const unsigned long& i) {
+        mpfr_pow_ui(m_value, m_value, i, m_rnd);
         return *this;
     }
 
@@ -371,6 +450,12 @@ public:
     /// \brief Assigns the quotient of a double value divided by this mpfloat's value.
     mpfloat_t& divide(const double d) {
         mpfr_d_div(m_value, d, m_value, m_rnd);
+        return *this;
+    }
+    
+    /// \brief Assigns given power of two to the mpfloat.
+    mpfloat_t& power_of_two(const unsigned long& i) {
+        mpfr_ui_pow_ui(m_value, 2UL, i, m_rnd);
         return *this;
     }
 
