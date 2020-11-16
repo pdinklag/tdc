@@ -1,6 +1,6 @@
-
 #pragma once
 
+#include <cstring>
 #include <limits>
 #include <string>
 #include <utility>
@@ -433,6 +433,23 @@ public:
     bool operator>=(const double d) const {
         return mpfr_cmp_d(m_value, d) >= 0;
     }
+
+    std::string str() const {
+        mpfr_exp_t exp;
+        char* mpfr_str = mpfr_get_str(nullptr, &exp, 10, 0, m_value, m_rnd);
+        std::string s;
+        const size_t mpfr_len = std::strlen(mpfr_str);
+        s.reserve(mpfr_len + 1);
+        for(size_t i = 0; i < exp; i++) {
+            s.push_back(mpfr_str[i]);
+        }
+        s.push_back('.');
+        for(size_t i = exp; i < mpfr_len; i++) {
+            s.push_back(mpfr_str[i]);
+        }
+        mpfr_free_str(mpfr_str);
+        return s;
+    }
 };
 
 }} // namespace tdc::mpf
@@ -462,6 +479,16 @@ tdc::mpf::mpfloat_t<prec, rnd> operator/(const double d, const tdc::mpf::mpfloat
     tdc::mpf::mpfloat_t<prec, rnd> r(f);
     return r.divide(d);
 }
+
+namespace std {
+
+/// \brief Standard output support for \ref tdc::mpf::mpfloat_t.
+template<mpfr_prec_t prec, mpfr_rnd_t rnd>
+inline ostream& operator<<(ostream& out, const tdc::mpf::mpfloat_t<prec, rnd>& f) {
+    return (out << f.str());
+}
+
+} // namespace std
 
 #else
 
