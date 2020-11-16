@@ -15,7 +15,7 @@ namespace intrisics {
 /// \tparam T the integer type
 /// \param x the integer
 template<typename T>
-constexpr size_t tzcnt(const T x);
+constexpr size_t tzcnt(const T& x);
 
 /// \brief Counts the number of trailing zero bits in an integer.
 ///
@@ -23,31 +23,31 @@ constexpr size_t tzcnt(const T x);
 /// \tparam T the integer type
 /// \param x the integer
 template<typename T>
-constexpr size_t tzcnt0(const T x) {
+constexpr size_t tzcnt0(const T& x) {
     return x == T(0) ? std::numeric_limits<T>::digits : tzcnt(x);
 }
 
 /// \cond INTERNAL
 template<>
-constexpr size_t tzcnt(const uint8_t x) {
+constexpr size_t tzcnt(const uint8_t& x) {
     assert(x > 0);
     return math::imin((size_t)__builtin_ctz(x), size_t(8)); // there can be at most 8 trailing zeroes
 };
 
 template<>
-constexpr size_t tzcnt(const uint16_t x) {
+constexpr size_t tzcnt(const uint16_t& x) {
     assert(x > 0);
     return math::imin((size_t)__builtin_ctz(x), size_t(16)); // there can be at most 16 trailing zeroes
 };
 
 template<>
-constexpr size_t tzcnt(const uint32_t x) {
+constexpr size_t tzcnt(const uint32_t& x) {
     assert(x > 0);
     return __builtin_ctz(x);
 };
 
 template<>
-constexpr size_t tzcnt(const uint64_t x) {
+constexpr size_t tzcnt(const uint64_t& x) {
     assert(x > 0);
     return __builtin_ctzll(x);
 };

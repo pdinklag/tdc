@@ -16,7 +16,7 @@ namespace intrisics {
 /// \param x the word to extract bits from
 /// \param mask the extraction mask
 template<typename T>
-T pext(const T x, const T mask);
+T pext(const T& x, const T& mask);
 
 #else
 #pragma message "tdc::intrisics::pext not avaiable because BMI2 is not supported -- when building in Debug mode, you may have to pass -mbmi2 to the compiler"

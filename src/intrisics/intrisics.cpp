@@ -11,16 +11,16 @@
 #include <tdc/uint/uint256.hpp>
 
 #ifdef __BMI2__
-template<> uint64_t tdc::intrisics::pext(const uint64_t x, const uint64_t mask) {
+template<> uint64_t tdc::intrisics::pext(const uint64_t& x, const uint64_t& mask) {
     return _pext_u64(x, mask);
 }
 
-template<> uint8_t tdc::intrisics::pext(const uint8_t x, const uint8_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
-template<> uint16_t tdc::intrisics::pext(const uint16_t x, const uint16_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
-template<> uint32_t tdc::intrisics::pext(const uint32_t x, const uint32_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
-template<> uint40_t tdc::intrisics::pext(const uint40_t x, const uint40_t mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint8_t tdc::intrisics::pext(const uint8_t& x, const uint8_t& mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint16_t tdc::intrisics::pext(const uint16_t& x, const uint16_t& mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint32_t tdc::intrisics::pext(const uint32_t& x, const uint32_t& mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
+template<> uint40_t tdc::intrisics::pext(const uint40_t& x, const uint40_t& mask) { return tdc::intrisics::pext((uint64_t)x, (uint64_t)mask); }
 
-template<> uint128_t tdc::intrisics::pext(const uint128_t x, const uint128_t mask) {
+template<> uint128_t tdc::intrisics::pext(const uint128_t& x, const uint128_t& mask) {
     const size_t lo_cnt = popcnt((uint64_t)mask);
     const uint64_t pext_lo = _pext_u64(x, mask);
     const uint64_t pext_hi = _pext_u64(x >> 64, mask >> 64);
@@ -42,7 +42,7 @@ template<> uint128_t tdc::intrisics::pext(const uint128_t x, const uint128_t mas
     */
 }
 
-template<> uint256_t tdc::intrisics::pext(const uint256_t x, const uint256_t mask) {
+template<> uint256_t tdc::intrisics::pext(const uint256_t& x, const uint256_t& mask) {
     const size_t lo_cnt = popcnt((uint128_t)mask);
     const uint128_t pext_lo = pext((uint128_t)x, (uint128_t)mask);
     const uint128_t pext_hi = pext((uint128_t)(x >> 128), (uint128_t)(mask >> 128));
@@ -52,7 +52,7 @@ template<> uint256_t tdc::intrisics::pext(const uint256_t x, const uint256_t mas
 #endif
 
 template<>
-uint64_t tdc::intrisics::pcmpgtu<uint64_t, uint8_t>(uint64_t a, uint64_t b) {
+uint64_t tdc::intrisics::pcmpgtu<uint64_t, uint8_t>(const uint64_t& a, const uint64_t& b) {
     // _m_pcmpgtb is a comparison for SIGNED bytes, but we want an unsigned comparison
     // this is reached by XORing every value in our array with 0x80
     // this approach was micro-benchmarked against using an SSE max variant, as well as simple byte-wise comparison
@@ -63,18 +63,18 @@ uint64_t tdc::intrisics::pcmpgtu<uint64_t, uint8_t>(uint64_t a, uint64_t b) {
 }
 
 template<>
-uint256_t tdc::intrisics::pcmpgtu<uint256_t, uint16_t>(uint256_t a, uint256_t b) {
+uint256_t tdc::intrisics::pcmpgtu<uint256_t, uint16_t>(const uint256_t& a, const uint256_t& b) {
     // the instruction we use is a comparison for SIGNED bytes, but we want an unsigned comparison
     // this is reached by XORing every value in our array with 0x80
     // this approach was micro-benchmarked against using an SSE max variant, as well as simple byte-wise comparison
     static constexpr uint256_t XOR_MASK_256 = uint256_t(0x8000'8000'8000'8000ULL, 0x8000'8000'8000'8000ULL, 0x8000'8000'8000'8000ULL, 0x8000'8000'8000'8000ULL);
     
-    a ^= XOR_MASK_256;
-    b ^= XOR_MASK_256;
+    uint256_t a_signed = a ^ XOR_MASK_256;
+    uint256_t b_signed = b ^ XOR_MASK_256;
     
-    const uint64_t* pa = (const uint64_t*)&a;
+    const uint64_t* pa = (const uint64_t*)&a_signed;
     __m256i _a = _mm256_set_epi64x(pa[0], pa[1], pa[2], pa[3]);
-    const uint64_t* pb = (const uint64_t*)&b;
+    const uint64_t* pb = (const uint64_t*)&b_signed;
     __m256i _b = _mm256_set_epi64x(pb[0], pb[1], pb[2], pb[3]);
     _a = _mm256_cmpgt_epi16(_a, _b);
     

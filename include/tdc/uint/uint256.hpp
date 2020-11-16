@@ -117,7 +117,7 @@ public:
     /// \brief Prefix decrement.
     inline uint256_t& operator--() {
         --m_lo;
-        if(m_lo == UINT32_MAX) --m_hi;
+        if(m_lo == UINT128_MAX) --m_hi;
         return *this;
     }
 
@@ -303,18 +303,18 @@ public:
 namespace intrisics {
 
 template<>
-constexpr size_t lzcnt(const uint256_t x) {
+constexpr size_t lzcnt(const uint256_t& x) {
     const size_t hi = lzcnt0((uint128_t)(x >> 128));
     return hi == 128ULL ? 128ULL + lzcnt0((uint128_t)x) : hi;
 };
 
 template<>
-constexpr size_t popcnt(const uint256_t x) {
+constexpr size_t popcnt(const uint256_t& x) {
     return popcnt((uint128_t)x) + popcnt((uint128_t)(x >> 128));
 };
 
 template<>
-constexpr size_t tzcnt(const uint256_t x) {
+constexpr size_t tzcnt(const uint256_t& x) {
     const size_t lo = tzcnt0((uint128_t)x);
     return lo == 128ULL ? 128ULL + tzcnt0((uint128_t)(x >> 128)) : lo;
 };

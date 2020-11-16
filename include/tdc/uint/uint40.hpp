@@ -282,17 +282,17 @@ namespace tdc {
 namespace intrisics {
 
 template<>
-constexpr size_t lzcnt(const uint40_t x) {
+constexpr size_t lzcnt(const uint40_t& x) {
     return lzcnt((uint64_t)x) - 24ULL; // don't account for 24 padded bits
 };
 
 template<>
-constexpr size_t popcnt(const uint40_t x) {
+constexpr size_t popcnt(const uint40_t& x) {
     return popcnt((uint64_t)x);
 };
 
 template<>
-constexpr size_t tzcnt(const uint40_t x) {
+constexpr size_t tzcnt(const uint40_t& x) {
     return math::imin((size_t)tzcnt((uint64_t)x), size_t(40));  // there can be at most 40 trailing zeroes
 };
 

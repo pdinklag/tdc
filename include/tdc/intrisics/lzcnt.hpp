@@ -14,7 +14,7 @@ namespace intrisics {
 /// \tparam T the integer type
 /// \param x the integer
 template<typename T>
-constexpr size_t lzcnt(const T x);
+constexpr size_t lzcnt(const T& x);
 
 /// \brief Counts the number of leading zero bits in an integer.
 ///
@@ -22,31 +22,31 @@ constexpr size_t lzcnt(const T x);
 /// \tparam T the integer type
 /// \param x the integer
 template<typename T>
-constexpr size_t lzcnt0(const T x) {
+constexpr size_t lzcnt0(const T& x) {
     return x == T(0) ? std::numeric_limits<T>::digits : lzcnt(x);
 }
 
 /// \cond INTERNAL
 template<>
-constexpr size_t lzcnt(const uint8_t x) {
+constexpr size_t lzcnt(const uint8_t& x) {
     assert(x > 0);
     return __builtin_clz(x) - 24ULL; // don't account for 24 padded bits
 };
 
 template<>
-constexpr size_t lzcnt(const uint16_t x) {
+constexpr size_t lzcnt(const uint16_t& x) {
     assert(x > 0);
     return __builtin_clz(x) - 16ULL; // don't account for 16 padded bits
 };
 
 template<>
-constexpr size_t lzcnt(const uint32_t x) {
+constexpr size_t lzcnt(const uint32_t& x) {
     assert(x > 0);
     return __builtin_clz(x);
 };
 
 template<>
-constexpr size_t lzcnt(const uint64_t x) {
+constexpr size_t lzcnt(const uint64_t& x) {
     assert(x > 0);
     return __builtin_clzll(x);
 };
