@@ -297,7 +297,14 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
-        bench("yfast_trie",
+        bench("yfast_trie-08",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint32_t, 32, 8>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-09",
             [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint32_t, 32, 9>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
@@ -327,6 +334,20 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
+        bench("yfast_trie-08",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint40_t, 40, 8>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-09",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint40_t, 40, 9>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
     } else {
         bench("fusion_btree",
             [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 9, pred::dynamic::DynamicFusionNode<uint64_t, 8>>(); },
@@ -349,8 +370,15 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
-        bench("yfast_trie",
-            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint64_t, 64, 9>(); },
+        bench("yfast_trie-09",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint64_t, 64, 9, 2>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-10",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint64_t, 64, 10, 2>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },

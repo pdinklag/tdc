@@ -37,7 +37,7 @@ struct yfast_bucket {
   xfast_update insert(const t_value_type x) {
     xfast_update update;
     if (x < m_min) {
-      update.remove_repr.push_back(m_min);
+      update.remove_repr.push_back((uint64_t)m_min);
       update.insert_repr.push_back(this);
       m_elem.push_back(m_min);
       m_min = x;
@@ -85,7 +85,7 @@ struct yfast_bucket {
         m_next->m_prev = m_prev;
       }
       updates.push_back(xfast_update());
-      updates.back().remove_repr.push_back(x);
+      updates.back().remove_repr.push_back((uint64_t)x);
       updates.back().delete_bucket.push_back(this);
       return updates;
     }
@@ -93,7 +93,7 @@ struct yfast_bucket {
     //choose the new representant
     if (x == m_min) {
       updates.push_back(xfast_update());
-      updates.back().remove_repr.push_back(m_min);
+      updates.back().remove_repr.push_back((uint64_t)m_min);
       auto new_min = std::min_element(m_elem.begin(), m_elem.end());
       m_min = *new_min;
       *new_min = m_elem.back();
@@ -104,12 +104,12 @@ struct yfast_bucket {
       *del = m_elem.back();
       m_elem.pop_back();
     }
-
+    //TODO: INSERT MERGE AGAIN
     //if the bucket is too small, merge
-    if (m_elem.size() <= (c_bucket_size >> t_merge_threshold)) {
-      std::vector<xfast_update> merge_updates = merge();
-      updates.insert(updates.end(), merge_updates.begin(), merge_updates.end());
-    }
+    //if (m_elem.size() <= (c_bucket_size >> t_merge_threshold)) {
+    //  std::vector<xfast_update> merge_updates = merge();
+    //  updates.insert(updates.end(), merge_updates.begin(), merge_updates.end());
+    //}
     return updates;
   }
   std::vector<xfast_update> merge() {
@@ -123,7 +123,7 @@ struct yfast_bucket {
         m_prev->m_elem.push_back(m_elem[i]);
       }
       updates.push_back(xfast_update());
-      updates.back().remove_repr.push_back(m_min);
+      updates.back().remove_repr.push_back((uint64_t)m_min);
       updates.back().delete_bucket.push_back(this);
       updates.push_back(m_prev->insert(m_min));
       assert((updates.back().insert_repr.size() <= 1) && (updates.back().remove_repr.size() == 0));
@@ -133,7 +133,7 @@ struct yfast_bucket {
       }
       m_next->m_prev = nullptr;
       updates.push_back(xfast_update());
-      updates.back().remove_repr.push_back(m_min);
+      updates.back().remove_repr.push_back((uint64_t)m_min);
       updates.back().delete_bucket.push_back(this);
       updates.push_back(m_next->insert(m_min));
     }
@@ -147,16 +147,16 @@ struct yfast_bucket {
       return {false, 0};
     }
     t_value_type max_pred = m_min;
-    for (size_t i = 0; i < size(); ++i) {
-      if (m_elem[i] <= key) {
-        max_pred = std::max(m_elem[i], max_pred);
+    for (auto elem : m_elem) {
+      if (elem <= key) {
+        max_pred = std::max(elem, max_pred);
       }
     }
-    return {true, max_pred};
+    return {true, (uint64_t)max_pred};
   }
 };  // namespace dynamic
 
-template <template<typename, uint8_t, uint8_t> typename t_bucket, typename t_value_type, uint8_t t_key_width, uint8_t t_bucket_width, uint8_t t_merge_threshold = 2, bool t_bin_level_search = true, uint8_t t_start_l = t_bucket_width - t_merge_threshold>
+template <template <typename, uint8_t, uint8_t> typename t_bucket, typename t_value_type, uint8_t t_key_width, uint8_t t_bucket_width, uint8_t t_merge_threshold = 2, uint8_t t_start_l = t_bucket_width - t_merge_threshold>
 class YFastTrie {
  private:
   using bucket = t_bucket<t_value_type, t_bucket_width, t_merge_threshold>;
@@ -165,88 +165,150 @@ class YFastTrie {
   size_t m_size = 0;
 
   std::array<robin_hood::unordered_map<uint64_t, bucket*>, t_key_width + 1> m_xfast;
-
+  // Traverse and update the tree until we find a 0-Node. Here we have to split.
   void insert_repr(uint64_t key, bucket* b) {
-    // Level 0
-    uint64_t level = c_start_l;
-    key >>= level;
-    m_xfast[level][key] = b;
+    //Search for the first leaf and insert the node there
+    int64_t level = t_key_width;
+    uint64_t prefix = (key >> 1) >> (level - 1);  //this is equal to (key >> level)
+    uint64_t next_bit = (key >> (level - 1)) & 0x1;
+    uint64_t child_prefix = (prefix << 1) + next_bit;
+    uint64_t sibling_prefix = (prefix << 1) + (1 - next_bit);
 
-    // Level 1, 2, 3...
-    ++level;
-    uint64_t last_bit = key & 0x1;
-    key >>= 1;
+    auto node = m_xfast[level].find(prefix);
+    auto child = m_xfast[level - 1].find(child_prefix);
+    auto sibling = m_xfast[level - 1].find(sibling_prefix);
 
-    // we first find zeroes
-    while (level <= t_key_width && (m_xfast[level].find(key) == m_xfast[level].end())) {
-      m_xfast[level][key] = b;
-      ++level;
-      last_bit = key & 0x1;
-      key >>= 1;
-    }
-    if (level <= t_key_width) {
-      m_xfast[level][key] = nullptr;
-      ++level;
-      last_bit = key & 0x1;
-      key >>= 1;
-    }
-    // then we find ones; if one children is a zero, we update the pointer
-    while (level <= t_key_width) {
-      auto other_child = m_xfast[level - 1].find((key << 1) + (1 - last_bit));
-      if (other_child == m_xfast[level - 1].end()) {
-        if ((m_xfast[level][key]->get_repr() < b->get_repr()) ^ last_bit) {
-          m_xfast[level][key] = b;
+    while (level >= 0) {
+      if (child == m_xfast[level - 1].end()) {
+        if (sibling == m_xfast[level - 1].end()) {
+          //child and sibling do not exist
+          //split and return
+          bucket* smaller_bucket;
+          bucket* greater_bucket;
+          bucket* other_b = node->second;
+          uint64_t other_key = other_b->get_repr();
+          uint64_t other_next_bit = (other_key >> (level - 1)) & 0x1;
+          if (key < other_key) {
+            smaller_bucket = b;
+            greater_bucket = other_b;
+          } else {
+            smaller_bucket = other_b;
+            greater_bucket = b;
+          }
+          while (next_bit == other_next_bit) {
+            if (next_bit == 0) {
+              m_xfast[level][prefix] = greater_bucket;
+            } else {
+              m_xfast[level][prefix] = smaller_bucket;
+            }
+            --level;
+            prefix = (key >> level);
+            next_bit = (key >> (level - 1)) & 0x1;
+            other_next_bit = (other_key >> (level - 1)) & 0x1;
+          }
+          m_xfast[level][prefix] == nullptr;
+          m_xfast[level - 1][prefix << 1] = smaller_bucket;
+          m_xfast[level - 1][(prefix << 1) + 1] = greater_bucket;
+          return;
+
+        } else {
+          //child does not exists, but sibling exists
+          //insert node and return
+          m_xfast[level][prefix] = nullptr;
+          m_xfast[level - 1][child_prefix] = b;
+          return;
         }
-        ++level;
-        last_bit = key & 0x1;
-        key >>= 1;
-        continue;
+      } else {
+        if (sibling == m_xfast[level - 1].end()) {
+          // child exists, but sibling does not exist
+          // we may have to update the pointer of node
+          if (next_bit == 0) {
+            if (b->get_repr() > node->second->get_repr()) {
+              m_xfast[level][prefix] = b;
+            }
+          } else {
+            if (b->get_repr() < node->second->get_repr()) {
+              m_xfast[level][prefix] = b;
+            }
+          }
+        } else {
+          //both child and sibling exist
+          //do nothing
+        }
       }
-      // if both children are ones, we remove the pointer
-      m_xfast[level][key] = nullptr;
-      ++level;
-      last_bit = key & 0x1;
-      key >>= 1;
+      --level;
+      prefix = (key >> level);
+      next_bit = (key >> (level - 1)) & 0x1;
+      child_prefix = (prefix << 1) + next_bit;
+      sibling_prefix = (prefix << 1) + (1 - next_bit);
+
+      node = child;
+      child = m_xfast[level - 1].find(child_prefix);
+      sibling = m_xfast[level - 1].find(sibling_prefix);
     }
   }
 
   void remove_repr(uint64_t key) {
-    // Level 0
-    uint64_t level = c_start_l;
-    key >>= level;
-    m_xfast[c_start_l].erase(key);
+    size_t level = find_level(key);
+    uint64_t prefix = (level == 64) ? 0 : (key >> level);
+    uint64_t last_bit = prefix & 0x1;
+    m_xfast[level].erase(prefix);
 
-    // Level 1, 2, 3...
-    ++level;
-    uint64_t last_bit = key & 0x1;
-    key >>= 1;
-
-    // while the deleted key was the only representant in the subtree, we delete all nodes
-    while (level <= t_key_width) {
-      auto other_child = m_xfast[level - 1].find((key << 1) + (1 - last_bit));
-      if (other_child == m_xfast[level - 1].end()) {
-        m_xfast[level].erase(key);
-      } else {
-        m_xfast[level][key] = (last_bit == 0) ? min_repr(level - 1, (key << 1) + 1) : max_repr(level - 1, (key << 1));
-        ++level;
-        last_bit = key & 0x1;
-        key >>= 1;
-        break;
-      }
-      ++level;
-      last_bit = key & 0x1;
-      key >>= 1;
+    if (level == t_key_width) {
+      return;
     }
+    uint64_t sibling_prefix = (last_bit == 0) ? prefix + 1 : prefix - 1;
+    auto sibling = m_xfast[level].find(sibling_prefix);
+    auto sibling_left_child = m_xfast[level - 1].find((sibling_prefix << 1) + 0);
+    auto sibling_right_child = m_xfast[level - 1].find((sibling_prefix << 1) + 1);
 
-    // from here on we have to update the pointer if there is one
+    if (sibling_left_child == m_xfast[level - 1].end() && sibling_right_child == m_xfast[level - 1].end()) {
+      //if the sibling does not have children we have to colapse the tree at this point
+      bucket* sift_up_bucket = sibling->second;
+      m_xfast[level].erase(sibling_prefix);
+
+      ++level;
+      prefix >>= 1;
+      last_bit = prefix & 0x1;
+      sibling_prefix = (last_bit == 0) ? prefix + 1 : prefix - 1;
+      sibling = m_xfast[level].find(sibling_prefix);
+
+      while (sibling == m_xfast[level].end() && (level < t_key_width)) {
+        m_xfast[level].erase(prefix);
+        ++level;
+        prefix >>= 1;
+        last_bit = prefix & 0x1;
+        sibling_prefix = (last_bit == 0) ? prefix + 1 : prefix - 1;
+        sibling = m_xfast[level].find(sibling_prefix);
+      }
+      if (level == t_key_width) {
+        m_xfast[level][0] = sift_up_bucket;
+        return;
+      }
+      m_xfast[level][prefix] = sift_up_bucket;
+      m_xfast[level + 1][prefix >> 1] = nullptr;
+    } else {
+      //if the sibling has children we do not have to colapse the tree
+      ++level;
+      last_bit = prefix & 0x1;
+      prefix >>= 1;
+      m_xfast[level][prefix] = (last_bit == 0) ? min_repr(level - 1, sibling_prefix) : max_repr(level - 1, sibling_prefix);
+    }
+    ++level;
+    last_bit = prefix & 0x1;
+    prefix = (level == 64) ? 0 : (key >> level);
+
+    //from here on we traverse the tree up to the root any update pointers when a node only has one child
     while (level <= t_key_width) {
-      auto other_child = m_xfast[level - 1].find((key << 1) + (1 - last_bit));
+      uint64_t child_prefix = (prefix << 1) + last_bit;
+      uint64_t other_child_prefix = (prefix << 1) + (1 - last_bit);
+      auto other_child = m_xfast[level - 1].find(other_child_prefix);
       if (other_child == m_xfast[level - 1].end()) {
-        m_xfast[level][key] = (last_bit == 0) ? max_repr(level - 1, (key << 1)) : min_repr(level - 1, (key << 1) + 1);
+        m_xfast[level][prefix] = (last_bit == 0) ? max_repr(level - 1, child_prefix) : min_repr(level - 1, child_prefix);
       }
       ++level;
-      last_bit = key & 0x1;
-      key >>= 1;
+      last_bit = prefix & 0x1;
+      prefix >>= 1;
     }
   }
 
@@ -273,6 +335,62 @@ class YFastTrie {
       key = (key << 1) + 1;
     }
     return m_xfast[c_start_l].at(key);
+
+    /*
+    auto left_child = m_xfast[level-1].find((key << 1) + 0);
+    auto right_child = m_xfast[level-1].find((key << 1) + 1);
+    
+    if(left_child == m_xfast[level-1].end()) {
+      if(right_child == m_xfast[level-1].end()) {
+        //left child and right child empty
+        return m_xfast[level]
+      }
+    }
+*/
+  }
+
+  // Return the highest level at which a node representates a prefix of key
+  size_t find_level(uint64_t key) const {
+    //binary search on the levels
+    size_t l = c_start_l;
+    size_t r = t_key_width;
+    size_t m = (l + r) / 2;
+
+    // l and r meet at the lowest 1
+    while (l != r) {
+      auto mapped = m_xfast[m].find(key >> m);
+      if (mapped != m_xfast[m].end()) {
+        r = m;
+      } else {
+        l = m + 1;
+      }
+      m = (l + r) / 2;
+    }
+    return r;
+  }
+
+  // For a key, we look at the node that has the first 0->1 transition.
+  // This node points either to the next smaller bucket or the next
+  // greater bucket. If there is no next smaller bucket and t_nullptr_allowed,
+  // we return a nullptr. If t_nullptr_allowed we return the next greater bucket.
+  template <bool t_nullptr_allowed>
+  bucket* pred_bucket(uint64_t key) const {
+    size_t first1 = find_level(key);
+    bucket* b = m_xfast[first1].at((key >> 1) >> (first1 - 1));
+
+    if constexpr (t_nullptr_allowed) {
+      if (b->get_repr() <= key) {
+        return b;
+      } else {
+        return b->m_prev;
+      }
+    } else {
+      if (b->get_repr() <= key || (b->m_prev == nullptr)) {
+        return b;
+      } else {
+        return b->m_prev;
+      }
+    }
   }
 
  public:
@@ -305,91 +423,35 @@ class YFastTrie {
     return m_size;
   }
 
-  //inserts element in bucket. bucket return which representants have to be changed
+  // Insert key in data structure.
   void insert(uint64_t key) {
     ++m_size;
 
-    //if first element
+    // If is the first element, we insert the new bucket.
     if (tdc_unlikely(m_size == 1)) {
       bucket* new_b = new bucket(key, nullptr, nullptr);
-      insert_repr(key, new_b);
+      m_xfast[t_key_width][0] = new_b;
+      //insert_repr(key, new_b);
       return;
     }
+    // If it is not the first element, we search for the bucket in which the key belongs.
+    auto b = pred_bucket<false>(key);
+    // We insert the key in the bucket; the bucket says which representants have to be inserted/deleted.
+    xfast_update xfu = b->insert(key);
 
-    // search for the first 1,
-    xfast_update xfu;
-    uint64_t prefix = (key >> c_start_l);
-    for (size_t level = c_start_l; level <= t_key_width; ++level) {
-      auto elem = m_xfast[level].find(prefix);
-      if (elem != m_xfast[level].end()) {
-        if (elem->second->m_min > key && elem->second->m_prev != nullptr) {
-          xfu = elem->second->m_prev->insert(key);
-          break;
-        } else {
-          xfu = elem->second->insert(key);
-          break;
-        }
-      }
-      prefix >>= 1;
-    }
-    // update xfast
+    // Here we update the xfast_trie.
     for (auto old_repr : xfu.remove_repr) {
       remove_repr(old_repr);
     }
     for (auto new_bucket : xfu.insert_repr) {
-      insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
-    }
-  }
-
-  // For a key, returns the bucket in which the key must be
-  bucket* pred_bucket(uint64_t key) const {
-    //either binary search or linear search on the levels
-    if constexpr (t_bin_level_search) {
-      size_t l = c_start_l;
-      size_t r = t_key_width;
-      size_t m = (l + r) / 2;
-
-      while (l != r) {
-        auto mapped = m_xfast[m].find(key >> m);
-        if (mapped != m_xfast[m].end()) {
-          r = m;
-        } else {
-          l = m + 1;
-        }
-        m = (l + r) / 2;
-      }
-      bucket* b = m_xfast[r].at((key >> 1) >> r - 1);
-
-      if (b->m_min <= key) {
-        return b;
-      } else {
-        return b->m_prev;
-      }
-    } else {
-      bucket* b;
-      size_t level = c_start_l;
-      uint64_t prefix = (key >> c_start_l);
-      while (level <= t_key_width) {
-        auto mapped = m_xfast[level].find(prefix);
-        if (mapped != m_xfast[level].end()) {
-          b = mapped->second;
-          break;
-        }
-        ++level;
-        prefix >>= 1;
-      }
-      if (b->m_min <= key) {
-        return b;
-      } else {
-        return b->m_prev;
-      }
+      insert_repr((uint64_t)((bucket*)new_bucket)->get_repr(), (bucket*)new_bucket);
     }
   }
 
   //removes element from data structure
   void remove(uint64_t key) {
     --m_size;
-    bucket* p_bucket = pred_bucket(key);
+    bucket* p_bucket = pred_bucket<true>(key);
     //bucket returns which representants have to be changed
     std::vector<xfast_update> updates = p_bucket->remove(key);
     // update xfast
@@ -398,7 +460,7 @@ class YFastTrie {
         remove_repr(old_repr);
       }
       for (auto new_bucket : update.insert_repr) {
-        insert_repr(((bucket*)new_bucket)->m_min, (bucket*)new_bucket);
+        insert_repr((uint64_t)((bucket*)new_bucket)->get_repr(), (bucket*)new_bucket);
       }
       for (auto delete_bucket : update.delete_bucket) {
         delete (bucket*)delete_bucket;
@@ -410,7 +472,7 @@ class YFastTrie {
     if (m_size == 0) {
       return {false, 0};
     }
-    return pred_bucket(key)->predecessor(key);
+    return pred_bucket<true>(key)->predecessor(key);
   }
 
   friend std::ostream& operator<<(std::ostream& o, const YFastTrie& yfast) {
@@ -444,7 +506,7 @@ class YFastTrie {
       for (size_t i = 0; i < 1ULL << (t_key_width); ++i) {
         auto b = yfast.m_xfast[0].find(i);
         if (b != yfast.m_xfast[0].end()) {
-          std::cout << b->second->m_min << " ";
+          std::cout << b->second->get_repr() << " ";
           for (size_t j = 0; j < b->second->size(); ++j) {
             std::cout << b->second->m_elem[j] << " ";
           }
