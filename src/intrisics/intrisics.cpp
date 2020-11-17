@@ -7,8 +7,7 @@
 #include <nmmintrin.h>
 
 #include <tdc/uint/uint40.hpp>
-#include <tdc/uint/uint128.hpp>
-#include <tdc/uint/uint256.hpp>
+#include <tdc/uint/uint1024.hpp>
 
 #ifdef __BMI2__
 template<> uint64_t tdc::intrisics::pext(const uint64_t& x, const uint64_t& mask) {
@@ -49,6 +48,22 @@ template<> uint256_t tdc::intrisics::pext(const uint256_t& x, const uint256_t& m
     return (uint256_t)pext_hi << lo_cnt | (uint256_t)pext_lo;
     // TODO: benchmark against naive approach
 }
+
+template<> uint512_t tdc::intrisics::pext(const uint512_t& x, const uint512_t& mask) {
+    const size_t lo_cnt = popcnt((uint256_t)mask);
+    const uint256_t pext_lo = pext((uint256_t)x, (uint256_t)mask);
+    const uint256_t pext_hi = pext((uint256_t)(x >> 256), (uint256_t)(mask >> 256));
+    return (uint512_t)pext_hi << lo_cnt | (uint512_t)pext_lo;
+    // TODO: benchmark against naive approach
+}
+
+template<> uint1024_t tdc::intrisics::pext(const uint1024_t& x, const uint1024_t& mask) {
+    const size_t lo_cnt = popcnt((uint512_t)mask);
+    const uint512_t pext_lo = pext((uint512_t)x, (uint512_t)mask);
+    const uint512_t pext_hi = pext((uint512_t)(x >> 512), (uint512_t)(mask >> 512));
+    return (uint1024_t)pext_hi << lo_cnt | (uint1024_t)pext_lo;
+    // TODO: benchmark against naive approach
+}
 #endif
 
 template<>
@@ -81,4 +96,15 @@ uint256_t tdc::intrisics::pcmpgtu<uint256_t, uint16_t>(const uint256_t& a, const
     uint64_t buf[4];
     _mm256_storeu_si256((__m256i*)&buf, _a);
     return uint256_t(buf[3], buf[2], buf[1], buf[0]);
+}
+
+template<>
+uint1024_t tdc::intrisics::pcmpgtu<uint1024_t, uint32_t>(const uint1024_t& a, const uint1024_t& b) {
+    uint32_t result[32];
+    const uint32_t* _a = (const uint32_t*)&a;
+    const uint32_t* _b = (const uint32_t*)&b;
+    for(size_t i = 0; i < 32; i++) {
+        result[i] = -(*_a++ > *_b++);
+    }
+    return *((uint1024_t*)result);
 }

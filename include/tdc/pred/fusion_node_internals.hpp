@@ -13,7 +13,7 @@
 #include <tdc/intrisics/popcnt.hpp>
 #include <tdc/intrisics/tzcnt.hpp>
 #include <tdc/pred/result.hpp>
-#include <tdc/uint/uint256.hpp>
+#include <tdc/uint/uint1024.hpp>
 #include <tdc/util/assert.hpp>
 #include <tdc/util/likely.hpp>
 
@@ -62,6 +62,25 @@ public:
     inline static type repeat(const ckey_t x) {
         const uint64_t x64 = uint64_t(x) * REPEAT_MUL64;
         return uint256_t(x64, x64, x64, x64);
+    }
+};
+
+template<>
+class ckey_matrix<uint32_t> {
+private:
+    using ckey_t = uint32_t;
+    static constexpr uint64_t REPEAT_MUL64 = 0x00000001'00000001ULL;
+    static constexpr uint256_t REPEAT_MUL256 = uint256_t(REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64);
+
+public:
+    using type = uint1024_t;
+
+    static constexpr type REPEAT_MUL = uint1024_t(REPEAT_MUL256, REPEAT_MUL256, REPEAT_MUL256, REPEAT_MUL256);
+
+    inline static type repeat(const ckey_t x) {
+        const uint64_t x64 = uint64_t(x) * REPEAT_MUL64;
+        const uint256_t x256 = uint256_t(x64, x64, x64, x64);
+        return uint1024_t(x256, x256, x256, x256);
     }
 };
 
@@ -344,6 +363,27 @@ template<typename key_t>
 class FusionNodeInternals<key_t, 16> : public FusionNodeImpl<uint16_t> {
 public:
     using ckey_t = uint16_t; // compressed key
+    using mask_t = key_t; // key compression mask
+    using matrix_t = FusionNodeImpl::matrix_t; // matrix of compressed keys
+    
+public:
+    // predecessor search
+    template<typename array_t>
+    static PosResult predecessor(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
+        return FusionNodeImpl::predecessor<key_t>(keys, x, mask, branch, free);
+    }
+    
+    // predecessor search, extended result
+    template<typename array_t>
+    static ExtResult predecessor_ext(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
+        return FusionNodeImpl::predecessor_ext<key_t>(keys, x, mask, branch, free);
+    }
+};
+
+template<typename key_t>
+class FusionNodeInternals<key_t, 32> : public FusionNodeImpl<uint32_t> {
+public:
+    using ckey_t = uint32_t; // compressed key
     using mask_t = key_t; // key compression mask
     using matrix_t = FusionNodeImpl::matrix_t; // matrix of compressed keys
     
