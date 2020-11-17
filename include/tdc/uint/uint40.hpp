@@ -282,18 +282,18 @@ namespace tdc {
 namespace intrisics {
 
 template<>
-constexpr size_t lzcnt(const uint40_t x) {
-    return __builtin_clzll((uint64_t)x) - 24ULL; // don't account for 24 padded bits
+constexpr size_t lzcnt(const uint40_t& x) {
+    return lzcnt((uint64_t)x) - 24ULL; // don't account for 24 padded bits
 };
 
 template<>
-constexpr size_t popcnt(const uint40_t x) {
-    return __builtin_popcountll((uint64_t)x);
+constexpr size_t popcnt(const uint40_t& x) {
+    return popcnt((uint64_t)x);
 };
 
 template<>
-constexpr size_t tzcnt(const uint40_t x) {
-    return math::imin((size_t)__builtin_ctzll((uint64_t)x), size_t(40));  // there can be at most 40 trailing zeroes
+constexpr size_t tzcnt(const uint40_t& x) {
+    return math::imin((size_t)tzcnt((uint64_t)x), size_t(40));  // there can be at most 40 trailing zeroes
 };
 
 } // namespace intrisics
@@ -376,6 +376,33 @@ public:
     static constexpr tdc::uint40_t quiet_NaN() noexcept { return tdc::uint40_t(0); }
     static constexpr tdc::uint40_t signaling_NaN() noexcept { return tdc::uint40_t(0); }
     static constexpr tdc::uint40_t denorm_min() noexcept { return tdc::uint40_t(0); }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_arithmetic<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_integral<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_scalar<tdc::uint40_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
 };
 
 /// \brief Standard output support  for \ref tdc::uint40_t.

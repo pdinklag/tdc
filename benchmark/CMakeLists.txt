@@ -20,7 +20,7 @@ add_executable(bench_predecessor bench_predecessor.cpp)
 target_link_libraries(bench_predecessor tlx tdc-stat tdc-random tdc-math tdc-pred tdc-vec)
 
 add_executable(bench_predecessor_dynamic bench_predecessor_dynamic.cpp)
-target_link_libraries(bench_predecessor_dynamic tlx tdc-stat tdc-random tdc-math tdc-io tdc-pred tdc-uint tdc-vec)
+target_link_libraries(bench_predecessor_dynamic tlx tdc-stat tdc-random tdc-math tdc-io tdc-pred tdc-intrisics tdc-uint tdc-vec)
 
 if(LEDA_FOUND AND STREE_FOUND)
     target_include_directories(bench_predecessor_dynamic PUBLIC ${LEDA_INCLUDE_DIRS} ${STREE_INCLUDE_DIRS})

@@ -2,8 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <tdc/intrisics/tzcnt.hpp>
-#include <tdc/util/int_type_traits.hpp>
+#include <limits>
 
 namespace tdc {
 namespace intrisics {
@@ -20,7 +19,7 @@ constexpr size_t SELECT_FAIL = SIZE_MAX;
 template<typename T>
 constexpr size_t select(T x, size_t k) {
     size_t pos = 0;
-    while(x && k && pos < int_type_traits<T>::num_bits()) {
+    while(x && k && pos < std::numeric_limits<T>::digits) {
         const size_t z = tzcnt(x)+1;
         pos += z;
         x >>= z;

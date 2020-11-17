@@ -1,9 +1,10 @@
 #pragma once
 
 #include <tdc/intrisics/lzcnt.hpp>
-#include <tdc/util/int_type_traits.hpp>
 #include <tdc/util/likely.hpp>
+
 #include <cstdint>
+#include <limits>
 
 namespace tdc {
 namespace math {
@@ -17,7 +18,7 @@ namespace math {
 /// \param x the number in question
 template<typename T>
 constexpr size_t ilog2_ceil(const T x) {
-    return int_type_traits<T>::num_bits() - intrisics::lzcnt(x);
+    return std::numeric_limits<T>::digits - intrisics::lzcnt0(x);
 }
 /// \endcond
 

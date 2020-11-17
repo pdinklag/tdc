@@ -51,17 +51,17 @@ public:
     inline constexpr uint256_t(const unsigned int v) : uint256_t(v, 0) {
     }
 
-    /// \brief Construct from a ??-bit unsigned integer
+    /// \brief Construct from a ??-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const unsigned long int v) : uint256_t(v, 0) {
     }
     
-    /// \brief Construct from an 64-bit unsigned integer
+    /// \brief Construct from an 64-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const unsigned long long int v) : uint256_t(v, 0) {
     }
     
-    /// \brief Construct from a 128-bit unsigned integer
+    /// \brief Construct from a 128-bit unsigned integer.
     /// \param v the integer to construct from
     inline constexpr uint256_t(const uint128_t v) : uint256_t(v, 0) {
     }
@@ -117,7 +117,7 @@ public:
     /// \brief Prefix decrement.
     inline uint256_t& operator--() {
         --m_lo;
-        if(m_lo == UINT32_MAX) --m_hi;
+        if(m_lo == UINT128_MAX) --m_hi;
         return *this;
     }
 
@@ -297,26 +297,26 @@ public:
     inline constexpr bool operator>=(const uint256_t& other) const {
         return (m_hi > other.m_hi) || (m_hi == other.m_hi && m_lo >= other.m_lo);
     }
-};
+} __attribute__((__packed__));
 
 /// \cond INTERNAL
 namespace intrisics {
 
 template<>
-constexpr size_t lzcnt(const uint256_t x) {
-    const size_t hi = lzcnt((uint128_t)(x >> 128));
-    return hi == 128ULL ? 128ULL + lzcnt((uint128_t)x) : hi;
+constexpr size_t lzcnt(const uint256_t& x) {
+    const size_t hi = lzcnt0((uint128_t)(x >> 128));
+    return hi == 128ULL ? 128ULL + lzcnt0((uint128_t)x) : hi;
 };
 
 template<>
-constexpr size_t popcnt(const uint256_t x) {
+constexpr size_t popcnt(const uint256_t& x) {
     return popcnt((uint128_t)x) + popcnt((uint128_t)(x >> 128));
 };
 
 template<>
-constexpr size_t tzcnt(const uint256_t x) {
-    const size_t lo = tzcnt((uint128_t)x);
-    return lo == 128ULL ? 128ULL + tzcnt((uint128_t)(x >> 128)) : lo;
+constexpr size_t tzcnt(const uint256_t& x) {
+    const size_t lo = tzcnt0((uint128_t)x);
+    return lo == 128ULL ? 128ULL + tzcnt0((uint128_t)(x >> 128)) : lo;
 };
 
 } //namespace intrisics
@@ -367,7 +367,34 @@ public:
     static constexpr tdc::uint256_t denorm_min() noexcept { return tdc::uint256_t(0); }
 };
 
-/// \brief Standard output support  for \ref tdc::uint256_t.
+/// \brief STL definitions.
+template<>
+struct is_arithmetic<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_integral<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief STL definitions.
+template<>
+struct is_scalar<tdc::uint256_t> {
+    static constexpr bool value = true;
+    
+    inline operator bool() { return value; }
+    inline bool operator()() { return value; }
+};
+
+/// \brief Standard output support for \ref tdc::uint256_t.
 inline ostream& operator<<(ostream& out, tdc::uint256_t v) {
     return tdc::print_uint(out, v);
 }

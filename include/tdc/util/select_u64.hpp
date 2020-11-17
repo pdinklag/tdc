@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tdc/intrisics/tzcnt.hpp>
+
 namespace tdc {
 
 /// \brief Returned by \ref select0_u64 and \ref select1_u64 in case the searched bit does not exist in the given input value.
@@ -15,7 +17,7 @@ constexpr uint8_t SELECT_U64_FAIL = 0xFF;
 inline constexpr uint8_t select1_u64(uint64_t v, uint8_t k) {
     uint8_t pos = 0;
     while(v && k && pos < 64) {
-        const size_t z = __builtin_ctzll(v)+1;
+        const size_t z = intrisics::tzcnt(v)+1;
         pos += z;
         v >>= z;
         --k;

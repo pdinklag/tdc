@@ -47,6 +47,7 @@ include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/robin-hood-hashing/src/include)
 
 # find optional packages
+find_package(MPFR)
 find_package(LEDA)
 find_package(Plads)
 find_package(Powercap)

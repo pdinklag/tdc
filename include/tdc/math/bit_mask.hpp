@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <limits>
 #include <tdc/util/likely.hpp>
-#include <tdc/util/int_type_traits.hpp>
 
 namespace tdc {
 namespace math {
@@ -18,7 +17,7 @@ namespace math {
 /// \param bits the number of low bits to mask, must be greater than zero
 template<typename T>
 constexpr T bit_mask(const size_t bits) {
-    if(tdc_unlikely(bits >= int_type_traits<T>::num_bits())) return std::numeric_limits<T>::max();
+    if(tdc_unlikely(bits >= std::numeric_limits<T>::digits)) return std::numeric_limits<T>::max();
     return ~(std::numeric_limits<T>::max() << bits);
 }
 

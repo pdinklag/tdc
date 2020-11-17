@@ -7,6 +7,14 @@ constexpr uint64_t lo64(const uint128_t& x) { return x; }
 constexpr uint64_t hi64(const uint128_t& x) { return (x >> 64); }
 
 uint256_t uint256_t::operator*(const uint256_t& other) const {
+    if(*this == 0 || other == 0) {
+        return uint256_t(0);
+    } else if(other == 1) {
+        return *this;
+    } else if(*this == 1) {
+        return other;
+    }
+    
     // borrowed from Github: calccrypto/uint256_t (MIT license)
     
     // split values into 4 64-bit parts
@@ -40,9 +48,9 @@ uint256_t uint256_t::operator*(const uint256_t& other) const {
     first64  += uint128_t(lo64(products[3][3]));
 
     // combines the values, taking care of carry over
-    return uint256_t(first64 << 64, 0) +
-           uint256_t(hi64(third64), third64 << 64) +
-           uint256_t(second64, 0) +
+    return uint256_t(0, first64 << 64) +
+           uint256_t(third64 << 64, hi64(third64)) +
+           uint256_t(0, second64) +
            uint256_t(fourth64);
 }
 

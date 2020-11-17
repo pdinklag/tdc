@@ -1,7 +1,5 @@
 #pragma once
 
-#include <tdc/util/int_type_traits.hpp>
-
 namespace tdc {
 namespace math {
 

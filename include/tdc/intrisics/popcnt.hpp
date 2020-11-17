@@ -10,16 +10,16 @@ namespace intrisics {
 /// \tparam T the integer type
 /// \param x the integer
 template<typename T>
-constexpr size_t popcnt(const T x);
+constexpr size_t popcnt(const T& x);
 
 /// \cond INTERNAL
 template<>
-constexpr size_t popcnt(const uint32_t x) {
+constexpr size_t popcnt(const uint32_t& x) {
     return __builtin_popcount(x);
 };
 
 template<>
-constexpr size_t popcnt(const uint64_t x) {
+constexpr size_t popcnt(const uint64_t& x) {
     return __builtin_popcountll(x);
 };
 /// \endcond
