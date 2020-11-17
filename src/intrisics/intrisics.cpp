@@ -46,7 +46,7 @@ template<> uint256_t tdc::intrisics::pext(const uint256_t& x, const uint256_t& m
     const size_t lo_cnt = popcnt((uint128_t)mask);
     const uint128_t pext_lo = pext((uint128_t)x, (uint128_t)mask);
     const uint128_t pext_hi = pext((uint128_t)(x >> 128), (uint128_t)(mask >> 128));
-    return (uint256_t)pext_hi << lo_cnt | pext_lo;
+    return (uint256_t)pext_hi << lo_cnt | (uint256_t)pext_lo;
     // TODO: benchmark against naive approach
 }
 #endif

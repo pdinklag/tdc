@@ -164,8 +164,8 @@ public:
                 const matrix_t unused = m_matrix_max << (m_ckey_bits * sz);
 
                 // set h bit accordingly and shift all bits >= h one to the left
-                m_branch =                ((m_branch & matrix_hmask_hi) << (matrix_t)1ULL) | (m_branch & matrix_hmask_lo)  |  unused;
-                m_free   = (matrix_hset | ((m_free  & matrix_hmask_hi) << (matrix_t)1ULL)  | (m_free   & matrix_hmask_lo)) & ~unused;
+                m_branch =                ((m_branch & matrix_hmask_hi) << matrix_t(1)) | (m_branch & matrix_hmask_lo)  |  unused;
+                m_free   = (matrix_hset | ((m_free  & matrix_hmask_hi) << matrix_t(1))  | (m_free   & matrix_hmask_lo)) & ~unused;
             }
 
             // update h-bits of compressed keys between ranks i0 and i1
@@ -312,8 +312,8 @@ public:
                 const matrix_t matrix_hmask_lo = Internals::repeat(hmask_lo);
                 const matrix_t matrix_hmask_hi = Internals::repeat(hmask_hi);
                 
-                m_branch = ((m_branch & matrix_hmask_hi) >> (matrix_t)1ULL) | (m_branch & matrix_hmask_lo);
-                m_free   = ((m_free   & matrix_hmask_hi) >> (matrix_t)1ULL) | (m_free   & matrix_hmask_lo);
+                m_branch = ((m_branch & matrix_hmask_hi) >> matrix_t(1)) | (m_branch & matrix_hmask_lo);
+                m_free   = ((m_free   & matrix_hmask_hi) >> matrix_t(1)) | (m_free   & matrix_hmask_lo);
 
                 // clear the j-th bit in mask
                 m_mask &= ~((mask_t)1ULL << j);

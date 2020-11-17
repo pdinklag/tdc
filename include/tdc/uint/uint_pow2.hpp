@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <limits>
+#include <ostream>
 #include <type_traits>
 #include <utility>
 
@@ -154,7 +155,7 @@ public:
     /// \brief Construct from a half value.
     /// \param v the integer to construct from
     template<size_t exp = m_exp>
-    constexpr uint_pow2_t(const typename std::enable_if<exp >= 256, half_t >::type& v) : uint_pow2_t(v, 0) {
+    explicit constexpr uint_pow2_t(const typename std::enable_if<exp >= 256, half_t >::type& v) : uint_pow2_t(v, 0) {
     }
     
     uint_pow2_t(const uint_pow2_t&) = default;
@@ -500,41 +501,4 @@ public:
     /// \endcond
 } __attribute__((__packed__));
 
-using _u128 = uint_pow2_t<128>;
-using _u256 = uint_pow2_t<256>;
-using _u512 = uint_pow2_t<512>;
-using _u1024 = uint_pow2_t<1024>;
-
-/// \cond INTERNAL
-namespace intrisics {
-
-template<> constexpr size_t lzcnt<_u128>(const _u128& x) { return x.lzcnt(); }
-template<> constexpr size_t lzcnt<_u256>(const _u256& x) { return x.lzcnt(); }
-template<> constexpr size_t lzcnt<_u512>(const _u512& x) { return x.lzcnt(); }
-template<> constexpr size_t lzcnt<_u1024>(const _u1024& x) { return x.lzcnt(); }
-
-template<> constexpr size_t popcnt<_u128>(const _u128& x) { return x.popcnt(); }
-template<> constexpr size_t popcnt<_u256>(const _u256& x) { return x.popcnt(); }
-template<> constexpr size_t popcnt<_u512>(const _u512& x) { return x.popcnt(); }
-template<> constexpr size_t popcnt<_u1024>(const _u1024& x) { return x.popcnt(); }
-
-template<> constexpr size_t tzcnt<_u128>(const _u128& x) { return x.tzcnt(); }
-template<> constexpr size_t tzcnt<_u256>(const _u256& x) { return x.tzcnt(); }
-template<> constexpr size_t tzcnt<_u512>(const _u512& x) { return x.tzcnt(); }
-template<> constexpr size_t tzcnt<_u1024>(const _u1024& x) { return x.tzcnt(); }
-
-} //namespace intrisics
-/// \endcond INTERNAL
-
 } // namespace tdc
-
-#include <ostream>
-
-namespace std {
-
-inline ostream& operator<<(ostream& out, const tdc::_u128& v) { return v.outp(out); }
-inline ostream& operator<<(ostream& out, const tdc::_u256& v) { return v.outp(out); }
-inline ostream& operator<<(ostream& out, const tdc::_u512& v) { return v.outp(out); }
-inline ostream& operator<<(ostream& out, const tdc::_u1024& v) { return v.outp(out); }
-    
-} // namespace std
