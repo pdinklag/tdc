@@ -31,25 +31,25 @@ template<>
 constexpr size_t lzcnt(const uint8_t& x) {
     assert(x > 0);
     return __builtin_clz(x) - 24ULL; // don't account for 24 padded bits
-};
+}
 
 template<>
 constexpr size_t lzcnt(const uint16_t& x) {
     assert(x > 0);
     return __builtin_clz(x) - 16ULL; // don't account for 16 padded bits
-};
+}
 
 template<>
 constexpr size_t lzcnt(const uint32_t& x) {
     assert(x > 0);
     return __builtin_clz(x);
-};
+}
 
 template<>
 constexpr size_t lzcnt(const uint64_t& x) {
     assert(x > 0);
     return __builtin_clzll(x);
-};
+}
 
 /// \endcond
 

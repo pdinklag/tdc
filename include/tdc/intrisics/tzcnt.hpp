@@ -32,29 +32,25 @@ template<>
 constexpr size_t tzcnt(const uint8_t& x) {
     assert(x > 0);
     return math::imin((size_t)__builtin_ctz(x), size_t(8)); // there can be at most 8 trailing zeroes
-};
+}
 
 template<>
 constexpr size_t tzcnt(const uint16_t& x) {
     assert(x > 0);
     return math::imin((size_t)__builtin_ctz(x), size_t(16)); // there can be at most 16 trailing zeroes
-};
+}
 
 template<>
 constexpr size_t tzcnt(const uint32_t& x) {
     assert(x > 0);
     return __builtin_ctz(x);
-};
+}
 
 template<>
 constexpr size_t tzcnt(const uint64_t& x) {
     assert(x > 0);
     return __builtin_ctzll(x);
-};
-
-
-
-
+}
 /// \endcond
 
 }} // namespace tdc::intrisics
