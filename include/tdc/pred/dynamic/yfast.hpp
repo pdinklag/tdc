@@ -221,9 +221,11 @@ class YFastTrie {
     }
   };
 
-  // we don't need the lowest c_start_l levels;
-  //TODO: skip the lowest levels in binary search
-  static constexpr uint64_t c_start_l = 0;
+  // When searching for a bucket we can speed up the binary search in the xfast_trie by remembering
+  //  - the lowest level where every node exists
+  //  - the lowest level where at least one node exists
+  uint64_t m_lowest_complete_level = t_key_width;
+  uint64_t m_lowest_non_empty_level = t_key_width;
 
   // The number of keys stored in this data structure
   size_t m_size = 0;
@@ -239,7 +241,7 @@ class YFastTrie {
       return;
     }
 
-    int64_t level = t_key_width;
+    uint64_t level = t_key_width;
     uint64_t prefix = (key >> 1) >> (level - 1);  //this is equal to (key >> level)
     uint64_t next_bit = (key >> (level - 1)) & 0x1;
     uint64_t child_prefix = (prefix << 1) + next_bit;
@@ -249,7 +251,7 @@ class YFastTrie {
     auto child = m_xfast[level - 1].find(child_prefix);
     auto sibling = m_xfast[level - 1].find(sibling_prefix);
 
-    while (level >= 0) {
+    while (level > 0) {
       if (child == m_xfast[level - 1].end()) {
         if (sibling == m_xfast[level - 1].end()) {
           // Child and sibling do not exist.
@@ -292,7 +294,7 @@ class YFastTrie {
       } else {
         if (sibling == m_xfast[level - 1].end()) {
           // Child exists, but sibling does not exist
-          // Here We may have to update the pointer of node
+          // Here we may have to update the pointer of node
           if (next_bit == 0) {
             if (b->get_repr() > node->second->get_repr()) {
               m_xfast[level][prefix] = b;
@@ -389,10 +391,27 @@ class YFastTrie {
     }
   }
 
+  void update_after_insertion() {
+    while((m_lowest_complete_level > 0) && (m_xfast[m_lowest_complete_level-1].size() == (1ULL << 1 << (64-m_lowest_complete_level)))) {
+      --m_lowest_complete_level;
+    }
+    while(m_lowest_non_empty_level > 0 && (m_xfast[m_lowest_non_empty_level-1].size() > 0)) {
+      --m_lowest_non_empty_level;
+    }
+  }
+  void update_after_deletion() {
+    while((m_lowest_complete_level < t_key_width) && (m_xfast[m_lowest_complete_level].size() < (1ULL << (64-m_lowest_complete_level)))) {
+      ++m_lowest_complete_level;
+    }
+    while((m_lowest_non_empty_level < t_key_width) && (m_xfast[m_lowest_non_empty_level].size() == 0)) {
+      ++m_lowest_non_empty_level;
+    }
+  }
+
   // Returns the bucket with the smallest representant in the subtree from the node
   // that corrospondents to (level, key).
   yfast_bucket* min_repr(uint64_t level, uint64_t key) const {
-    while (level > c_start_l) {
+    while (level > 0) {
       if (m_xfast[level - 1].find(key << 1) == m_xfast[level - 1].end()) {
         // Shortcut if there already is a pointer to the smallest representant.
         return m_xfast[level].at(key);
@@ -400,12 +419,12 @@ class YFastTrie {
       --level;
       key <<= 1;
     }
-    return m_xfast[c_start_l].at(key);
+    return m_xfast[0].at(key);
   }
   // Returns the bucket with the biggest representant in the subtree from the node
   // that corrospondents to (level, key)
   yfast_bucket* max_repr(uint64_t level, uint64_t key) const {
-    while (level > c_start_l) {
+    while (level > 0) {
       if (m_xfast[level - 1].find((key << 1) + 1) == m_xfast[level - 1].end()) {
         // Shortcut if there already is a pointer to the biggest representant.
         return m_xfast[level].at(key);
@@ -413,14 +432,14 @@ class YFastTrie {
       --level;
       key = (key << 1) + 1;
     }
-    return m_xfast[c_start_l].at(key);
+    return m_xfast[0].at(key);
   }
 
   // Return the lowest level at which a node representates a prefix of the key.
   size_t find_level(uint64_t key) const {
     // Binary search on the levels
-    size_t l = c_start_l;
-    size_t r = t_key_width;
+    size_t l = m_lowest_non_empty_level;
+    size_t r = m_lowest_complete_level;
     size_t m = (l + r) / 2;
 
     // The borders l and r meet at the lowest level in which a node with a prefix of key exist.
@@ -506,9 +525,11 @@ class YFastTrie {
     // Here we update the xfast_trie.
     for (auto old_repr : xfu.remove_repr) {
       remove_repr(old_repr);
+      update_after_deletion();
     }
     for (auto new_bucket : xfu.insert_repr) {
       insert_repr((uint64_t)((yfast_bucket*)new_bucket)->get_repr(), (yfast_bucket*)new_bucket);
+      update_after_insertion();
     }
   }
 
@@ -522,9 +543,11 @@ class YFastTrie {
     for (auto update : updates) {
       for (auto old_repr : update.remove_repr) {
         remove_repr(old_repr);
+        update_after_deletion();
       }
       for (auto new_bucket : update.insert_repr) {
         insert_repr((uint64_t)(new_bucket->get_repr()), new_bucket);
+        update_after_insertion();
       }
       for (auto delete_bucket : update.delete_bucket) {
         delete (yfast_bucket*)delete_bucket;
