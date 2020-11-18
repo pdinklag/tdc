@@ -233,6 +233,12 @@ class YFastTrie {
   // If there is a sibling, we can simply insert the representant. If the is no sibling, we have
   // to split the parent node.
   void insert_repr(uint64_t key, yfast_bucket* b) {
+    // If there is no root, we insert the bucket at the root.
+    if(m_xfast[t_key_width].find(0) == m_xfast[t_key_width].end()) {
+      m_xfast[t_key_width][0] = b;
+      return;
+    }
+
     int64_t level = t_key_width;
     uint64_t prefix = (key >> 1) >> (level - 1);  //this is equal to (key >> level)
     uint64_t next_bit = (key >> (level - 1)) & 0x1;
@@ -518,7 +524,7 @@ class YFastTrie {
         remove_repr(old_repr);
       }
       for (auto new_bucket : update.insert_repr) {
-        insert_repr((uint64_t)((yfast_bucket*)new_bucket)->get_repr(), (yfast_bucket*)new_bucket);
+        insert_repr((uint64_t)(new_bucket->get_repr()), new_bucket);
       }
       for (auto delete_bucket : update.delete_bucket) {
         delete (yfast_bucket*)delete_bucket;
