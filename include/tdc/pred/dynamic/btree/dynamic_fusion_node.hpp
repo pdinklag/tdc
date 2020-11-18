@@ -49,14 +49,6 @@ private:
     matrix_t m_branch, m_free;
     uint8_t  m_size;
 
-    size_t find(const key_t key) const {
-        // FIXME: naive, use data structure
-        for(size_t i = 0; i < size(); i++) {
-            if(m_key[i] == key) return i;
-        }
-        return SIZE_MAX;
-    }
-
 public:
     /// \brief Constructs an empty fusion node.
     DynamicFusionNode() : m_size(0) {
