@@ -477,6 +477,7 @@ public:
     /// \brief Tests whether the given key is contained in the trie.
     /// \param x the key in question
     inline bool contains(const key_t x) const {
+        if(tdc_unlikely(size() == 0)) return false;
         auto r = predecessor(x);
         return r.exists && r.key == x;
     }
