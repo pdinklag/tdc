@@ -108,7 +108,6 @@ void bench(
             }
             result.log("memData", mem.current - mem.offset);
         }
-        
         // make sure all have been inserted
         assert(size_func(ds) == options.num+1);
         
@@ -304,8 +303,29 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
-        bench("yfast_trie",
-            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint32_t, 32, 9>(); },
+        bench("yfast_trie-08",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint32_t, 32, 8>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-09",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint32_t, 32, 9>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("index_hybrid",
+            [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+         bench("map_hybrid",
+            [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -336,6 +356,34 @@ int main(int argc, char** argv) {
         );
         bench("btree_64",
             [](const uint64_t){ return pred::dynamic::BTree<uint40_t, 65, pred::dynamic::SortedArrayNode<uint40_t, 64>>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-08",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint40_t, 40, 8>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-09",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint40_t, 40, 9>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("index_hybrid",
+            [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+         bench("map_hybrid",
+            [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -377,8 +425,15 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
-        bench("yfast_trie",
-            [](const uint64_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket, uint64_t, 64, 9>(); },
+        bench("yfast_trie-09",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint64_t, 64, 9, 2>(); },
+            [](const auto& ds){ return ds.size(); },
+            [](auto& ds, const uint64_t x){ ds.insert(x); },
+            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
+            [](auto& ds, const uint64_t x){ ds.remove(x); }
+        );
+        bench("yfast_trie-10",
+            [](const uint64_t){ return pred::dynamic::YFastTrie<uint64_t, 64, 10, 2>(); },
             [](const auto& ds){ return ds.size(); },
             [](auto& ds, const uint64_t x){ ds.insert(x); },
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
@@ -386,12 +441,16 @@ int main(int argc, char** argv) {
         );
     }
     
-    bench("index_hybrid",
-        [](const uint64_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
+    
+    bench("set",
+        [](const uint64_t){ return std::set<uint64_t>(); },
+        [](const auto& set){ return set.size(); },
+        [](auto& set, const uint64_t x){ set.insert(x); },
+        [](const auto& set, const uint64_t x){
+            auto it = set.upper_bound(x);
+            return pred::KeyResult<uint64_t> { it != set.begin(), *(--it) };
+        },
+        [](auto& set, const uint64_t x){ set.erase(x); }
     );
     /*
     bench("index_bv",
@@ -410,13 +469,6 @@ int main(int argc, char** argv) {
     );
     */
     
-    bench("map_hybrid",
-        [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
-        [](const auto& ds){ return ds.size(); },
-        [](auto& ds, const uint64_t x){ ds.insert(x); },
-        [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-        [](auto& ds, const uint64_t x){ ds.remove(x); }
-    );
     /*
     bench("map_bv",
         [](const uint64_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_bv, 16>(); },
@@ -433,17 +485,7 @@ int main(int argc, char** argv) {
         [](auto& ds, const uint64_t x){ ds.remove(x); }
     );
     */
-    
-    bench("set",
-        [](const uint64_t){ return std::set<uint64_t>(); },
-        [](const auto& set){ return set.size(); },
-        [](auto& set, const uint64_t x){ set.insert(x); },
-        [](const auto& set, const uint64_t x){
-            auto it = set.upper_bound(x);
-            return pred::KeyResult<uint64_t> { it != set.begin(), *(--it) };
-        },
-        [](auto& set, const uint64_t x){ set.erase(x); }
-    );
+
     // Baseline for dense keys
     /*
     bench("pred_bv",
