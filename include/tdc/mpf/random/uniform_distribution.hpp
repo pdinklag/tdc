@@ -17,7 +17,7 @@ public:
 
     template<typename random_engine_t>
     void generate(random_engine_t& rng, F& f) {
-        mpfr_urandomb(f.mpfr(), rng.state());
+        mpfr_urandom(f.mpfr(), rng.state(), m_rnd);
     }
 
     template<typename random_engine_t>
