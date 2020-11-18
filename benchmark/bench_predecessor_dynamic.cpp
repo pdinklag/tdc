@@ -404,13 +404,6 @@ int main(int argc, char** argv) {
             [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
             [](auto& ds, const uint64_t x){ ds.remove(x); }
         );
-        bench("fusion_btree_32",
-            [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 33, pred::dynamic::DynamicFusionNode<uint64_t, 32>>(); },
-            [](const auto& ds){ return ds.size(); },
-            [](auto& ds, const uint64_t x){ ds.insert(x); },
-            [](const auto& ds, const uint64_t x){ return ds.predecessor(x); },
-            [](auto& ds, const uint64_t x){ ds.remove(x); }
-        );
         bench("btree_8",
             [](const uint64_t){ return pred::dynamic::BTree<uint64_t, 9, pred::dynamic::SortedArrayNode<uint64_t, 8>>(); },
             [](const auto& ds){ return ds.size(); },
