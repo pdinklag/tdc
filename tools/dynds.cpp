@@ -1,4 +1,5 @@
 #include <cassert>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <random>
@@ -37,6 +38,11 @@ struct {
     bool readable = false;
     bool print_opnum = false;
     bool print_num = false;
+    std::string csv_filename = "";
+    
+    inline bool csv() const {
+        return csv_filename.length() > 0;
+    }
 } options;
 
 struct {
@@ -100,6 +106,13 @@ void generate() {
     
     mpf::random::Engine gen_val(options.key_seed);
     mpf::random::UniformDistribution<KEY_BITS> random_from_universe(0ULL, u);
+    
+    // csv file
+    std::ofstream csv;
+    if(options.csv()) {
+        csv = std::ofstream(options.csv_filename);
+        csv << "ops,keys" << std::endl;
+    }
     
     // working set
     pred::dynamic::BTree<key_t, 65, pred::dynamic::SortedArrayNode<key_t, 64>> cur_set;
@@ -174,16 +187,29 @@ void generate() {
         return generate_batch<key_t>(benchmark::OPCODE_DELETE, generate_delete);
     };
     
+    auto generate_and_output = [&](const benchmark::opcode_t opcode){
+        switch(opcode) {
+            case benchmark::OPCODE_INSERT: output_batch(generate_insert_batch()); break;
+            case benchmark::OPCODE_QUERY: output_batch(generate_query_batch()); break;
+            case benchmark::OPCODE_DELETE: output_batch(generate_delete_batch()); break;
+            default: std::abort(); break;
+        }
+        
+        if(options.csv()) {
+            csv << stats.count_total << "," << cur_num << std::endl;
+        }
+    };
+    
     auto output_insert_batch = [&](){
-        output_batch(generate_insert_batch());
+        generate_and_output(benchmark::OPCODE_INSERT);
     };
 
     auto output_query_batch = [&](){
-        output_batch(generate_query_batch());
+        generate_and_output(benchmark::OPCODE_QUERY);
     };
 
     auto output_delete_batch = [&](){
-        output_batch(generate_delete_batch());
+        generate_and_output(benchmark::OPCODE_DELETE);
     };
     
     auto insert_probability = [&](){
@@ -208,7 +234,7 @@ void generate() {
     }
 
     // hold phase
-    const size_t max_hold_ops = size_t(options.hold * double(stats.count_total));
+    const size_t max_hold_ops = size_t(options.hold * double(stats.count_total / options.batch));
     for(size_t i = 0; i < max_hold_ops && stats.count_total < options.max_ops * options.batch; i++) {
         const float p = random_op(gen_op);
         
@@ -262,23 +288,24 @@ void generate() {
 
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
-    cp.set_description("Generates a sequence of inserts, queries and deletes to simulate operation of a dynamic data structure.");
-    cp.add_bytes('n', "num", options.max_num, "The (lenient) maximum number of items in the data structure (default: 100).");
-    cp.add_bytes('m', "max-ops", options.max_ops, "The maximum number of operations to generate (default: infinite).");
-    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw numbers from (default: 32).");
-    cp.add_size_t('s', "key-seed", options.key_seed, "The seed for random key generation (default: timestamp).");
-    cp.add_size_t('t', "op-seed", options.op_seed, "The seed for random operation generation (default: timestamp).");
-    cp.add_bytes('b', "batch", options.batch, "The batch size for operations.");
+    cp.set_description("Generates a sequence of inserts, queries and deletes to simulate operation of a dynamic data structure");
+    cp.add_bytes('n', "num", options.max_num, "The (lenient) maximum number of items in the data structure (default: 100)");
+    cp.add_bytes('m', "max-ops", options.max_ops, "The maximum number of operations to generate (default: infinite)");
+    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw numbers from (default: 32)");
+    cp.add_size_t('s', "key-seed", options.key_seed, "The seed for random key generation (default: timestamp)");
+    cp.add_size_t('t', "op-seed", options.op_seed, "The seed for random operation generation (default: timestamp)");
+    cp.add_bytes('b', "batch", options.batch, "The batch size for operations");
     cp.add_double('p', "p-base", options.p_base, "The base probability for inserts/deletes in the corresponding phase (default: 0.3)");
     cp.add_double('r', "p-range", options.p_range, "The probability range for inserts/deletes in the corresponding phase (default: 0.5)");
     cp.add_double('q', "p-query", options.p_query, "The probability for queries, if not the phase's primary operation (default: 0.9)");
     cp.add_string('d', "distribution", options.distr, "The distribution of inserted keys in the universe -- 'uniform' or 'normal' (default: uniform)");
-    cp.add_size_t("n-mean", options.n_mean, "The mean for a normal distribution will be U/n_mean (default: 2).");
-    cp.add_size_t("n-stddev", options.n_mean, "The standard deviation for a normal distribution will be U/n_stddev (default: 8).");
+    cp.add_size_t("n-mean", options.n_mean, "The mean for a normal distribution will be U/n_mean (default: 2)");
+    cp.add_size_t("n-stddev", options.n_mean, "The standard deviation for a normal distribution will be U/n_stddev (default: 8)");
     cp.add_double("hold", options.hold, "The duration of the hold phase, relative to the duration of the insertion phase (default: 0.25)");
-    cp.add_flag("readable", options.readable, "Create a human-readable output rather than a binary file.");
-    cp.add_flag("print-opnum", options.print_opnum, "Print the number of each operation (only if readable flag is set).");
-    cp.add_flag("print-num", options.print_num, "Print the number of items after each operation (only if readable flag is set).");
+    cp.add_flag("readable", options.readable, "Create a human-readable output rather than a binary file");
+    cp.add_flag("print-opnum", options.print_opnum, "Print the number of each operation (only if readable flag is set)");
+    cp.add_flag("print-num", options.print_num, "Print the number of items after each operation (only if readable flag is set)");
+    cp.add_string("csv", options.csv_filename, "The name of the CSV file to write plot data to (default: none)");
 
     if(!cp.process(argc, argv)) {
         return -1;
