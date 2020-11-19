@@ -162,7 +162,7 @@ public:
         static_assert(std::numeric_limits<uint_t>::is_integer && !std::numeric_limits<uint_t>::is_signed);
         
         if constexpr(std::numeric_limits<uint_t>::digits <= 64) {
-            mpfr_set_uj(m_value, x, m_rnd);
+            mpfr_set_uj(m_value, (uintmax_t)x, m_rnd);
         } else {
             this_t p64, f;
             
