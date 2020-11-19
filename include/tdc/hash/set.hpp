@@ -11,11 +11,10 @@
 namespace tdc {
 namespace hash {
 
-/// \brief A hash map.
+/// \brief A hash set.
 /// \tparam K the key type, must support default construction, copy assignment and equality
-/// \tparam V the value type, must support a default constructor and move assignment
-template<typename K, typename V>
-class Map {
+template<typename K>
+class Set {
 public:
     /// \brief The hash function type.
     using hash_func_t  = std::function<size_t(K)>;
@@ -25,20 +24,20 @@ public:
 
     /// \brief Used to access an item.
     ///
-    /// Note that accessors may become invalid when the underlying map is modified after retrieval.
+    /// Note that accessors may become invalid when the underlying set is modified after retrieval.
     class Accessor {
-        friend class Map;
+        friend class Set;
         
     private:
-        const Map* m_map;
+        const Set* m_set;
         size_t     m_pos;
 
-        inline Accessor(const Map& map, const size_t pos) : m_map(&map), m_pos(pos) {
+        inline Accessor(const Set& set, const size_t pos) : m_set(&set), m_pos(pos) {
         }
 
     public:
         /// \brief Constructs an invalid accessor.
-        inline Accessor() : m_map(nullptr), m_pos(0) {
+        inline Accessor() : m_set(nullptr), m_pos(0) {
         }
     
         Accessor(const Accessor&) = default;
@@ -48,7 +47,7 @@ public:
     
         /// \brief Tells whether the item exists.
         inline bool exists() const {
-            return m_map != nullptr;
+            return m_set != nullptr;
         }
 
         /// \brief Shortcut for \ref exists.
@@ -59,23 +58,12 @@ public:
         /// \brief Retrieves the key.
         const K& key() const {
             assert(exists());
-            return m_map->m_keys[m_pos];
-        }
-
-        /// \brief Retrieves the value.
-        const V& value() const {
-            assert(exists());
-            return m_map->m_values[m_pos];
-        }
-
-        /// \brief Shortcut for \ref value.
-        inline const V& operator*() const {
-            return value();
+            return m_set->m_keys[m_pos];
         }
 
         /// \brief Comparison for standard library use pattern.
         inline bool operator==(const Accessor& other) {
-            return m_map == other.m_map && m_pos == other.m_pos;
+            return m_set == other.m_set && m_pos == other.m_pos;
         }
 
         /// \brief Comparison for standard library use pattern.
@@ -96,7 +84,6 @@ private:
 
     std::vector<bool> m_used;
     std::vector<K>    m_keys;
-    std::vector<V>    m_values;
 
     // caches to avoid floating point computations on each insert
     size_t m_size_max;
@@ -118,7 +105,6 @@ private:
         
         m_used   = std::vector<bool>(m_cap);
         m_keys   = std::vector<K>(m_cap);
-        m_values = std::vector<V>(m_cap);
 
         m_size_max = size_t(m_load_factor * (double)m_cap);
         m_size_grow = std::max(m_size_max + 1, size_t((double)m_cap * m_growth_factor));
@@ -128,7 +114,7 @@ private:
         return size_t(m_hash_func(key)) % m_cap;
     }
 
-    void insert_internal(const K& key, V&& value) {
+    void insert_internal(const K& key) {
         const size_t hkey = hash(key);
         
         size_t h = hkey;
@@ -149,7 +135,6 @@ private:
         
         m_used[h] = 1;
         m_keys[h] = key;
-        m_values[h] = std::move(value);
         
         ++m_size;
     }
@@ -162,25 +147,24 @@ private:
         auto old_cap = m_cap;
         auto used = m_used;
         auto keys = std::move(m_keys);
-        auto values = std::move(m_values);
 
         init(new_cap);
 
         for(size_t i = 0; i < old_cap; i++) {
-            if(used[i]) insert_internal(keys[i], std::move(values[i]));
+            if(used[i]) insert_internal(keys[i]);
         }
     }
 
 public:
-    Map() {
+    Set() {
     }
 
     /// \brief Main constructor.
     /// \param hash_func the hash function to use
-    /// \param capacity the initial capacity of the map
+    /// \param capacity the initial capacity of the set
     /// \param load_factor the maximum load factor - once reached, the capacity is increased
     /// \param growth_factor the factor for increasing the capacity when the load has been reached
-    Map(
+    Set(
         hash_func_t hash_func,
         size_t capacity,
         double load_factor = 1.0,
@@ -198,22 +182,22 @@ public:
         init(capacity);
     }
 
-    Map(const Map&) = default;
-    Map(Map&&) = default;
-    Map& operator=(const Map&) = default;
-    Map& operator=(Map&&) = default;
+    Set(const Set&) = default;
+    Set(Set&&) = default;
+    Set& operator=(const Set&) = default;
+    Set& operator=(Set&&) = default;
 
-    /// \brief Returns the number of items stored in the map.
+    /// \brief Returns the number of items stored in the set.
     inline size_t size() const {
         return m_size;
     }
 
-    /// \brief The current capacity of the map.
+    /// \brief The current capacity of the set.
     inline size_t capacity() const {
         return m_cap;
     }
 
-    /// \brief The current load of the map.
+    /// \brief The current load of the set.
     inline double load() const {
         return (double)m_size / (double)m_cap;
     }
@@ -235,24 +219,16 @@ public:
     }
     #endif
 
-    /// \brief Inserts the given key and value pair into the map.
+    /// \brief Inserts the given key into the set.
     /// \param key the key
-    /// \param value the associated value
-    void insert(const K& key, V&& value) {
+    void insert(const K& key) {
         // first, check if growing is necessary
         if(m_size + 1 > m_size_max) {
             resize(m_size_grow);
         }
         
         // now it's safe to insert
-        insert_internal(key, std::move(value));
-    }
-
-    /// \brief Inserts the given key and value pair into the map, creating a copy of the value.
-    /// \param key the key
-    /// \param value the associated value
-    inline void insert(const K& key, const V& value) {
-        insert(key, V(value));
+        insert_internal(key);
     }
 
     /// \brief Attempts to find the given key and returns an \ref Accessor to the associated item, if any.
