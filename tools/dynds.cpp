@@ -35,11 +35,13 @@ struct {
     std::string distr = "uniform";
     uint64_t n_mean = 2;
     uint64_t n_stddev = 8;
-    bool readable = false;
+    
+    std::string out_filename = "";
+    
     bool print_opnum = false;
     bool print_num = false;
-    std::string csv_filename = "";
     
+    std::string csv_filename = "";
     inline bool csv() const {
         return csv_filename.length() > 0;
     }
@@ -51,8 +53,9 @@ struct {
     size_t count_query = 0;
     size_t failed_inserts = 0;
     
-    size_t count_total = 0;
-    ssize_t keys_current = 0;
+    inline size_t count_total() const {
+        return count_insert + count_delete + count_query;
+    }
 } stats;
 
 template<typename key_t, typename key_generator_t>
@@ -65,32 +68,8 @@ benchmark::IntegerOperationBatch<key_t> generate_batch(const benchmark::opcode_t
 }
 
 template<typename key_t>
-void output_batch(const benchmark::IntegerOperationBatch<key_t>& batch) {
-    if(options.readable) {
-        switch(batch.opcode()) {
-            case benchmark::OPCODE_INSERT: std::cout << "INSERT:" << std::endl; break;
-            case benchmark::OPCODE_QUERY:  std::cout << "QUERY:" << std::endl; break;
-            case benchmark::OPCODE_DELETE: std::cout << "DELETE:" << std::endl; break;
-            default: std::abort(); break;
-        }
-        
-        for(const key_t& key : batch.keys()) {
-            ++stats.count_total;
-            switch(batch.opcode()) {
-                case benchmark::OPCODE_INSERT: ++stats.keys_current; break;
-                case benchmark::OPCODE_DELETE: --stats.keys_current; break;
-            }
-
-            std::cout << '\t';
-            if(options.print_opnum) std::cout << stats.count_total << '\t';
-            std::cout << key;
-            if(options.print_num) std::cout << '\t' << stats.keys_current;
-            std::cout << std::endl;
-        }
-    } else {
-        stats.count_total += batch.size();
-        batch.write(std::cout);
-    }
+void output_batch(std::ostream& out, const benchmark::IntegerOperationBatch<key_t>& batch) {
+    batch.write(out);
 }
 
 template<typename key_t>
@@ -106,6 +85,11 @@ void generate() {
     
     mpf::random::Engine gen_val(options.key_seed);
     mpf::random::UniformDistribution<KEY_BITS> random_from_universe(0ULL, u);
+    
+    // out file
+    std::ofstream out;
+    out = std::ofstream(options.out_filename);
+    out.write((const char*)&options.universe, sizeof(options.universe));
     
     // csv file
     std::ofstream csv;
@@ -189,14 +173,14 @@ void generate() {
     
     auto generate_and_output = [&](const benchmark::opcode_t opcode){
         switch(opcode) {
-            case benchmark::OPCODE_INSERT: output_batch(generate_insert_batch()); break;
-            case benchmark::OPCODE_QUERY: output_batch(generate_query_batch()); break;
-            case benchmark::OPCODE_DELETE: output_batch(generate_delete_batch()); break;
+            case benchmark::OPCODE_INSERT: output_batch(out, generate_insert_batch()); break;
+            case benchmark::OPCODE_QUERY: output_batch(out, generate_query_batch()); break;
+            case benchmark::OPCODE_DELETE: output_batch(out, generate_delete_batch()); break;
             default: std::abort(); break;
         }
         
         if(options.csv()) {
-            csv << stats.count_total << "," << cur_num << std::endl;
+            csv << stats.count_total() << "," << cur_num << std::endl;
         }
     };
     
@@ -217,7 +201,7 @@ void generate() {
     };
     
     // insertion phase
-    while(cur_num + options.batch < options.max_num && stats.count_total < options.max_ops * options.batch) {
+    while(cur_num + options.batch < options.max_num && stats.count_total() < options.max_ops * options.batch) {
         if(cur_num < options.batch || random_op(gen_op) <= insert_probability()) {
             output_insert_batch();
             continue;
@@ -234,8 +218,8 @@ void generate() {
     }
 
     // hold phase
-    const size_t max_hold_ops = size_t(options.hold * double(stats.count_total / options.batch));
-    for(size_t i = 0; i < max_hold_ops && stats.count_total < options.max_ops * options.batch; i++) {
+    const size_t max_hold_ops = size_t(options.hold * double(stats.count_total() / options.batch));
+    for(size_t i = 0; i < max_hold_ops && stats.count_total() < options.max_ops * options.batch; i++) {
         const float p = random_op(gen_op);
         
         if(cur_num + options.batch < options.max_num) {
@@ -256,7 +240,7 @@ void generate() {
     }
 
     // deletion phase
-    while(cur_num > 0 && stats.count_total < options.max_ops * options.batch) {
+    while(cur_num > 0 && stats.count_total() < options.max_ops * options.batch) {
         if(cur_num + options.batch >= options.max_num || random_op(gen_op) <= insert_probability()) {
             output_delete_batch();
             continue;
@@ -273,7 +257,7 @@ void generate() {
     }
     
     std::cerr << "generated "
-        << stats.count_total << " operations (key seed: "
+        << stats.count_total() << " operations (key seed: "
         << options.key_seed << ", op seed: "
         << options.op_seed << ", "
         << stats.failed_inserts << " duplicates prevented): "
@@ -289,6 +273,7 @@ void generate() {
 int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.set_description("Generates a sequence of inserts, queries and deletes to simulate operation of a dynamic data structure");
+    cp.add_param_string("out", options.out_filename, "Write the output to the specified file");
     cp.add_bytes('n', "num", options.max_num, "The (lenient) maximum number of items in the data structure (default: 100)");
     cp.add_bytes('m', "max-ops", options.max_ops, "The maximum number of operations to generate (default: infinite)");
     cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw numbers from (default: 32)");
@@ -302,9 +287,6 @@ int main(int argc, char** argv) {
     cp.add_size_t("n-mean", options.n_mean, "The mean for a normal distribution will be U/n_mean (default: 2)");
     cp.add_size_t("n-stddev", options.n_mean, "The standard deviation for a normal distribution will be U/n_stddev (default: 8)");
     cp.add_double("hold", options.hold, "The duration of the hold phase, relative to the duration of the insertion phase (default: 0.25)");
-    cp.add_flag("readable", options.readable, "Create a human-readable output rather than a binary file");
-    cp.add_flag("print-opnum", options.print_opnum, "Print the number of each operation (only if readable flag is set)");
-    cp.add_flag("print-num", options.print_num, "Print the number of items after each operation (only if readable flag is set)");
     cp.add_string("csv", options.csv_filename, "The name of the CSV file to write plot data to (default: none)");
 
     if(!cp.process(argc, argv)) {
@@ -324,13 +306,6 @@ int main(int argc, char** argv) {
     if(options.p_query >= 1) {
         std::cerr << "p_query must be less than one" << std::endl;
         return -4;
-    }
-
-    // output header
-    if(options.readable) {
-        std::cout << "u=" << options.universe << std::endl;
-    } else {
-        std::cout.write((const char*)&options.universe, sizeof(options.universe));
     }
 
     // TODO: select distribution
