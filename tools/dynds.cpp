@@ -8,6 +8,8 @@
 #include <tdc/pred/dynamic/btree.hpp>
 #include <tdc/pred/dynamic/btree/sorted_array_node.hpp>
 #include <tdc/stat/time.hpp>
+#include <tdc/uint/uint40.hpp>
+#include <tdc/uint/uint256.hpp>
 #include <tdc/util/benchmark/integer_operation.hpp>
 
 #include <tdc/mpf/random/engine.hpp>
@@ -15,25 +17,6 @@
 #include <tdc/mpf/random/uniform_distribution.hpp>
 
 #include <tlx/cmdline_parser.hpp>
-
-/*
- * Binary output format specification:
- *
- * uint64_t u     -- universe is 2^u-1
- * uint64_t batch -- batch size
- * sequence of:
- * {
- *     char  opcode      -- operation code
- *     key_t keys[batch] -- operation keys
- * }
- *
- * ###
- * key_t is determined by u:
- *      u <=  64 -> key_t =  uint64_t
- *      u <= 128 -> key_t = uint128_t
- *      u <= 256 -> key_t = uint256_t
- *      etc
- */
 
 using namespace tdc;
 
@@ -55,6 +38,54 @@ struct {
     bool print_opnum = false;
     bool print_num = false;
 } options;
+
+struct {
+    size_t count_insert = 0;
+    size_t count_delete = 0;
+    size_t count_query = 0;
+    size_t failed_inserts = 0;
+    
+    size_t count_total = 0;
+    ssize_t keys_current = 0;
+} stats;
+
+template<typename key_t, typename key_generator_t>
+benchmark::IntegerOperationBatch<key_t> generate_batch(const benchmark::opcode_t opcode, key_generator_t gen) {
+    benchmark::IntegerOperationBatch<key_t> batch(opcode, options.batch);
+    for(size_t i = 0; i < options.batch; i++) {
+        batch.add_key(gen());
+    }
+    return batch;
+}
+
+template<typename key_t>
+void output_batch(const benchmark::IntegerOperationBatch<key_t>& batch) {
+    if(options.readable) {
+        switch(batch.opcode()) {
+            case benchmark::OPCODE_INSERT: std::cout << "INSERT:" << std::endl; break;
+            case benchmark::OPCODE_QUERY:  std::cout << "QUERY:" << std::endl; break;
+            case benchmark::OPCODE_DELETE: std::cout << "DELETE:" << std::endl; break;
+            default: std::abort(); break;
+        }
+        
+        for(const key_t& key : batch.keys()) {
+            ++stats.count_total;
+            switch(batch.opcode()) {
+                case benchmark::OPCODE_INSERT: ++stats.keys_current; break;
+                case benchmark::OPCODE_DELETE: --stats.keys_current; break;
+            }
+
+            std::cout << '\t';
+            if(options.print_opnum) std::cout << stats.count_total << '\t';
+            std::cout << key;
+            if(options.print_num) std::cout << '\t' << stats.keys_current;
+            std::cout << std::endl;
+        }
+    } else {
+        stats.count_total += batch.size();
+        batch.write(std::cout);
+    }
+}
 
 template<typename key_t>
 void generate() {
@@ -79,24 +110,13 @@ void generate() {
     key_t cur_max = 0;
     
     // operations
-    struct op_t {
-        char code;
-        key_t x;
-    } __attribute__((packed));
-    static_assert(sizeof(op_t) == 9);
-    
-    size_t count_insert = 0;
-    size_t count_delete = 0;
-    size_t count_query = 0;
-    size_t failed_inserts = 0;
-    
     auto generate_insert = [&](){
-        ++count_insert;
+        ++stats.count_insert;
         
         key_t x = (key_t)random_from_universe(gen_val);
         while(cur_set.contains(x)) {
             x = (key_t)random_from_universe(gen_val);
-            ++failed_inserts;
+            ++stats.failed_inserts;
         }
         
         cur_set.insert(x);
@@ -113,7 +133,7 @@ void generate() {
     
     auto generate_query = [&](){
         assert(cur_num > 0);
-        ++count_query;
+        ++stats.count_query;
         
         mpf::random::UniformDistribution<KEY_BITS> random_range(cur_min, cur_max);
         return (key_t)random_range(gen_val);
@@ -121,7 +141,7 @@ void generate() {
     
     auto generate_delete = [&](){
         assert(cur_num > 0);
-        ++count_delete;
+        ++stats.count_delete;
         
         mpf::random::UniformDistribution<KEY_BITS> random_index(0, cur_num - 1);
         const size_t i = (size_t)random_index(gen_val);
@@ -142,66 +162,28 @@ void generate() {
         return x ;
     };
     
-    size_t count_total = 0;
+    auto generate_insert_batch = [&](){
+        return generate_batch<key_t>(benchmark::OPCODE_INSERT, generate_insert);
+    };
 
-    auto output_opcode = [&](char op){
-        if(options.readable) {
-            switch(op) {
-                case benchmark::OPCODE_INSERT:
-                    std::cout << "INSERT:" << std::endl;
-                    break;
+    auto generate_query_batch = [&](){
+        return generate_batch<key_t>(benchmark::OPCODE_QUERY, generate_query);
+    };
 
-                case benchmark::OPCODE_QUERY:
-                    std::cout << "QUERY:" << std::endl;
-                    break;
-
-                case benchmark::OPCODE_DELETE:
-                    std::cout << "DELETE:" << std::endl;
-                    break;
-
-                default:
-                    std::abort();
-                    break;
-            }
-        } else {
-            std::cout << op;
-        }
+    auto generate_delete_batch = [&](){
+        return generate_batch<key_t>(benchmark::OPCODE_DELETE, generate_delete);
     };
     
-    auto output_key = [&](const key_t& key){
-        ++count_total;
-
-        // print
-        if(options.readable) {
-            std::cout << '\t';
-            if(options.print_opnum) std::cout << count_total << '\t';
-            std::cout << key;
-            if(options.print_num) std::cout << '\t' << cur_num;
-            std::cout << std::endl;
-        } else {
-            std::cout.write((const char*)&key, sizeof(key));
-        }
-    };
-
     auto output_insert_batch = [&](){
-        output_opcode(benchmark::OPCODE_INSERT);
-        for(size_t i = 0; i < options.batch; i++) {
-            output_key(generate_insert());
-        }
+        output_batch(generate_insert_batch());
     };
 
     auto output_query_batch = [&](){
-        output_opcode(benchmark::OPCODE_QUERY);
-        for(size_t i = 0; i < options.batch; i++) {
-            output_key(generate_query());
-        }
+        output_batch(generate_query_batch());
     };
 
     auto output_delete_batch = [&](){
-        output_opcode(benchmark::OPCODE_DELETE);
-        for(size_t i = 0; i < options.batch; i++) {
-            output_key(generate_delete());
-        }
+        output_batch(generate_delete_batch());
     };
     
     auto insert_probability = [&](){
@@ -209,7 +191,7 @@ void generate() {
     };
     
     // insertion phase
-    while(cur_num + options.batch < options.max_num && count_total < options.max_ops * options.batch) {
+    while(cur_num + options.batch < options.max_num && stats.count_total < options.max_ops * options.batch) {
         if(cur_num < options.batch || random_op(gen_op) <= insert_probability()) {
             output_insert_batch();
             continue;
@@ -226,8 +208,8 @@ void generate() {
     }
 
     // hold phase
-    const size_t max_hold_ops = size_t(options.hold * double(count_total));
-    for(size_t i = 0; i < max_hold_ops && count_total < options.max_ops * options.batch; i++) {
+    const size_t max_hold_ops = size_t(options.hold * double(stats.count_total));
+    for(size_t i = 0; i < max_hold_ops && stats.count_total < options.max_ops * options.batch; i++) {
         const float p = random_op(gen_op);
         
         if(cur_num + options.batch < options.max_num) {
@@ -248,7 +230,7 @@ void generate() {
     }
 
     // deletion phase
-    while(cur_num > 0 && count_total < options.max_ops * options.batch) {
+    while(cur_num > 0 && stats.count_total < options.max_ops * options.batch) {
         if(cur_num + options.batch >= options.max_num || random_op(gen_op) <= insert_probability()) {
             output_delete_batch();
             continue;
@@ -265,13 +247,13 @@ void generate() {
     }
     
     std::cerr << "generated "
-        << count_total << " operations (key seed: "
+        << stats.count_total << " operations (key seed: "
         << options.key_seed << ", op seed: "
         << options.op_seed << ", "
-        << failed_inserts << " duplicates prevented): "
-        << count_insert << " inserts, "
-        << count_delete << " deletes and "
-        << count_query << " queries"
+        << stats.failed_inserts << " duplicates prevented): "
+        << stats.count_insert << " inserts, "
+        << stats.count_delete << " deletes and "
+        << stats.count_query << " queries"
         << std::endl;
 
     // clean up
@@ -295,8 +277,8 @@ int main(int argc, char** argv) {
     cp.add_size_t("n-stddev", options.n_mean, "The standard deviation for a normal distribution will be U/n_stddev (default: 8).");
     cp.add_double("hold", options.hold, "The duration of the hold phase, relative to the duration of the insertion phase (default: 0.25)");
     cp.add_flag("readable", options.readable, "Create a human-readable output rather than a binary file.");
-    cp.add_flag("print-opnum", options.print_opnum, "Print the number of each operation.");
-    cp.add_flag("print-num", options.print_num, "Print the number of items after each operation.");
+    cp.add_flag("print-opnum", options.print_opnum, "Print the number of each operation (only if readable flag is set).");
+    cp.add_flag("print-num", options.print_num, "Print the number of items after each operation (only if readable flag is set).");
 
     if(!cp.process(argc, argv)) {
         return -1;
@@ -322,13 +304,20 @@ int main(int argc, char** argv) {
         std::cout << "u=" << options.universe << std::endl;
     } else {
         std::cout.write((const char*)&options.universe, sizeof(options.universe));
-        std::cout.write((const char*)&options.batch, sizeof(options.batch));
     }
 
     // TODO: select distribution
 
-    if(options.universe <= 64) {
+    if(options.universe <= 32) {
+        generate<uint32_t>();
+    } else if(options.universe <= 40) {
+        generate<uint40_t>();
+    } else if(options.universe <= 64) {
         generate<uint64_t>();
+    } else if(options.universe <= 128) {
+        generate<uint128_t>();
+    } else if(options.universe <= 256) {
+        generate<uint256_t>();
     } else {
         std::cerr << "universe size not supported" << std::endl;
         return -5;
