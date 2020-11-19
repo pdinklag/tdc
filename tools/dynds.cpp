@@ -35,11 +35,9 @@ struct {
     std::string distr = "uniform";
     size_t n_mean = 2;
     size_t n_stddev = 8;
+    bool simulate = false;
     
     std::string out_filename = "";
-    
-    bool print_opnum = false;
-    bool print_num = false;
     
     std::string csv_filename = "";
     inline bool csv() const {
@@ -85,8 +83,10 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
     
     // out file
     std::ofstream out;
-    out = std::ofstream(options.out_filename);
-    out.write((const char*)&options.universe, sizeof(options.universe));
+    if(!options.simulate) {
+        out = std::ofstream(options.out_filename);
+        out.write((const char*)&options.universe, sizeof(options.universe));
+    }
     
     // csv file
     std::ofstream csv;
@@ -97,7 +97,7 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
     
     // working set
     pred::dynamic::BTree<key_t, 65, pred::dynamic::SortedArrayNode<key_t, 64>> cur_set;
-    key_t* cur_arr = new key_t[options.max_num];
+    key_t* cur_arr = new key_t[options.simulate ? 0 : options.max_num];
     
     size_t cur_num = 0;
     key_t cur_min = u;
@@ -169,11 +169,20 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
     };
     
     auto generate_and_output = [&](const benchmark::opcode_t opcode){
-        switch(opcode) {
-            case benchmark::OPCODE_INSERT: output_batch(out, generate_insert_batch()); break;
-            case benchmark::OPCODE_QUERY: output_batch(out, generate_query_batch()); break;
-            case benchmark::OPCODE_DELETE: output_batch(out, generate_delete_batch()); break;
-            default: std::abort(); break;
+        if(options.simulate) {
+            switch(opcode) {
+                case benchmark::OPCODE_INSERT: cur_num += options.batch; stats.count_insert += options.batch; break;
+                case benchmark::OPCODE_QUERY: stats.count_query += options.batch; break;
+                case benchmark::OPCODE_DELETE: cur_num -= options.batch; stats.count_delete += options.batch; break;
+                default: std::abort(); break;
+            }
+        } else {
+            switch(opcode) {
+                case benchmark::OPCODE_INSERT: output_batch(out, generate_insert_batch()); break;
+                case benchmark::OPCODE_QUERY: output_batch(out, generate_query_batch()); break;
+                case benchmark::OPCODE_DELETE: output_batch(out, generate_delete_batch()); break;
+                default: std::abort(); break;
+            }
         }
         
         if(options.csv()) {
@@ -305,6 +314,7 @@ int main(int argc, char** argv) {
     cp.add_size_t("stddev", options.n_stddev, "The standard deviation for a normal distribution will be U/stddev (default: 8)");
     cp.add_double("hold", options.hold, "The duration of the hold phase, relative to the duration of the insertion phase (default: 0.25)");
     cp.add_string("csv", options.csv_filename, "The name of the CSV file to write plot data to (default: none)");
+    cp.add_flag("simulate", options.simulate, "Don't actually write data, only simulate generation (default: false)");
 
     if(!cp.process(argc, argv)) {
         return -1;
