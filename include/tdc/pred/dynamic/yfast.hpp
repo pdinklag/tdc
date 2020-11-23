@@ -12,10 +12,10 @@ namespace dynamic {
 
 // This class is a classical yfast-trie with practical improvements.
 // It maintains a dynamic set of keys and answers predecessor queries.
-// It needs O(n) space, needs O(1) time for key insertion/removal, and answers predecessor queries 
+// It needs O(n) space, needs O(1) time for key insertion/removal, and answers predecessor queries
 // in O(log log u) time, where u is the universe size. The data structure consists of two parts:
 //  - The xfast_trie manages every '2^t_bucket_width'-th key. These keys are called a representants.
-//  - A representant is the smallest key of the bucket it represents. A bucket holds ~2^t_bucket_width keys.  
+//  - A representant is the smallest key of the bucket it represents. A bucket holds ~2^t_bucket_width keys.
 //    Each bucket stores a pointer to its next smaller and next greater bucket.
 // Each node in the xfast-trie contains a pointer and the nodes of the xfast trie are representated by an unordered_map in this way:
 //  - The map contains the prefix <=> the node exists
@@ -35,11 +35,11 @@ class YFastTrie {
   class yfast_bucket;
   
   // Whenever we insert/delete, the bucket returns what has to be changed in the xfast_trie.
-  // These updated to the xfast_trie are then applied. 
+  // These updated to the xfast_trie are then applied.
   struct xfast_update {
-    std::vector<uint64_t> remove_repr; // The representants that have be removed from the xfast_trie.
-    std::vector<yfast_bucket*> insert_repr; // The representants that have be inserted into the xfast_trie.
-    std::vector<yfast_bucket*> delete_bucket; // The buckets that have to be deleted.
+    std::vector<uint64_t> remove_repr;         // The representants that have be removed from the xfast_trie.
+    std::vector<yfast_bucket*> insert_repr;    // The representants that have be inserted into the xfast_trie.
+    std::vector<yfast_bucket*> delete_bucket;  // The buckets that have to be deleted.
   };
 
   // The top part of the yfast_trie is the xfast_trie. It contains a unordered_map for every level.
@@ -51,18 +51,18 @@ class YFastTrie {
   //    - The node has only a right child <=> The prefix is mapped to the smallest bucket in the right subtree
   //    - The node has no children <=> The prefix is mapped to the only bucket whose representant has the same prefix as the node
   std::array<robin_hood::unordered_map<uint64_t, yfast_bucket*>, t_key_width + 1> m_xfast;
-  
+
   // The bottom part of the yfast_trie consists of yfast_buckets. A bucket stores a pointer to the next smaller and next greater bucket.
-  // A bucket stores its keys in an unordered array. A bucket splits if it reaches size 2^(t_bucket_width+1). A bucket merges with its 
+  // A bucket stores its keys in an unordered array. A bucket splits if it reaches size 2^(t_bucket_width+1). A bucket merges with its
   // neighbor if if surpasses size 2^(t_bucket_width/t_merge_threshold). Whenevery something is inserted/deleted from a bucket, it
   // modifies the bottom structure on its own. It then returns which changes have to be made to the top data structure
   class yfast_bucket {
    private:
-    static constexpr size_t c_bucket_size = 1ULL << t_bucket_width; // Approx. size of the bucket.
-    yfast_bucket* m_prev = nullptr; // Pointer to the next smaller bucket.
-    yfast_bucket* m_next = nullptr; // Pointer to the next greater bucket.
-    t_value_type m_min; // The smallest key in the bucket. This is the representant.
-    std::vector<t_value_type> m_elem; // The keys in stored by the bucket without the representant.
+    static constexpr size_t c_bucket_size = 1ULL << t_bucket_width;  // Approx. size of the bucket.
+    yfast_bucket* m_prev = nullptr;                                  // Pointer to the next smaller bucket.
+    yfast_bucket* m_next = nullptr;                                  // Pointer to the next greater bucket.
+    t_value_type m_min;                                              // The smallest key in the bucket. This is the representant.
+    std::vector<t_value_type> m_elem;                                // The keys in stored by the bucket without the representant.
 
    public:
     yfast_bucket(t_value_type repr, yfast_bucket* pred, yfast_bucket* next) {
@@ -100,11 +100,10 @@ class YFastTrie {
       return update;
     }
 
-    // Splits the 2*c_bucket_size big bucket into two equal sized ones 
+    // Splits the 2*c_bucket_size big bucket into two equal sized ones
     // and returns the pointer to the new one, so it can be inserted into the xfast_trie
-    //TODO: split more efficiently by calculating an approx median.
     yfast_bucket* split() {
-      std::sort(m_elem.begin(), m_elem.end());
+      std::nth_element(m_elem.begin(), m_elem.begin() + m_elem.size() / 2, m_elem.end());
 
       // Construct next bucket and adjust pointers.
       const size_t mid_index = m_elem.size() / 2;
@@ -128,7 +127,7 @@ class YFastTrie {
     // to the xfast_trie. The key must exist. A few things may lead changes in the top structure:
     std::vector<xfast_update> remove(const t_value_type x) {
       std::vector<xfast_update> updates;
-      // If the key is the last element, we mark that this representant has to be deleted. 
+      // If the key is the last element, we mark that this representant has to be deleted.
       // The bucket also has to be deleted.
       if (m_elem.size() == 0) {
         if (m_prev != nullptr) {
@@ -236,7 +235,7 @@ class YFastTrie {
   // to split the parent node.
   void insert_repr(uint64_t key, yfast_bucket* b) {
     // If there is no root, we insert the bucket at the root.
-    if(m_xfast[t_key_width].find(0) == m_xfast[t_key_width].end()) {
+    if (m_xfast[t_key_width].find(0) == m_xfast[t_key_width].end()) {
       m_xfast[t_key_width][0] = b;
       return;
     }
@@ -392,18 +391,18 @@ class YFastTrie {
   }
 
   void update_after_insertion() {
-    while((m_lowest_complete_level > 0) && (m_xfast[m_lowest_complete_level-1].size() == (1ULL << 1 << (64-m_lowest_complete_level)))) {
+    while ((m_lowest_complete_level > 0) && (m_xfast[m_lowest_complete_level - 1].size() == (1ULL << 1 << (64 - m_lowest_complete_level)))) {
       --m_lowest_complete_level;
     }
-    while(m_lowest_non_empty_level > 0 && (m_xfast[m_lowest_non_empty_level-1].size() > 0)) {
+    while (m_lowest_non_empty_level > 0 && (m_xfast[m_lowest_non_empty_level - 1].size() > 0)) {
       --m_lowest_non_empty_level;
     }
   }
   void update_after_deletion() {
-    while((m_lowest_complete_level < t_key_width) && (m_xfast[m_lowest_complete_level].size() < (1ULL << (64-m_lowest_complete_level)))) {
+    while ((m_lowest_complete_level < t_key_width) && (m_xfast[m_lowest_complete_level].size() < (1ULL << (64 - m_lowest_complete_level)))) {
       ++m_lowest_complete_level;
     }
-    while((m_lowest_non_empty_level < t_key_width) && (m_xfast[m_lowest_non_empty_level].size() == 0)) {
+    while ((m_lowest_non_empty_level < t_key_width) && (m_xfast[m_lowest_non_empty_level].size() == 0)) {
       ++m_lowest_non_empty_level;
     }
   }
@@ -562,8 +561,8 @@ class YFastTrie {
       return {false, 0};
     }
     // Search the bucket that must contain the predecessor.
-    yfast_bucket const * const search_bucket = pred_bucket<true>(key);
-    if(search_bucket) {
+    yfast_bucket const* const search_bucket = pred_bucket<true>(key);
+    if (search_bucket) {
       // If the bucket exist, search for the predecessor in the bucket and return it.
       return search_bucket->predecessor(key);
     } else {
