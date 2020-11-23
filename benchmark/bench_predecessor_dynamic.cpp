@@ -8,6 +8,7 @@
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
+#include <tdc/stat/time.hpp>
 #include <tdc/uint/uint40.hpp>
 #include <tdc/uint/uint256.hpp>
 
@@ -46,8 +47,15 @@ struct {
     
     std::string ops_filename = "";
     std::ifstream ops;
+    std::ifstream::pos_type ops_rewind_pos;
+    
     bool has_opsfile() const {
         return ops_filename.length() > 0;
+    }
+    
+    void rewind_ops() {
+        ops = std::ifstream(ops_filename);
+        ops.seekg(ops_rewind_pos, std::ios::beg);
     }
     
     bool do_bench(const std::string& name) const {
@@ -64,11 +72,6 @@ struct {
 
 stat::Phase benchmark_phase(std::string&& title) {
     stat::Phase phase(std::move(title));
-    phase.log("num", options.num);
-    phase.log("universe", options.universe);
-    phase.log("queries", options.num_queries);
-    phase.log("seed", options.seed);
-    phase.log("ops", options.ops_filename);
     return phase;
 }
 
@@ -89,13 +92,18 @@ void bench(
     pred_func_t pred_func,
     remove_func_t remove_func
 ) {
-        
     if(!options.do_bench(name)) return;
 
     // measure
     auto result = benchmark_phase("");
     
     if(options.num > 0) {
+        // input
+        result.log("num", options.num);
+        result.log("universe", options.universe);
+        result.log("queries", options.num_queries);
+        result.log("seed", options.seed);
+        
         // construct data structure so it contains only zero
         auto ds = ctor_func(0);
         if(size_func(ds) == 0) insert_func(ds, 0);
@@ -169,18 +177,14 @@ void bench(
         }
     }
     
-    if(options.ops_filename.length() > 0) {
-        /*
+    if(options.has_opsfile() > 0) {
+        result.log("ops", options.ops_filename);
+        
+        // init data structure
         auto ds = ctor_func(0);
         if(size_func(ds) == 1) remove_func(ds, 0);
         
         assert(size_func(ds) == 0);
-        
-        // map input file to memory
-        auto mapped = io::MMapReadOnlyFile(options.ops_filename);
-        
-        const auto* ops = (const benchmark::IntegerOperation*)mapped.data();
-        const size_t num_ops = mapped.size() / sizeof(benchmark::IntegerOperation);
         
         uint64_t ops_chk = 0;
         size_t ops_total = 0;
@@ -188,33 +192,46 @@ void bench(
         size_t ops_del = 0;
         size_t ops_q = 0;
         size_t ops_max = 0;
+        uint64_t time_ins = 0;
+        uint64_t time_del = 0;
+        uint64_t time_q = 0;
         {
+            options.rewind_ops();
             stat::Phase ops_phase("ops");
             
-            benchmark::IntegerOperation op;
-            for(size_t i = 0; i < num_ops; i++) {
-                // read next operation
-                {
-                    auto guard = ops_phase.suppress();
-                    op = ops[i];
-                }
+            benchmark::IntegerOperationBatch<key_t> batch;
+            while(batch.read(options.ops)) {
+                // process next batch
+                ops_total += batch.size();
                 
-                ++ops_total;
-                switch(op.code) {
+                uint64_t t0;
+                switch(batch.opcode()) {
                     case benchmark::OPCODE_INSERT:
-                        ++ops_ins;
-                        insert_func(ds, op.key);
+                        t0 = stat::time_nanos();
+                        for(const auto& key : batch.keys()) {
+                            insert_func(ds, key);
+                        }
+                        time_ins += stat::time_nanos() - t0;
+                        ops_ins += batch.size();
                         ops_max = std::max(ops_max, (size_t)size_func(ds));
                         break;
-
+                        
                     case benchmark::OPCODE_DELETE:
-                        ++ops_del;
-                        remove_func(ds, op.key);
+                        t0 = stat::time_nanos();
+                        for(const auto& key : batch.keys()) {
+                            remove_func(ds, key);
+                        }
+                        time_del += stat::time_nanos() - t0;
+                        ops_del += batch.size();
                         break;
                         
                     case benchmark::OPCODE_QUERY:
-                        ++ops_q;
-                        ops_chk += (uint64_t)pred_func(ds, op.key).key;
+                        t0 = stat::time_nanos();
+                        for(const auto& key : batch.keys()) {
+                            ops_chk += (uint64_t)pred_func(ds, key).key;
+                        }
+                        time_q += stat::time_nanos() - t0;
+                        ops_q += batch.size();
                         break;
                 }
             }
@@ -229,7 +246,9 @@ void bench(
         result.log("ops_q", ops_q);
         result.log("ops_chk", ops_chk);
         result.log("ops_max", ops_max);
-        */
+        result.log("time_ins", (double)(time_ins / 1000ULL) / 1000.0);
+        result.log("time_del", (double)(time_del / 1000ULL) / 1000.0);
+        result.log("time_q", (double)(time_q / 1000ULL) / 1000.0);
     }
     
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
@@ -266,14 +285,14 @@ void benchmark_arbitrary_universe() {
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
     bench<key_t>("set",
-        [](const uint64_t){ return std::set<uint64_t>(); },
+        [](const key_t){ return std::set<key_t>(); },
         [](const auto& set){ return set.size(); },
-        [](auto& set, const uint64_t x){ set.insert(x); },
-        [](const auto& set, const uint64_t x){
+        [](auto& set, const key_t x){ set.insert(x); },
+        [](const auto& set, const key_t x){
             auto it = set.upper_bound(x);
-            return pred::KeyResult<uint64_t> { it != set.begin(), *(--it) };
+            return pred::KeyResult<key_t> { it != set.begin(), *(--it) };
         },
-        [](auto& set, const uint64_t x){ set.erase(x); }
+        [](auto& set, const key_t x){ set.erase(x); }
     );
 }
 
@@ -363,6 +382,7 @@ int main(int argc, char** argv) {
         // open file and read universe
         options.ops = std::ifstream(options.ops_filename);
         options.ops.read((char*)&options.universe, sizeof(options.universe));
+        options.ops_rewind_pos = options.ops.tellg();
     }
     else if(options.num > 0) {
         if(!options.universe) {

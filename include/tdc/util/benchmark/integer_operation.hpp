@@ -10,6 +10,9 @@ namespace benchmark {
 /// \brief The type for operation counts.
 using opcode_t = char;
 
+/// \brief A no-op code.
+constexpr opcode_t OPCODE_NOOP = 0;
+
 /// \brief An operation code for \em insert operations.
 constexpr opcode_t OPCODE_INSERT = 'I';
 
@@ -28,16 +31,7 @@ private:
     std::vector<key_t> m_keys;
 
 public:
-    static IntegerOperationBatch read(std::istream& in) {
-        opcode_t opcode;
-        batchsize_t num_keys;
-        
-        in >> opcode;
-        in.read((char*)&num_keys, sizeof(num_keys));
-        
-        IntegerOperationBatch batch(opcode, num_keys);
-        batch.m_keys.resize(num_keys);
-        in.read((char*)batch.m_keys.data(), num_keys * sizeof(key_t));
+    IntegerOperationBatch() : m_opcode(OPCODE_NOOP) {
     }
 
     IntegerOperationBatch(const opcode_t opcode, const size_t capacity) : m_opcode(opcode) {
@@ -60,12 +54,26 @@ public:
         m_keys.emplace_back(std::move(key));
     }
     
-    void write(std::ostream& out) const {
+    std::istream& read(std::istream& in) {
+        if(in >> m_opcode) {
+            batchsize_t num_keys;
+            if(in.read((char*)&num_keys, sizeof(num_keys))) {
+                m_keys.clear();
+                m_keys.resize(num_keys);
+                in.read((char*)m_keys.data(), num_keys * sizeof(key_t));
+            }
+        }
+        return in;
+    }
+    
+    std::ostream& write(std::ostream& out) const {
         out << m_opcode;
         
         const batchsize_t num_keys = m_keys.size();
         out.write((const char*)&num_keys, sizeof(num_keys));
         out.write((const char*)m_keys.data(), num_keys * sizeof(key_t));
+        
+        return out;
     }
 };
 
