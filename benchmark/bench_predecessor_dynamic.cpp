@@ -256,6 +256,7 @@ void bench(
 
 template<typename key_t>
 void benchmark_arbitrary_universe() {
+    /*
     bench<key_t>("fusion_btree_8",
         [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::DynamicFusionNode<key_t, 8>>(); },
         [](const auto& ds){ return ds.size(); },
@@ -294,12 +295,26 @@ void benchmark_arbitrary_universe() {
         },
         [](auto& set, const key_t x){ set.erase(x); }
     );
+    */
 }
 
 template<typename key_t>
 void benchmark_large_universe() {
     benchmark_arbitrary_universe<key_t>();
-    
+    bench<key_t>("yfast_trie-06",
+        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 6>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
+    bench<key_t>("yfast_trie-07",
+        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 7>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
     bench<key_t>("yfast_trie-08",
         [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 8>(); },
         [](const auto& ds){ return ds.size(); },
