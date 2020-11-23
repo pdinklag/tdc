@@ -14,6 +14,9 @@ namespace hash {
 /// \tparam m_a probing parameter \f$ c \f$
 template<size_t m_a = 1, size_t m_b = 1, size_t m_c = 1>
 struct QuadraticProbing {
+    inline QuadraticProbing() {
+    }
+    
     inline size_t operator()(const size_t i) {
         return m_a * i * i + m_b * i + m_c;
     }

@@ -260,6 +260,12 @@ public:
     inline Accessor end() const {
         return Accessor();
     }
+    
+    /// \brief Tests whether a key exists in the set.
+    /// \param key the key in question
+    inline bool contains(const K& key) const {
+        return find(key) != end();
+    }
 
     /// \brief Erases an item.
     /// \param a the accessor

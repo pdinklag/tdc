@@ -4,6 +4,7 @@
 
 #include <tdc/hash/map.hpp>
 
+#include <tdc/hash/function.hpp>
 #include <tdc/hash/linear_probing.hpp>
 #include <tdc/hash/quadratic_probing.hpp>
 
@@ -95,29 +96,6 @@ void bench(const std::string& name, ctor_t ctor, diag_func_t diag) {
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
 }
 
-size_t id(uint64_t key) {
-    return key;
-}
-
-size_t mix(uint64_t key) {
-    key = (~key) + (key << 21ULL);
-    key = key ^ (key >> 24ULL);
-    key = (key + (key << 3ULL)) + (key << 8ULL);
-    key = key ^ (key >> 14ULL);
-    key = (key + (key << 2ULL)) + (key << 4ULL);
-    key = key ^ (key >> 28ULL);
-    key = key + (key << 31ULL);
-    return key;
-}
-
-struct mul_hash {
-    uint64_t prime;
-
-    inline size_t operator()(uint64_t key) {
-        return key * prime;
-    }
-};
-
 void diag_tdc(stat::Phase& result, const hash::Map<uint64_t, uint64_t>& map) {
     result.log("load", map.load());
     result.log("max_probe", map.max_probe());
@@ -155,19 +133,17 @@ int main(int argc, char** argv) {
         options.capacity = options.num;
     }
 
-    bench_tdc("lp.id",         id,                                      hash::LinearProbing<>{});
-    bench_tdc("lp.knuth",      mul_hash{2654435761ULL},                 hash::LinearProbing<>{});
-    bench_tdc("lp.mul_prime1", mul_hash{15'425'459'083'914'370'367ULL}, hash::LinearProbing<>{});
-    bench_tdc("lp.mul_prime2", mul_hash{16'568'458'216'213'224'001ULL}, hash::LinearProbing<>{});
-    bench_tdc("lp.mul_prime3", mul_hash{17'406'548'584'874'384'839ULL}, hash::LinearProbing<>{});
-    bench_tdc("lp.mix",        mix,                                     hash::LinearProbing<>{});
+    bench_tdc("lp.id",         hash::Identity(),                                    hash::LinearProbing<>());
+    bench_tdc("lp.knuth",      hash::Multiplicative(),                              hash::LinearProbing<>());
+    bench_tdc("lp.mul_prime1", hash::Multiplicative(15'425'459'083'914'370'367ULL), hash::LinearProbing<>());
+    bench_tdc("lp.mul_prime2", hash::Multiplicative(16'568'458'216'213'224'001ULL), hash::LinearProbing<>());
+    bench_tdc("lp.mul_prime3", hash::Multiplicative(17'406'548'584'874'384'839ULL), hash::LinearProbing<>());
     
-    bench_tdc("qp.id",         id,                                      hash::QuadraticProbing<>{});
-    bench_tdc("qp.knuth",      mul_hash{2654435761ULL},                 hash::QuadraticProbing<>{});
-    bench_tdc("qp.mul_prime1", mul_hash{15'425'459'083'914'370'367ULL}, hash::QuadraticProbing<>{});
-    bench_tdc("qp.mul_prime2", mul_hash{16'568'458'216'213'224'001ULL}, hash::QuadraticProbing<>{});
-    bench_tdc("qp.mul_prime3", mul_hash{17'406'548'584'874'384'839ULL}, hash::QuadraticProbing<>{});
-    bench_tdc("qp.mix",        mix,                                     hash::QuadraticProbing<>{});
+    bench_tdc("qp.id",         hash::Identity(),                                    hash::QuadraticProbing<>());
+    bench_tdc("qp.knuth",      hash::Multiplicative(),                              hash::QuadraticProbing<>());
+    bench_tdc("qp.mul_prime1", hash::Multiplicative(15'425'459'083'914'370'367ULL), hash::QuadraticProbing<>());
+    bench_tdc("qp.mul_prime2", hash::Multiplicative(16'568'458'216'213'224'001ULL), hash::QuadraticProbing<>());
+    bench_tdc("qp.mul_prime3", hash::Multiplicative(17'406'548'584'874'384'839ULL), hash::QuadraticProbing<>());
     
     return 0;
 }
