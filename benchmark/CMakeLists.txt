@@ -10,9 +10,6 @@ target_link_libraries(bench_bit_select tlx tdc-stat tdc-vec)
 add_executable(bench_coders bench_coders.cpp)
 target_link_libraries(bench_coders tlx tdc-code tdc-io tdc-stat tdc-vec)
 
-add_executable(bench_hash_map bench_hash_map.cpp)
-target_link_libraries(bench_hash_map tlx tdc-stat tdc-random tdc-math)
-
 add_executable(bench_hash_set bench_hash_set.cpp)
 target_link_libraries(bench_hash_set tlx tdc-stat tdc-random tdc-math)
 

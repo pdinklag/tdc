@@ -94,6 +94,16 @@ void bench(const std::string& name, ctor_t ctor, diag_func_t diag) {
         result.log("chk", chk);
     }
 
+    // erase keys
+    {
+        stat::Phase phase("erase");
+        for(size_t i = options.num; i > 0; i--) {
+            auto key = options.keys(i-1);
+            assert(set.erase(key));
+            assert(set.size() == i-1);
+        }
+    }
+
     // output
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
 }

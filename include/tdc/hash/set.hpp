@@ -125,6 +125,7 @@ private:
             i = m_probe_func(i);
             h = (hkey + i) % m_cap;
             ++probe;
+            // FIXME: this MAY run infinitely!
         }
 
         #ifndef NDEBUG
@@ -244,10 +245,8 @@ public:
             for(size_t probe = 0; probe < m_probe_max; probe++) {
                 i = m_probe_func(i);
                 h = (hkey + i) % m_cap;
-                if(m_used[h]) {
-                    if(m_keys[h] == key) return Accessor(*this, h);
-                } else {
-                    return Accessor(); // key cannot be contained
+                if(m_used[h] && m_keys[h] == key) {
+                    return Accessor(*this, h);
                 }
             }
             return Accessor(); // key not found
@@ -257,28 +256,32 @@ public:
     /// \brief Returns an invalid accessor.
     ///
     /// This is merely for standard library-style usage.
-    inline Accessor end() const {
+    Accessor end() const {
         return Accessor();
     }
     
     /// \brief Tests whether a key exists in the set.
     /// \param key the key in question
-    inline bool contains(const K& key) const {
+    bool contains(const K& key) const {
         return find(key) != end();
     }
 
     /// \brief Erases an item.
     /// \param a the accessor
-    void erase(const Accessor& a) {
+    bool erase(const Accessor& a) {
         if(a) {
             m_used[a.m_pos] = false;
+            --m_size;
+            return true;
+        } else {
+            return false;
         }
     }
 
     /// \brief Erases an item.
     /// \param key the key of the item
-    inline void erase(const K& key) {
-        erase(find(key));
+    bool erase(const K& key) {
+        return erase(find(key));
     }
 };
 
