@@ -256,7 +256,6 @@ void bench(
 
 template<typename key_t>
 void benchmark_arbitrary_universe() {
-    /*
     bench<key_t>("fusion_btree_8",
         [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::DynamicFusionNode<key_t, 8>>(); },
         [](const auto& ds){ return ds.size(); },
@@ -295,7 +294,6 @@ void benchmark_arbitrary_universe() {
         },
         [](auto& set, const key_t x){ set.erase(x); }
     );
-    */
 }
 
 template<typename key_t>
