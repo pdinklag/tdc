@@ -9,6 +9,7 @@
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
 #include <tdc/stat/time.hpp>
+#include <tdc/rapl/rapl_phase_extension.hpp>
 #include <tdc/uint/uint40.hpp>
 #include <tdc/uint/uint256.hpp>
 
@@ -375,6 +376,10 @@ void benchmark_small_universe() {
 }
 
 int main(int argc, char** argv) {
+#ifdef TDC_RAPL_AVAILABLE
+    stat::Phase::register_extension<rapl::RAPLPhaseExtension>();
+#endif
+    
     tlx::CmdlineParser cp;
     cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
     cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
