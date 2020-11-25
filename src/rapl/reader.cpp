@@ -65,8 +65,6 @@ Reader::~Reader() {
 
 // RAPL not available - provide stubs
 
-uint32_t Reader::m_num_packages = 0;
-
 Reader::zone_support Reader::supported_zones(uint32_t package) {
     return zone_support{ false, false, false, false, false };
 }
@@ -79,8 +77,8 @@ energy Reader::read(uint32_t package) {
     return energy();
 }
 
-energy Reader::read() {
-    return energy();
+energy_buffer Reader::read() {
+    return energy_buffer();
 }
 
 #endif
