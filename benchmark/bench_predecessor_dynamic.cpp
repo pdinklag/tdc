@@ -404,9 +404,7 @@ void benchmark_small_universe() {
     if(options.universe < 32) {
         bench<key_t>("stree",
             [](const key_t first){
-                // STree cannot be empty
-                const size_t k = math::ilog2_ceil(options.universe);
-                return STree_orig<>(k, first);
+                return STree_orig<>(options.universe, first); // STree cannot be empty
             },
             [](auto& stree){ return stree.getSize(); },
             [](auto& stree, const key_t x){ stree.insert((uint32_t)x); },
