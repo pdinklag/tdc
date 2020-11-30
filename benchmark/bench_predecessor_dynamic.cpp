@@ -29,6 +29,53 @@
 
 #include <tlx/cmdline_parser.hpp>
 
+#ifdef INTEGERSTRUCTURES_FOUND
+    #define BENCH_BURST
+    #include <btrie/lpcbtrie.h>
+    
+    // wrapper around lpcbtrie
+    // - adds a size field
+    // - implements predecessor rather than successor by negating keys
+    // - converts uint40_t key type to uint64_t in the index type because LPCBTrie cannot handle uint40_t due to implicit conversions
+    template<typename key_t>
+    class LPCBTrieWrapper {
+    private:
+        using real_key_t = typename std::conditional<std::is_same<key_t, uint40_t>::value, uint64_t, key_t>::type;
+        
+        mutable LPCBTrie<real_key_t, key_t> m_trie;
+        size_t m_size;
+        
+    public:
+        LPCBTrieWrapper() : m_size(0) {
+        }
+        
+        void insert(const key_t& x) {
+            m_trie.insert(~(real_key_t)x, x);
+            ++m_size;
+        }
+        
+        tdc::pred::KeyResult<key_t> pred(const key_t& x) const {
+            key_t* result = m_trie.locate(~(real_key_t)x);
+            return tdc::pred::KeyResult<key_t> { result != nullptr, result ? *result : 0 };
+        }
+        
+        void remove(const key_t& x) {
+            #ifndef NDEBUG
+            // we can't remove non-existing keys here
+            auto r = pred(x);
+            assert(r && r.key == x);
+            #endif
+            
+            m_trie.remove(~(real_key_t)x);
+            --m_size;
+        }
+        
+        size_t size() const {
+            return m_size;
+        }
+    };
+#endif
+
 #if defined(LEDA_FOUND) && defined(STREE_FOUND)
     #define BENCH_STREE
     #include <veb/STree_orig.h>
@@ -285,16 +332,6 @@ void benchmark_arbitrary_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
-    bench<key_t>("set",
-        [](const key_t){ return std::set<key_t>(); },
-        [](const auto& set){ return set.size(); },
-        [](auto& set, const key_t x){ set.insert(x); },
-        [](const auto& set, const key_t x){
-            auto it = set.upper_bound(x);
-            return pred::KeyResult<key_t> { it != set.begin(), *(--it) };
-        },
-        [](auto& set, const key_t x){ set.erase(x); }
-    );
 }
 
 template<typename key_t>
@@ -328,6 +365,15 @@ void benchmark_large_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
+#ifdef BENCH_BURST
+    bench<key_t>("burst_trie",
+        [](const key_t){ return LPCBTrieWrapper<key_t>(); },
+        [](const auto& trie){ return trie.size(); },
+        [](auto& trie, const key_t x){ trie.insert(x); },
+        [](const auto& trie, const key_t x){ return trie.pred(x); },
+        [](auto& trie, const key_t x){ trie.remove(x); }
+    );
+#endif
 }
 
 template<typename key_t>
