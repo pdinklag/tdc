@@ -392,6 +392,21 @@ void benchmark_arbitrary_universe() {
         },
         [](auto& set, const key_t x){ set.erase(x); }
     );
+
+    if(options.do_sort() && options.do_bench("sort")) {
+        auto result = benchmark_phase("");
+        {
+            stat::Phase sort("sort");
+            std::vector<key_t> v;
+            v.reserve(options.num+1);
+            v.push_back(0);
+            for(size_t i = 0; i < options.num; i++) {
+                v.push_back(options.perm_values(i) + 1); // add one because zero is already in
+            }
+            std::sort(v.begin(), v.end());
+        }
+        std::cout << "RESULT algo=sort " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
+    }
 }
 
 template<typename key_t>
