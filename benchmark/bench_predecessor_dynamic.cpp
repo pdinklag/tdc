@@ -179,7 +179,7 @@ void bench(
                     const auto r = pred_func(ds, last);
                     assert(r.exists);
                     const key_t next = r.key;
-                    is_sorted = is_sorted && r.exists && next < last;
+                    is_sorted = is_sorted && r.exists && next <= last;
                     assert(is_sorted);
                     last = next - 1;
                     assert(last);
