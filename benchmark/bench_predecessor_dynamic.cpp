@@ -382,6 +382,16 @@ void benchmark_arbitrary_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
+    bench<key_t>("set",
+        [](const key_t){ return std::set<key_t>(); },
+        [](const auto& set){ return set.size(); },
+        [](auto& set, const key_t x){ set.insert(x); },
+        [](const auto& set, const key_t x){
+            auto it = set.upper_bound(x);
+            return pred::KeyResult<key_t> { it != set.begin(), *(--it) };
+        },
+        [](auto& set, const key_t x){ set.erase(x); }
+    );
 }
 
 template<typename key_t>
