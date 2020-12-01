@@ -118,6 +118,10 @@ struct {
         return ds.length() == 0 || name == ds;
     }
 
+    bool do_sort() const {
+        return num_queries == 0;
+    }
+
     random::Permutation perm_values;  // value permutation
     random::Permutation perm_queries; // query permutation
     
@@ -152,88 +156,127 @@ void bench(
 
     // measure
     auto result = benchmark_phase("");
-    
+
     if(options.num > 0) {
-        // input
         result.log("num", options.num);
         result.log("universe", options.universe);
-        result.log("queries", options.num_queries);
         result.log("seed", options.seed);
         
-        // construct data structure so it contains only zero
-        auto ds = ctor_func(0);
-        if(size_func(ds) == 0) insert_func(ds, 0);
-        
-        assert(size_func(ds) == 1);
+        if(options.do_sort()) {
+            // === SORT ===
 
-        // insert
-        {
-            stat::Phase::MemoryInfo mem;
+            // init data structure
+            auto ds = ctor_func(0);
+            if(size_func(ds) == 1) remove_func(ds, 0);
+            
+            assert(size_func(ds) == 0);
+
+            // sort by inserting and emitting items
             {
-                stat::Phase insert("insert");
+                stat::Phase sort("sort");
+
+                // insert  
                 for(size_t i = 0; i < options.num; i++) {
-                    insert_func(ds, options.perm_values(i) + 1);  // add 1 because zero is already in
+                    insert_func(ds, options.perm_values(i));
                 }
-                mem = insert.memory_info();
+
+                // emit in descending order
+                bool is_sorted = true;
+                key_t last = std::numeric_limits<key_t>::max();
+                for(size_t i = 0; i < options.num; i++) {
+                    const auto r = pred_func(ds, last);
+                    assert(r.exists);
+                    const key_t next = r.key;
+                    is_sorted = is_sorted && r.exists && next < last;
+                    assert(is_sorted);
+                    last = next - 1;
+                    assert(last);
+                }
+
+                auto guard = sort.suppress();
+                result.log("sorted", is_sorted);
             }
-            result.log("memData", mem.current - mem.offset);
-        }
-        // make sure all have been inserted
-        assert(size_func(ds) == options.num+1);
-        
-        // predecessor queries
-        {
-            uint64_t chk_q = 0;
+        } else {
+            // === BASIC ===        
+            // input
+            result.log("queries", options.num_queries);
+            
+            // construct data structure so it contains only zero
+            auto ds = ctor_func(0);
+            if(size_func(ds) == 0) insert_func(ds, 0);
+            
+            assert(size_func(ds) == 1);
+
+            // insert
             {
-                stat::Phase phase("predecessor_rnd");
-                for(size_t i = 0; i < options.num_queries; i++) {
-                    chk_q += (uint64_t)pred_func(ds, options.perm_queries(i)).key;
+                stat::Phase::MemoryInfo mem;
+                {
+                    stat::Phase insert("insert");
+                    for(size_t i = 0; i < options.num; i++) {
+                        insert_func(ds, options.perm_values(i) + 1);  // add 1 because zero is already in
+                    }
+                    mem = insert.memory_info();
+                }
+                result.log("memData", mem.current - mem.offset);
+            }
+            // make sure all have been inserted
+            assert(size_func(ds) == options.num+1);
+            
+            // predecessor queries
+            {
+                uint64_t chk_q = 0;
+                {
+                    stat::Phase phase("predecessor_rnd");
+                    for(size_t i = 0; i < options.num_queries; i++) {
+                        chk_q += (uint64_t)pred_func(ds, options.perm_queries(i)).key;
+                    }
+                }
+                result.log("chk", chk_q);
+            }
+
+            // check
+            if(options.check) {
+                size_t num_errors = 0;
+                for(size_t j = 0; j < options.num_queries; j++) {
+                    const uint64_t x = options.perm_queries(j);
+                    auto r = pred_func(ds, x);
+                    assert(r.exists);
+                    
+                    // make sure that the result equals that of a simple binary search on the input
+                    auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
+                    assert(correct_result.exists);
+                    if(r.key == options.data[correct_result.pos]) {
+                        // OK
+                    } else {
+                        // nah, count an error
+                        //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.key << std::endl;
+                        ++num_errors;
+                    }
+                }
+                result.log("errors", num_errors);
+            }
+            
+            // delete
+            {
+                stat::Phase del("delete");
+                for(size_t i = 0; i < options.num; i++) {
+                    remove_func(ds, options.perm_values(i) + 1); // add 1 to keep zero in there
                 }
             }
-            result.log("chk", chk_q);
-        }
 
-        // check
-        if(options.check) {
-            size_t num_errors = 0;
-            for(size_t j = 0; j < options.num_queries; j++) {
-                const uint64_t x = options.perm_queries(j);
-                auto r = pred_func(ds, x);
-                assert(r.exists);
-                
-                // make sure that the result equals that of a simple binary search on the input
-                auto correct_result = options.data_pred.predecessor(options.data.data(), options.num, x);
-                assert(correct_result.exists);
-                if(r.key == options.data[correct_result.pos]) {
-                    // OK
-                } else {
-                    // nah, count an error
-                    //std::cout << std::hex << "index: " << x << "  correct: " << options.data[correct_result.pos] << "  wrong: " << r.key << std::endl;
-                    ++num_errors;
-                }
+            // make sure size is back to normal (only zero is contained)
+            assert(size_func(ds) == 1);
+            
+            // memory of empty data structure
+            {
+                auto mem = result.memory_info();
+                result.log("memEmpty", mem.current);
             }
-            result.log("errors", num_errors);
-        }
-        
-        // delete
-        {
-            stat::Phase del("delete");
-            for(size_t i = 0; i < options.num; i++) {
-                remove_func(ds, options.perm_values(i) + 1); // add 1 to keep zero in there
-            }
-        }
-
-        // make sure size is back to normal (only zero is contained)
-        assert(size_func(ds) == 1);
-        
-        // memory of empty data structure
-        {
-            auto mem = result.memory_info();
-            result.log("memEmpty", mem.current);
         }
     }
     
     if(options.has_opsfile() > 0) {
+        // === OPS ===
         result.log("ops", options.ops_filename);
         
         // init data structure
@@ -340,6 +383,13 @@ void benchmark_arbitrary_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
+    bench<key_t>("btree_128",
+        [](const key_t){ return pred::dynamic::BTree<key_t, 129, pred::dynamic::SortedArrayNode<key_t, 128>>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert(x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor(x); },
+        [](auto& ds, const key_t x){ ds.remove(x); }
+    );
 }
 
 template<typename key_t>
@@ -427,21 +477,50 @@ void benchmark_small_universe() {
 #endif
 }
 
+const std::string MODE_BASIC = "basic";
+const std::string MODE_OPS = "ops";
+const std::string MODE_SORT = "sort";
+
 int main(int argc, char** argv) {
 #ifdef TDC_RAPL_AVAILABLE
     stat::Phase::register_extension<rapl::RAPLPhaseExtension>();
 #endif
-    
+
+    std::string mode;
+    tlx::CmdlineParser cp_mode;
+    cp_mode.add_param_string("mode", mode, "The benchmark mode (basic, ops, sort)");
+    if(argc < 2) {
+        cp_mode.print_usage();
+        return -1;
+    }
+
+    mode = argv[1];
+    if(mode != MODE_BASIC && mode != MODE_OPS && mode != MODE_SORT) {
+        cp_mode.print_usage();
+        return -1;
+    }
+
     tlx::CmdlineParser cp;
-    cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
-    cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
-    cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
-    cp.add_bytes('s', "seed", options.seed, "The random seed.");
     cp.add_string("ds", options.ds, "The data structure to benchmark. If omitted, all data structures are benchmarked.");
-    cp.add_string("ops", options.ops_filename, "The file containing the operation sequence to benchmark, if any.");
-    cp.add_flag("check", options.check, "Check results for correctness.");
-    
-    if(!cp.process(argc, argv)) {
+    if(mode == MODE_OPS) {
+        // ops
+        cp.add_param_string("ops", options.ops_filename, "The file containing the operation sequence to benchmark, if any.");
+    } else {
+        cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
+        cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
+        cp.add_bytes('s', "seed", options.seed, "The random seed.");
+        
+        if(mode == MODE_BASIC) {
+            // basic
+            cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
+            cp.add_flag("check", options.check, "Check results for correctness.");
+        } else {
+            // sort
+            options.num_queries = 0;
+        }
+    }
+
+    if(!cp.process(--argc, ++argv)) {
         return -1;
     }
 
@@ -453,8 +532,7 @@ int main(int argc, char** argv) {
         options.ops = std::ifstream(options.ops_filename);
         options.ops.read((char*)&options.universe, sizeof(options.universe));
         options.ops_rewind_pos = options.ops.tellg();
-    }
-    else if(options.num > 0) {
+    } else if(options.num > 0) {
         if(!options.universe) {
             std::cerr << "universe required" << std::endl;
             return -1;
