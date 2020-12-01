@@ -79,14 +79,6 @@
 #if defined(LEDA_FOUND) && defined(STREE_FOUND)
     #define BENCH_STREE
     #include <veb/STree_orig.h>
-    
-    int32_t stree_to_signed(uint32_t x) {
-        return (int32_t)((int64_t)x - 0x80000000LL);
-    }
-    
-    uint32_t stree_to_unsigned(int32_t x) {
-        return (uint32_t)((int64_t)x + 0x80000000LL);
-    }
 #endif
 
 using namespace tdc;
@@ -461,19 +453,13 @@ void benchmark_small_universe() {
     benchmark_medium_universe<key_t>();
     
 #ifdef BENCH_STREE
-    if(options.universe <= 32) {
+    if(options.universe < 32) {
         bench<key_t>("stree",
-            [](const key_t first){
-                return STree_orig<>(options.universe, stree_to_signed(first)); // STree cannot be empty
-            },
+            [](const key_t first){ return STree_orig<>(options.universe, first); }, // STree cannot be empty?
             [](auto& stree){ return stree.getSize(); },
-            [](auto& stree, const key_t x){ stree.insert(stree_to_signed(x)); },
-            [](auto& stree, const key_t x){
-                // STree seems to look for the largest value STRICTLY LESS THAN the input
-                // and crashes if there is no predecessor...
-                return pred::KeyResult<key_t> { true, (key_t)stree_to_unsigned(stree.pred(stree_to_signed(x+1))) };
-            },
-            [](auto& stree, const key_t x){ stree.del(stree_to_signed(x)); }
+            [](auto& stree, const key_t x){ stree.insert((int)x); },
+            [](auto& stree, const key_t x){ return pred::KeyResult<key_t> { true, (key_t)stree.locate_down(x) }; },
+            [](auto& stree, const key_t x){ stree.del(x); }
         );
     }
 #endif
