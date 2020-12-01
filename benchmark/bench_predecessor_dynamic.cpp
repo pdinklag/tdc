@@ -424,6 +424,7 @@ void benchmark_large_universe() {
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
 #ifdef BENCH_BURST
+    /*
     bench<key_t>("burst_trie",
         [](const key_t){ return LPCBTrieWrapper<key_t>(); },
         [](const auto& trie){ return trie.size(); },
@@ -431,6 +432,7 @@ void benchmark_large_universe() {
         [](const auto& trie, const key_t x){ return trie.pred(x); },
         [](auto& trie, const key_t x){ trie.remove(x); }
     );
+    */
 #endif
 }
 
