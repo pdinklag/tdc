@@ -50,12 +50,12 @@
         }
         
         void insert(const key_t& x) {
-            m_trie.insert(~(real_key_t)x, x);
+            m_trie.insert((real_key_t)x, x);
             ++m_size;
         }
         
         tdc::pred::KeyResult<key_t> pred(const key_t& x) const {
-            key_t* result = m_trie.locate(~(real_key_t)x);
+            key_t* result = m_trie.locate((real_key_t)x);
             return tdc::pred::KeyResult<key_t> { result != nullptr, result ? *result : 0 };
         }
         
@@ -66,7 +66,7 @@
             assert(r && r.key == x);
             #endif
             
-            m_trie.remove(~(real_key_t)x);
+            m_trie.remove((real_key_t)x);
             --m_size;
         }
         
