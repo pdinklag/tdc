@@ -174,7 +174,7 @@ void bench(
 
                 // emit in descending order
                 bool is_sorted = true;
-                key_t last = std::numeric_limits<key_t>::max();
+                key_t last = std::numeric_limits<key_t>::max() >> (std::numeric_limits<key_t>::digits - options.universe);
                 for(size_t i = 0; i < options.num; i++) {
                     const auto r = pred_func(ds, last);
                     assert(r.exists);
