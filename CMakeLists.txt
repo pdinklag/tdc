@@ -36,15 +36,12 @@ endif()
 # init submodules
 include(InitSubmodules)
 
-# use tlx
+# include extlibs
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/ips4o)
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/robin-hood-hashing/src/include)
 add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
-
-# include json (no need to build anything)
-include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
-
-# include robin hood hashing (no need to build anything)
-include_directories(${TDC_EXTLIB_SOURCE_DIR}/robin-hood-hashing/src/include)
 
 # find optional packages
 find_package(IntegerStructures)

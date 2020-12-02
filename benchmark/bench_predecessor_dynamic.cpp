@@ -1,7 +1,10 @@
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <set>
 #include <vector>
+
+#include <ips4o.hpp>
 
 #include <tdc/io/mmap_file.hpp>
 #include <tdc/math/ilog2.hpp>
@@ -345,6 +348,24 @@ void bench(
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
 }
 
+template<typename key_t, typename sort_func_t>
+void bench_sort(const std::string& name, sort_func_t sort_func) {
+    if(options.do_bench(name)) {
+        auto result = benchmark_phase("");
+        {
+            stat::Phase sort("sort");
+            std::vector<key_t> v;
+            v.reserve(options.num+1);
+            v.push_back(0);
+            for(size_t i = 0; i < options.num; i++) {
+                v.push_back(options.perm_values(i) + 1); // add one because zero is already in
+            }
+            sort_func(v);
+        }
+        std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
+    }
+}
+
 template<typename key_t>
 void benchmark_arbitrary_universe() {
     bench<key_t>("fusion_btree_8",
@@ -393,19 +414,9 @@ void benchmark_arbitrary_universe() {
         [](auto& set, const key_t x){ set.erase(x); }
     );
 
-    if(options.do_sort() && options.do_bench("sort")) {
-        auto result = benchmark_phase("");
-        {
-            stat::Phase sort("sort");
-            std::vector<key_t> v;
-            v.reserve(options.num+1);
-            v.push_back(0);
-            for(size_t i = 0; i < options.num; i++) {
-                v.push_back(options.perm_values(i) + 1); // add one because zero is already in
-            }
-            std::sort(v.begin(), v.end());
-        }
-        std::cout << "RESULT algo=sort " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
+    if(options.do_sort()) {
+        bench_sort<key_t>("std_sort", [](std::vector<key_t>& v){ std::sort(v.begin(), v.end()); });
+        bench_sort<key_t>("ips4o", [](std::vector<key_t>& v){ ips4o::sort(v.begin(), v.end()); });
     }
 }
 
