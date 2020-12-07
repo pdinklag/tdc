@@ -33,7 +33,7 @@ class YFastTrie {
  private:
   // Forward declaration because xfast_update and yfast_bucket are referencing each other
   class yfast_bucket;
-  
+
   // Whenever we insert/delete, the bucket returns what has to be changed in the xfast_trie.
   // These updated to the xfast_trie are then applied.
   struct xfast_update {
@@ -233,7 +233,7 @@ class YFastTrie {
   // We traverse the tree from top to bot and update the tree until we find a 0-Node.
   // If there is a sibling, we can simply insert the representant. If the is no sibling, we have
   // to split the parent node.
-  void insert_repr(uint64_t key, yfast_bucket* b) {
+  void insert_repr(uint64_t key, yfast_bucket* const b) {
     // If there is no root, we insert the bucket at the root.
     if (m_xfast[t_key_width].find(0) == m_xfast[t_key_width].end()) {
       m_xfast[t_key_width][0] = b;
@@ -527,7 +527,7 @@ class YFastTrie {
       update_after_deletion();
     }
     for (auto new_bucket : xfu.insert_repr) {
-      insert_repr((uint64_t)((yfast_bucket*)new_bucket)->get_repr(), (yfast_bucket*)new_bucket);
+      insert_repr(static_cast<uint64_t>(new_bucket->get_repr()), new_bucket);
       update_after_insertion();
     }
   }
@@ -545,11 +545,11 @@ class YFastTrie {
         update_after_deletion();
       }
       for (auto new_bucket : update.insert_repr) {
-        insert_repr((uint64_t)(new_bucket->get_repr()), new_bucket);
+        insert_repr(static_cast<uint64_t>(new_bucket->get_repr()), new_bucket);
         update_after_insertion();
       }
       for (auto delete_bucket : update.delete_bucket) {
-        delete (yfast_bucket*)delete_bucket;
+        delete delete_bucket;
       }
     }
   }
