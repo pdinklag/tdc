@@ -32,6 +32,7 @@ struct {
     double p_range = 0.5;
     double p_query = 0.9;
     double hold = 0.25;
+    bool hold_query_only = false;
     std::string distr = "uniform";
     size_t n_mean = 2;
     size_t n_stddev = 8;
@@ -77,10 +78,7 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
     // random generator
     std::mt19937 gen_op(options.op_seed);
     std::uniform_real_distribution<double> random_op(0.0, 1.0);
-    
-    //mpf::random::Engine gen_val(options.key_seed);
-    //mpf::random::UniformDistribution<KEY_BITS> random_from_universe(0ULL, u);
-    
+
     // out file
     std::ofstream out;
     if(!options.simulate) {
@@ -207,7 +205,7 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
     };
     
     // insertion phase
-    while(cur_num + options.batch < options.max_num && stats.count_total() < options.max_ops * options.batch) {
+    while(cur_num + options.batch <= options.max_num && stats.count_total() < options.max_ops * options.batch) {
         if(cur_num < options.batch || random_op(gen_op) <= insert_probability()) {
             output_insert_batch();
             continue;
@@ -225,22 +223,28 @@ void generate(const key_t& u, mpf::random::Engine& gen_val, key_distribution_t&&
 
     // hold phase
     const size_t max_hold_ops = size_t(options.hold * double(stats.count_total() / options.batch));
-    for(size_t i = 0; i < max_hold_ops && stats.count_total() < options.max_ops * options.batch; i++) {
-        const float p = random_op(gen_op);
-        
-        if(cur_num + options.batch < options.max_num) {
-            if(cur_num < options.batch || p <= (1.0/3.0)) {
-                output_insert_batch();
-            } else if(p <= (2.0/3.0)) {
-                output_delete_batch();
+    if(options.hold_query_only) {
+        for(size_t i = 0; i < max_hold_ops; i++) {
+            output_query_batch();
+        }
+    } else {
+        for(size_t i = 0; i < max_hold_ops && stats.count_total() < options.max_ops * options.batch; i++) {
+            const float p = random_op(gen_op);
+            
+            if(cur_num + options.batch < options.max_num) {
+                if(cur_num < options.batch || p <= (1.0/3.0)) {
+                    output_insert_batch();
+                } else if(p <= (2.0/3.0)) {
+                    output_delete_batch();
+                } else {
+                    output_query_batch();
+                }
             } else {
-                output_query_batch();
-            }
-        } else {
-            if(cur_num >= options.batch && p <= 0.5) {
-                output_delete_batch();
-            } else {
-                output_query_batch();
+                if(cur_num >= options.batch && p <= 0.5) {
+                    output_delete_batch();
+                } else {
+                    output_query_batch();
+                }
             }
         }
     }
@@ -313,6 +317,7 @@ int main(int argc, char** argv) {
     cp.add_size_t("mean", options.n_mean, "The mean for a normal distribution will be U/mean (default: 2)");
     cp.add_size_t("stddev", options.n_stddev, "The standard deviation for a normal distribution will be U/stddev (default: 8)");
     cp.add_double("hold", options.hold, "The duration of the hold phase, relative to the duration of the insertion phase (default: 0.25)");
+    cp.add_flag("hold-query", options.hold_query_only, "Only generate queries during hold phase (default: false)");
     cp.add_string("csv", options.csv_filename, "The name of the CSV file to write plot data to (default: none)");
     cp.add_flag("simulate", options.simulate, "Don't actually write data, only simulate generation (default: false)");
 
@@ -325,8 +330,8 @@ int main(int argc, char** argv) {
         return -2;
     }
     
-    if(options.p_base + options.p_range >= 1) {
-        std::cerr << "p_base + p_range must be less than one" << std::endl;
+    if(options.p_base + options.p_range > 1) {
+        std::cerr << "p_base + p_range must be at most one" << std::endl;
         return -3;
     }
     
