@@ -62,11 +62,13 @@ class YFastTrie {
     yfast_bucket* m_prev = nullptr;                                  // Pointer to the next smaller bucket.
     yfast_bucket* m_next = nullptr;                                  // Pointer to the next greater bucket.
     t_value_type m_min;                                              // The smallest key in the bucket. This is the representant.
+    bool m_repr_active;                                              // Says whether the representative is active
     std::vector<t_value_type> m_elem;                                // The keys in stored by the bucket without the representant.
 
    public:
-    yfast_bucket(t_value_type repr, yfast_bucket* pred, yfast_bucket* next) {
+    yfast_bucket(t_value_type repr, bool repr_active, yfast_bucket* pred, yfast_bucket* next) {
       m_min = repr;
+      m_repr_active = repr_active;
       m_prev = pred;
       m_next = next;
     }
@@ -80,24 +82,19 @@ class YFastTrie {
 
     // Inserts the key into the bucket and return the chages that have to be done
     // to the xfast_trie. A few things may lead changes in the top structure:
-    xfast_update insert(const t_value_type x) {
-      xfast_update update;
-      // The key is smaller than the currenct representant. We swap these two and
-      // mark that this has to be adressed in the xfast_trie.
-      if (x < m_min) {
-        update.remove_repr.push_back(static_cast<uint64_t>(m_min));
-        update.insert_repr.push_back(this);
-        m_elem.push_back(m_min);
-        m_min = x;
-      } else {
-        m_elem.push_back(x);
+    yfast_bucket* insert(const t_value_type key) {
+      if(m_min == key) {
+        assert(m_repr_active == false);
+        m_repr_active = true;
+        return nullptr;
       }
+      m_elem.push_back(key);
       // The buckets is too large, we split it in half and mark that the newly added
       // bucket has to be inserted into the xfast_trie
       if (m_elem.size() >= 2 * c_bucket_size) {
-        update.insert_repr.push_back(split());
+        return split();
       }
-      return update;
+      return nullptr;
     }
 
     // Splits the 2*c_bucket_size big bucket into two equal sized ones
@@ -107,7 +104,7 @@ class YFastTrie {
 
       // Construct next bucket and adjust pointers.
       const size_t mid_index = m_elem.size() / 2;
-      yfast_bucket* next_b = new yfast_bucket(m_elem[mid_index], this, m_next);
+      yfast_bucket* next_b = new yfast_bucket(m_elem[mid_index], true, this, m_next);
       if (m_next != nullptr) {
         m_next->m_prev = next_b;
       }
@@ -125,87 +122,77 @@ class YFastTrie {
 
     // Removes the key from the bucket and return the chages that have to be done
     // to the xfast_trie. The key must exist. A few things may lead changes in the top structure:
-    std::vector<xfast_update> remove(const t_value_type x) {
-      std::vector<xfast_update> updates;
-      // If the key is the last element, we mark that this representant has to be deleted.
-      // The bucket also has to be deleted.
-      if (m_elem.size() == 0) {
-        if (m_prev != nullptr) {
-          m_prev->m_next = m_next;
-        }
-        if (m_next != nullptr) {
-          m_next->m_prev = m_prev;
-        }
-        updates.push_back(xfast_update());
-        updates.back().remove_repr.push_back(static_cast<uint64_t>(x));
-        updates.back().delete_bucket.push_back(this);
-        return updates;
-      }
-      // Remove the element. If it was the representant, we choose the new representant and
-      // mark that this has to be adressed in the xfast_trie.
-      if (x == m_min) {
-        updates.push_back(xfast_update());
-        updates.back().remove_repr.push_back(static_cast<uint64_t>(m_min));
-        auto new_min = std::min_element(m_elem.begin(), m_elem.end());
-        m_min = *new_min;
-        *new_min = m_elem.back();
-        m_elem.pop_back();
-        updates.back().insert_repr.push_back(this);
-      } else {
-        auto del = std::find(m_elem.begin(), m_elem.end(), x);
-        *del = m_elem.back();
-        m_elem.pop_back();
-      }
+    xfast_update remove(const t_value_type key) {
+      xfast_update update;
 
-      // If the bucket is too small, we merge it with a neighbor. Here a representant has to
-      // be removed from the top data structure. It may happen that the bucket we merged with becomes
-      // too large. Then another split happens, and these changes also have to be applied to
-      // the top data structure.
-      if (m_elem.size() <= (c_bucket_size >> t_merge_threshold)) {
-        std::vector<xfast_update> merge_updates = merge();
-        updates.insert(updates.end(), merge_updates.begin(), merge_updates.end());
+      if (key == m_min) {
+        assert(m_repr_active == true);
+        m_repr_active = false;
+        return update;
       }
-      return updates;
+      // Remove the key.
+      auto del = std::find(m_elem.begin(), m_elem.end(), key);
+      assert(del != m_elem.end());
+      *del = m_elem.back();
+      m_elem.pop_back();
+
+      // If the bucket is too small, we merge it with the left neighbor.
+      if (m_elem.size() <= (c_bucket_size >> t_merge_threshold)) {
+        return merge();
+      }
+      return update;
     }
 
     // Merges the bucket with one of its neightbors. It may happen that the bucket we merged with becomes
     // too large. Then another split happens, and these changes also have to be applied to
     // the top data structure.
-    std::vector<xfast_update> merge() {
-      std::vector<xfast_update> updates;
-      // First try to merge with the previous bucket.
-      if (m_prev != nullptr) {
+    xfast_update merge() {
+      xfast_update update;
+      if (m_prev == nullptr) {
+        return update;
+      }
+      if (m_prev->m_elem.size() + m_elem.size() < 2 * c_bucket_size) {
+        // Merge and delete this bucket
         // Adjust the pointers
         m_prev->m_next = m_next;
         if (m_next != nullptr) {
           m_next->m_prev = m_prev;
         }
-        // Insert all elements into the previous bucket, except the representant
+        // Insert all elements into the previous bucket, except the representant.
         for (size_t i = 0; i < m_elem.size(); ++i) {
           m_prev->m_elem.push_back(m_elem[i]);
         }
-        // Mark that we need to remove the current representant and we need to delete the current bucket.
-        updates.push_back(xfast_update());
-        updates.back().remove_repr.push_back(static_cast<uint64_t>(m_min));
-        updates.back().delete_bucket.push_back(this);
-        // We insert the last element. Here a split may happen.
-        updates.push_back(m_prev->insert(m_min));
-      } else if (m_next != nullptr) {
-        // Adjust the pointer
-        m_next->m_prev = nullptr;
-        // Here merge with the next_bucket.
-        // Insert all elements into the previous bucket
-        for (size_t i = 0; i < m_elem.size(); ++i) {
-          m_next->m_elem.push_back(m_elem[i]);
+        // Insert this representant if it is active.
+        if (m_repr_active) {
+          m_prev->m_elem.push_back(m_min);
         }
-        // Mark that we need to remove the current representant and we need to delete the current bucket.
-        updates.push_back(xfast_update());
-        updates.back().remove_repr.push_back(static_cast<uint64_t>(m_min));
-        updates.back().delete_bucket.push_back(this);
-        // We insert the last element. Here a split may happen.
-        updates.push_back(m_next->insert(m_min));
+        update.remove_repr.push_back(static_cast<uint64_t>(m_min));
+        update.delete_bucket.push_back(this);
+      } else {
+        // Merge-split
+        // We don't have to update the pointers
+        update.remove_repr.push_back(static_cast<uint64_t>(m_min));
+
+        // Sort the previous bucket, because we want to take its biggest elements.
+        std::vector<t_value_type>& prev_elem = m_prev->m_elem;
+        const size_t element_count = m_elem.size() + prev_elem.size();
+        const size_t median_at = element_count / 2;
+
+        std::nth_element(prev_elem.begin(), std::next(prev_elem.begin(), median_at), prev_elem.end());
+        if (m_repr_active) {
+          m_elem.push_back(m_min);
+        }
+        // Put the smallest element we take as the new representative.
+        m_min = prev_elem[median_at];
+        m_repr_active = true;
+        update.insert_repr.push_back(this);
+        // Put the biggest elements greater than the median from the previous bucket into this bucket.
+        for (size_t i = median_at + 1; i < prev_elem.size(); ++i) {
+          m_elem.push_back(prev_elem[i]);
+        }
+        prev_elem.resize(median_at);
       }
-      return updates;
+      return update;
     }
 
     // Returns the predecessor in the bucket.
@@ -216,7 +203,18 @@ class YFastTrie {
           max_pred = std::max(elem, max_pred);
         }
       }
-      return {true, static_cast<uint64_t>(max_pred)};
+      if (max_pred != m_min || m_repr_active) {
+        //We found a correct predecessor
+        return {true, static_cast<uint64_t>(max_pred)};
+      } else {
+        if (m_prev != nullptr) {
+          // The predecessor is in the previous bucket
+          return m_prev->predecessor(key);
+        } else {
+          // There is not previous bucket and therefor no predecessor
+          return {false, 0};
+        }
+      }
     }
   };
 
@@ -234,12 +232,6 @@ class YFastTrie {
   // If there is a sibling, we can simply insert the representant. If the is no sibling, we have
   // to split the parent node.
   void insert_repr(uint64_t key, yfast_bucket* const b) {
-    // If there is no root, we insert the bucket at the root.
-    if (m_xfast[t_key_width].find(0) == m_xfast[t_key_width].end()) {
-      m_xfast[t_key_width][0] = b;
-      return;
-    }
-
     uint64_t level = t_key_width;
     uint64_t prefix = (key >> 1) >> (level - 1);  //this is equal to (key >> level)
     uint64_t next_bit = (key >> (level - 1)) & 0x1;
@@ -456,32 +448,25 @@ class YFastTrie {
 
   // We search for the 1-node with a prefix of key that has the first 0->1 transition.
   // This node points either to the next smaller bucket or the next
-  // greater bucket. If there is no next smaller bucket and t_nullptr_allowed,
-  // we return a nullptr. If !t_nullptr_allowed we return the next greater bucket.
-  template <bool t_nullptr_allowed>
+  // greater bucket. We return the next smaller bucket or the predecessor of the
+  // next greater bucket.
   yfast_bucket* pred_bucket(uint64_t key) const {
     size_t first1 = find_level(key);
     yfast_bucket* b = m_xfast[first1].at((key >> 1) >> (first1 - 1));
-
-    if constexpr (t_nullptr_allowed) {
-      if (b->get_repr() <= key) {
-        return b;
-      } else {
-        return b->get_prev();
-      }
+    if (b->get_repr() <= key) {
+      return b;
     } else {
-      if (b->get_repr() <= key || (b->get_prev() == nullptr)) {
-        return b;
-      } else {
-        return b->get_prev();
-      }
+      return b->get_prev();
     }
   }
 
  public:
-  YFastTrie(){};
+  YFastTrie() {
+    m_xfast[t_key_width][0] = new yfast_bucket(0, false, nullptr, nullptr);
+  };
   // Inserts the first num keys from keys into the yfast_trie.
   YFastTrie(const uint64_t* keys, const size_t num) {
+    m_xfast[t_key_width][0] = new yfast_bucket(0, false, nullptr, nullptr);
     for (size_t i = 0; i < num; ++i) {
       insert(keys[i]);
     }
@@ -489,14 +474,12 @@ class YFastTrie {
 
   // We search for the last_bucket and delete every bucket by following the pointers.
   ~YFastTrie() {
-    if (m_size != 0) {
-      yfast_bucket* b = max_repr(t_key_width, 0);
-      yfast_bucket* p;
-      while (b != nullptr) {
-        p = b->get_prev();
-        delete b;
-        b = p;
-      }
+    yfast_bucket* b = max_repr(t_key_width, 0);
+    yfast_bucket* p;
+    while (b != nullptr) {
+      p = b->get_prev();
+      delete b;
+      b = p;
     }
   }
 
@@ -509,24 +492,11 @@ class YFastTrie {
   // Insert key in data structure. This key must not be contained.
   void insert(uint64_t key) {
     ++m_size;
-
-    // If is the first element, we insert the new bucket.
-    if (tdc_unlikely(m_size == 1)) {
-      yfast_bucket* new_b = new yfast_bucket(key, nullptr, nullptr);
-      m_xfast[t_key_width][0] = new_b;
-      return;
-    }
-    // If it is not the first element, we search for the bucket in which the key belongs.
-    auto b = pred_bucket<false>(key);
-    // We insert the key in the bucket; the bucket says which representants have to be inserted/deleted.
-    xfast_update xfu = b->insert(key);
-
-    // Here we update the xfast_trie.
-    for (auto old_repr : xfu.remove_repr) {
-      remove_repr(old_repr);
-      update_after_deletion();
-    }
-    for (auto new_bucket : xfu.insert_repr) {
+    // We search for the bucket in which the key belongs.
+    auto b = pred_bucket(key);
+    // We insert the key in the bucket; the bucket says which representant has to be inserted.
+    yfast_bucket* new_bucket = b->insert(key);
+    if (new_bucket != nullptr) {
       insert_repr(static_cast<uint64_t>(new_bucket->get_repr()), new_bucket);
       update_after_insertion();
     }
@@ -535,40 +505,31 @@ class YFastTrie {
   // Removes the key from data structure. This key must exist.
   void remove(uint64_t key) {
     --m_size;
-    yfast_bucket* p_bucket = pred_bucket<true>(key);
+    yfast_bucket* p_bucket = pred_bucket(key);
     // Bucket returns which representants have to be changed.
-    std::vector<xfast_update> updates = p_bucket->remove(key);
+    xfast_update update = p_bucket->remove(key);
     // Here we update the xfast_trie.
-    for (auto update : updates) {
-      for (auto old_repr : update.remove_repr) {
-        remove_repr(old_repr);
-        update_after_deletion();
-      }
-      for (auto new_bucket : update.insert_repr) {
-        insert_repr(static_cast<uint64_t>(new_bucket->get_repr()), new_bucket);
-        update_after_insertion();
-      }
-      for (auto delete_bucket : update.delete_bucket) {
-        delete delete_bucket;
-      }
+
+    for (auto old_repr : update.remove_repr) {
+      remove_repr(old_repr);
+      update_after_deletion();
+    }
+    for (auto new_bucket : update.insert_repr) {
+      insert_repr(static_cast<uint64_t>(new_bucket->get_repr()), new_bucket);
+      update_after_insertion();
+    }
+    for (auto delete_bucket : update.delete_bucket) {
+      delete delete_bucket;
     }
   }
 
   // Return the predecessor of key. If there are no keys {false, 0} is returned.
   // If there is no predecessor {false, 1} is returned.
   KeyResult<uint64_t> predecessor(uint64_t key) const {
-    if (m_size == 0) {
-      return {false, 0};
-    }
     // Search the bucket that must contain the predecessor.
-    yfast_bucket const* const search_bucket = pred_bucket<true>(key);
-    if (search_bucket) {
-      // If the bucket exist, search for the predecessor in the bucket and return it.
-      return search_bucket->predecessor(key);
-    } else {
-      // If there is no predecessor, {false, 1} is returned.
-      return {false, 1};
-    }
+    yfast_bucket const* const search_bucket = pred_bucket(key);
+    // Search for the predecessor in the bucket and return it.
+    return search_bucket->predecessor(key);
   }
 
   // Print out basic information about the yfast_trie. If the trie is very small (less than 8 level),
