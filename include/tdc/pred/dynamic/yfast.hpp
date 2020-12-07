@@ -508,13 +508,13 @@ class YFastTrie {
     xfast_update update = p_bucket->remove(key);
     // Here we update the xfast_trie.
 
-    if(update.repr_to_remove != 0) {
-      remove_repr(update.repr_to_remove);
-      update_after_deletion();
-    }
     if(update.repr_to_insert != nullptr) {
       insert_repr(update.repr_to_insert);
       update_after_insertion();
+    }
+    if(update.repr_to_remove != 0) {
+      remove_repr(update.repr_to_remove);
+      update_after_deletion();
     }
     if(update.bucket_to_delete != nullptr) {
       delete update.bucket_to_delete;
