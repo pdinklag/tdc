@@ -352,6 +352,9 @@ template<typename key_t, typename sort_func_t>
 void bench_sort(const std::string& name, sort_func_t sort_func) {
     if(options.do_bench(name)) {
         auto result = benchmark_phase("");
+        result.log("num", options.num);
+        result.log("universe", options.universe);
+        result.log("seed", options.seed);
         {
             stat::Phase sort("sort");
             std::vector<key_t> v;
