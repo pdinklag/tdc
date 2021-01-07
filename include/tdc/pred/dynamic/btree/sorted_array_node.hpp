@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 #include <tdc/pred/result.hpp>
 #include <tdc/util/likely.hpp>
@@ -13,13 +14,14 @@ namespace dynamic {
 
 using PosResult = ::tdc::pred::PosResult;
 
-template<typename key_t, size_t m_capacity>
+template<typename key_t, size_t m_capacity, bool m_binary_search = false>
 class SortedArrayNode {
 private:
-    static_assert(m_capacity < 256);
+    static_assert(m_capacity < 65536);
+    using _size_t = typename std::conditional<m_capacity < 256, uint8_t, uint16_t>::type;
 
     key_t m_keys[m_capacity];
-    uint8_t m_size;
+    _size_t m_size;
 
 public:
     /// \brief Constructs an empty fusion node.
@@ -44,9 +46,32 @@ public:
         if(tdc_unlikely(x < m_keys[0]))  return { false, 0 };
         if(tdc_unlikely(x >= m_keys[m_size-1])) return { true, m_size - 1ULL };
         
-        size_t i = 1;
-        while(m_keys[i] <= x) ++i;
-        return { true, i-1 };
+        if constexpr(m_binary_search) {
+            size_t p = 0;
+            size_t q = m_size - 1;
+            while(p < q - 1) {
+                assert(x >= m_keys[p]);
+                assert(x < m_keys[q]);
+
+                const size_t m = (p + q) >> 1ULL;
+                const bool le = (m_keys[m] <= x);
+                
+                /*
+                    the following is a fast form of:
+                    if(le) p = m; else q = m;
+                */
+                const size_t le_mask = -size_t(le);
+                const size_t gt_mask = ~le_mask;
+
+                p = (le_mask & m) | (gt_mask & p);
+                q = (gt_mask & m) | (le_mask & q);
+            }
+            return { true, p };
+        } else {
+            size_t i = 1;
+            while(m_keys[i] <= x) ++i;
+            return { true, i-1 };
+        }
     }
 
     /// \brief Inserts the specified key.

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <type_traits>
 
 #include <tdc/pred/result.hpp>
 
@@ -20,7 +21,9 @@ class BTree {
 private:
     static_assert((m_degree % 2) == 1); // we only allow odd maximum degrees for the sake of implementation simplicity
     static_assert(m_degree > 1);
-    static_assert(m_degree < 256);
+    static_assert(m_degree < 65536);
+    
+    using childcount_t = typename std::conditional<m_degree < 256, uint8_t, uint16_t>::type;
     
     static constexpr size_t m_max_node_keys = m_degree - 1;
     static constexpr size_t m_split_right = m_max_node_keys / 2;
@@ -29,7 +32,7 @@ private:
 
     struct Node {
         node_impl_t impl;
-        uint8_t num_children;
+        childcount_t num_children;
         Node** children;
     
         inline bool is_leaf() const {
