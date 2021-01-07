@@ -42,6 +42,7 @@ public:
     using type = uint64_t;
 
     static constexpr type REPEAT_MUL = 0x01'01'01'01'01'01'01'01ULL;
+    static constexpr size_t MAX_NUM = 8;
 
     static type repeat(const ckey_t x) {
         return uint64_t(x) * REPEAT_MUL;
@@ -58,6 +59,7 @@ public:
     using type = uint256_t;
 
     static constexpr type REPEAT_MUL = uint256_t(REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64, REPEAT_MUL64);
+    static constexpr size_t MAX_NUM = 16;
 
     inline static type repeat(const ckey_t x) {
         const uint64_t x64 = uint64_t(x) * REPEAT_MUL64;
@@ -76,6 +78,7 @@ public:
     using type = uint1024_t;
 
     static constexpr type REPEAT_MUL = uint1024_t(REPEAT_MUL256, REPEAT_MUL256, REPEAT_MUL256, REPEAT_MUL256);
+    static constexpr size_t MAX_NUM = 32;
 
     inline static type repeat(const ckey_t x) {
         const uint64_t x64 = uint64_t(x) * REPEAT_MUL64;
@@ -84,7 +87,7 @@ public:
     }
 };
 
-template<typename ckey_t>
+template<typename ckey_t, bool linear_rank>
 class FusionNodeImpl {
 public:
     using matrix_t = typename ckey_matrix<ckey_t>::type;
@@ -129,7 +132,14 @@ public:
         const auto match_array = branch | (cx_repeat & free);
         
         // now find the rank of the key in that array
-        return rank(cx_repeat, match_array);
+        if constexpr(linear_rank) {
+            const ckey_t* ckeys = (const ckey_t*)&match_array;
+            size_t i = 0;
+            while(i < ckey_matrix<ckey_t>::MAX_NUM && ckeys[i] < cx) ++i;
+            return i;
+        } else {
+            return rank(cx_repeat, match_array);
+        }
     }
     
     // the match operation from Patrascu & Thorup, 2014
@@ -336,68 +346,68 @@ public:
 
 };
 
-template<typename key_t, size_t m_max_keys>
+template<typename key_t, size_t m_max_keys, bool linear_rank>
 class FusionNodeInternals;
 
-template<typename key_t>
-class FusionNodeInternals<key_t, 8> : public FusionNodeImpl<uint8_t> {
+template<typename key_t, bool linear_rank>
+class FusionNodeInternals<key_t, 8, linear_rank> : public FusionNodeImpl<uint8_t, linear_rank> {
 public:
     using ckey_t = uint8_t; // compressed key
     using mask_t = key_t; // key compression mask
-    using matrix_t = FusionNodeImpl::matrix_t; // matrix of compressed keys
+    using matrix_t = typename FusionNodeImpl<uint8_t, linear_rank>::matrix_t; // matrix of compressed keys
 
     // predecessor search
     template<typename array_t>
     static PosResult predecessor(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint8_t, linear_rank>::template predecessor<key_t>(keys, x, mask, branch, free);
     }
     
     // predecessor search, extended result
     template<typename array_t>
     static ExtResult predecessor_ext(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor_ext<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint8_t, linear_rank>::template predecessor_ext<key_t>(keys, x, mask, branch, free);
     }
 };
 
-template<typename key_t>
-class FusionNodeInternals<key_t, 16> : public FusionNodeImpl<uint16_t> {
+template<typename key_t, bool linear_rank>
+class FusionNodeInternals<key_t, 16, linear_rank> : public FusionNodeImpl<uint16_t, linear_rank> {
 public:
     using ckey_t = uint16_t; // compressed key
     using mask_t = key_t; // key compression mask
-    using matrix_t = FusionNodeImpl::matrix_t; // matrix of compressed keys
+    using matrix_t = typename FusionNodeImpl<uint16_t, linear_rank>::matrix_t; // matrix of compressed keys
     
 public:
     // predecessor search
     template<typename array_t>
     static PosResult predecessor(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint16_t, linear_rank>::template predecessor<key_t>(keys, x, mask, branch, free);
     }
     
     // predecessor search, extended result
     template<typename array_t>
     static ExtResult predecessor_ext(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor_ext<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint16_t, linear_rank>::template predecessor_ext<key_t>(keys, x, mask, branch, free);
     }
 };
 
-template<typename key_t>
-class FusionNodeInternals<key_t, 32> : public FusionNodeImpl<uint32_t> {
+template<typename key_t, bool linear_rank>
+class FusionNodeInternals<key_t, 32, linear_rank> : public FusionNodeImpl<uint32_t, linear_rank> {
 public:
     using ckey_t = uint32_t; // compressed key
     using mask_t = key_t; // key compression mask
-    using matrix_t = FusionNodeImpl::matrix_t; // matrix of compressed keys
+    using matrix_t = typename FusionNodeImpl<uint32_t, linear_rank>::matrix_t; // matrix of compressed keys
     
 public:
     // predecessor search
     template<typename array_t>
     static PosResult predecessor(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint32_t, linear_rank>::template predecessor<key_t>(keys, x, mask, branch, free);
     }
     
     // predecessor search, extended result
     template<typename array_t>
     static ExtResult predecessor_ext(const array_t& keys, const key_t& x, const mask_t& mask, const matrix_t& branch, const matrix_t& free) {
-        return FusionNodeImpl::predecessor_ext<key_t>(keys, x, mask, branch, free);
+        return FusionNodeImpl<uint32_t, linear_rank>::template predecessor_ext<key_t>(keys, x, mask, branch, free);
     }
 };
 

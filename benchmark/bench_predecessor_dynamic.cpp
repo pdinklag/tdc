@@ -372,19 +372,35 @@ void bench_sort(const std::string& name, sort_func_t sort_func) {
 template<typename key_t>
 void benchmark_arbitrary_universe() {
     bench<key_t>("fusion_btree_8",
-        [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::DynamicFusionNode<key_t, 8>>(); },
+        [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::DynamicFusionNode<key_t, 8, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
     bench<key_t>("fusion_btree_16",
-        [](const key_t){ return pred::dynamic::BTree<key_t, 17, pred::dynamic::DynamicFusionNode<key_t, 16>>(); },
+        [](const key_t){ return pred::dynamic::BTree<key_t, 17, pred::dynamic::DynamicFusionNode<key_t, 16, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
+    bench<key_t>("fusion_btree_lin_8",
+        [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::DynamicFusionNode<key_t, 8, true>>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert(x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor(x); },
+        [](auto& ds, const key_t x){ ds.remove(x); }
+    );
+    /*
+    bench<key_t>("fusion_btree_lin_16",
+        [](const key_t){ return pred::dynamic::BTree<key_t, 17, pred::dynamic::DynamicFusionNode<key_t, 16, true>>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert(x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor(x); },
+        [](auto& ds, const key_t x){ ds.remove(x); }
+    );
+    */
     bench<key_t>("btree_lin_8",
         [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::SortedArrayNode<key_t, 8, false>>(); },
         [](const auto& ds){ return ds.size(); },

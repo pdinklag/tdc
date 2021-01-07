@@ -26,7 +26,7 @@ using PosResult = ::tdc::pred::PosResult;
 /// \brief A dynamic fusion node for B-trees as per Patrascu & Thorup, 2014.
 /// \tparam the key type
 /// \tparam the maximum number of keys
-template<typename key_t = uint64_t, size_t m_max_keys = 8>
+template<typename key_t = uint64_t, size_t m_max_keys = 8, bool linear_rank = false>
 class DynamicFusionNode {
 private:
     static constexpr size_t NUM_DEBUG_BITS = 24; // FIXME: Debug
@@ -36,7 +36,7 @@ private:
     static constexpr size_t m_key_msb = m_key_bits - 1;
     static constexpr key_t m_key_max = std::numeric_limits<key_t>::max();
 
-    using Internals = tdc::pred::internal::FusionNodeInternals<key_t, m_max_keys>;
+    using Internals = tdc::pred::internal::FusionNodeInternals<key_t, m_max_keys, linear_rank>;
     using mask_t = typename Internals::mask_t;
     using ckey_t = typename Internals::ckey_t;
     using matrix_t = typename Internals::matrix_t;

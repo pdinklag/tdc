@@ -17,7 +17,7 @@ namespace pred {
 template<typename key_t = uint64_t, size_t m_max_keys = 8>
 class FusionNode {
 private:
-    using Internals = internal::FusionNodeInternals<key_t, m_max_keys>;
+    using Internals = internal::FusionNodeInternals<key_t, m_max_keys, false>;
     
     using mask_t = typename Internals::mask_t;
     using matrix_t = typename Internals::matrix_t;
