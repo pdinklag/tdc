@@ -401,35 +401,35 @@ void benchmark_arbitrary_universe() {
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
     */
-    bench<key_t>("btree_lin_8",
+    bench<key_t>("btree_8",
         [](const key_t){ return pred::dynamic::BTree<key_t, 9, pred::dynamic::SortedArrayNode<key_t, 8, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
-    bench<key_t>("btree_lin_16",
+    bench<key_t>("btree_16",
         [](const key_t){ return pred::dynamic::BTree<key_t, 17, pred::dynamic::SortedArrayNode<key_t, 17, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
-    bench<key_t>("btree_lin_64",
+    bench<key_t>("btree_64",
         [](const key_t){ return pred::dynamic::BTree<key_t, 65, pred::dynamic::SortedArrayNode<key_t, 64, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
-    bench<key_t>("btree_lin_128",
+    bench<key_t>("btree_128",
         [](const key_t){ return pred::dynamic::BTree<key_t, 129, pred::dynamic::SortedArrayNode<key_t, 128, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
         [](const auto& ds, const key_t x){ return ds.predecessor(x); },
         [](auto& ds, const key_t x){ ds.remove(x); }
     );
-    bench<key_t>("btree_lin_256",
+    bench<key_t>("btree_256",
         [](const key_t){ return pred::dynamic::BTree<key_t, 257, pred::dynamic::SortedArrayNode<key_t, 256, false>>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert(x); },
