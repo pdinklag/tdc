@@ -129,13 +129,15 @@ public:
         const matrix_t cx_repeat = repeat(cx);
         
         // construct our matching array by replacing all dontcares by the corresponding bits of the compressed key
-        const auto match_array = branch | (cx_repeat & free);
+        auto match_array = branch | (cx_repeat & free);
         
         // now find the rank of the key in that array
         if constexpr(linear_rank) {
-            const ckey_t* ckeys = (const ckey_t*)&match_array;
             size_t i = 0;
-            while(i < ckey_matrix<ckey_t>::MAX_NUM && ckeys[i] < cx) ++i;
+            while(i < ckey_matrix<ckey_t>::MAX_NUM && (ckey_t)((uint64_t)match_array) < cx) {
+                match_array >>= std::numeric_limits<ckey_t>::digits;
+                ++i;
+            }
             return i;
         } else {
             return rank(cx_repeat, match_array);
