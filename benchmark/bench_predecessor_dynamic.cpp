@@ -167,16 +167,23 @@ void bench(
             assert(size_func(ds) == 0);
 
             // sort by inserting and emitting items
+            
+            // insert
+            stat::Phase::MemoryInfo mem;
             {
-                stat::Phase sort("sort");
-
-                // insert  
+                stat::Phase insert("insert");
                 for(size_t i = 0; i < options.num; i++) {
                     insert_func(ds, options.perm_values(i));
                 }
+                mem = insert.memory_info();
+            }
+            const size_t memData = mem.current - mem.offset;
 
-                // emit in descending order
-                bool is_sorted = true;
+            // emit in descending order
+            bool is_sorted = true;
+            {
+                stat::Phase emit("emit");
+                
                 key_t last = std::numeric_limits<key_t>::max() >> (std::numeric_limits<key_t>::digits - options.universe);
                 for(size_t i = 0; i < options.num; i++) {
                     const auto r = pred_func(ds, last);
@@ -187,10 +194,10 @@ void bench(
                     last = next - 1;
                     assert(last);
                 }
-
-                auto guard = sort.suppress();
-                result.log("sorted", is_sorted);
             }
+            
+            result.log("memData", memData);
+            result.log("sorted", is_sorted);
         } else {
             // === BASIC ===        
             // input
