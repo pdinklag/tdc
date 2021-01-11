@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <type_traits>
-#include <vector>
 
 #include <tdc/math/bit_mask.hpp>
 #include <tdc/vec/fixed_width_int_vector.hpp>
@@ -15,7 +14,7 @@ template<uint8_t b_wordl>
 struct bucket_base {
     static_assert(b_wordl <= 32, "bucket sizes beyond 2^32 not supported");
     using suffix_t = typename std::conditional<b_wordl <= 16, uint16_t, uint32_t>::type;
-    using list_t = std::vector<suffix_t>;
+    using list_t = typename tdc::vec::FixedWidthIntVector<b_wordl>::builder_type;
     
     static constexpr uint64_t SUFFIX_MAX = tdc::math::bit_mask<uint64_t>(b_wordl);
     static constexpr uint64_t MAX_NUM = 1ULL << b_wordl;
@@ -122,7 +121,7 @@ struct bucket_list : bucket_base<b_wordl> {
   void remove(uint64_t suf) {
     auto p = std::find(m_list.begin(), m_list.end(), suf);
     assert(p != m_list.end());
-    *p = m_list.back();
+    *p = (suffix_t)m_list.back();
     m_list.pop_back();
     // here we update next_b->prev_pred
     if (tdc_likely(m_next_b != nullptr)) {
@@ -213,7 +212,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
     if (m_is_list) {
       auto p = std::find(m_list.begin(), m_list.end(), suf);
       assert(p != m_list.end());
-      *p = m_list.back();
+      *p = (suffix_t)m_list.back();
       m_list.pop_back();
     } else {
       (*m_bits)[suf] = false;
@@ -359,7 +358,7 @@ struct map_bucket_list : bucket_base<b_wordl> {
   void remove(uint64_t suf) {
     auto p = std::find(m_list.begin(), m_list.end(), suf);
     assert(p != m_list.end());
-    *p = m_list.back();
+    *p = (suffix_t)m_list.back();
     m_list.pop_back();
   }
 
@@ -394,7 +393,7 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
   static constexpr size_t lower_threshhold = 1ULL << b_lower_threshold;
   suffix_t m_size = 0;
   bool m_is_list = true;
-  std::vector<suffix_t> m_list;
+  list_t m_list;
   std::bitset<base::MAX_NUM> *m_bits = nullptr;
 
   map_bucket_hybrid() {
@@ -436,7 +435,7 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
     if (m_is_list) {
       auto p = std::find(m_list.begin(), m_list.end(), suf);
       assert(p != m_list.end());
-      *p = m_list.back();
+      *p = (suffix_t)m_list.back();
       m_list.pop_back();
     } else {
       (*m_bits)[suf] = false;

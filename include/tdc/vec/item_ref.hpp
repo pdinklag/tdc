@@ -13,7 +13,8 @@ protected:
     size_t m_i;
     
 public:
-    ItemRef() = delete;
+    inline ItemRef() : m_vec(nullptr) {
+    };
 
     /// \brief Main constructor.
     /// \param vec the vector this proxy belongs to.
@@ -26,6 +27,18 @@ public:
     
     ItemRef& operator=(const ItemRef&) = delete; // ambiguity with value assignment - use explicit casts!
     ItemRef& operator=(ItemRef&&) = delete; // ambiguity with value assignment - use explicit casts!
+    
+    /// \brief Explicit copy assignment.
+    inline void copy_assign(const ItemRef& other) {
+        m_vec = other.m_vec;
+        m_i = other.m_i;
+    }
+    
+    /// \brief Explicit move assignment.
+    inline void move_assign(ItemRef&& other) {
+        m_vec = other.m_vec;
+        m_i = other.m_i;
+    }
 
     /// \brief Reads the referred item.
     inline operator item_t() const {
@@ -85,7 +98,8 @@ protected:
     size_t m_i;
     
 public:
-    ConstItemRef() = delete;
+    inline ConstItemRef() : m_vec(nullptr) {
+    };
 
     /// \brief Main constructor.
     /// \param vec the vector this proxy belongs to.
@@ -95,8 +109,21 @@ public:
     
     ConstItemRef(const ConstItemRef& other) = default;
     ConstItemRef(ConstItemRef&& other) = default;
-    ConstItemRef& operator=(const ConstItemRef&) = default;
-    ConstItemRef& operator=(ConstItemRef&&) = default;
+    
+    ConstItemRef& operator=(const ConstItemRef&) = delete; // ambiguity with value assignment - consistency with ItemRef
+    ConstItemRef& operator=(ConstItemRef&&) = delete; // ambiguity with value assignment - consistency with ItemRef
+
+    /// \brief Explicit copy assignment.
+    inline void copy_assign(const ConstItemRef& other) {
+        m_vec = other.m_vec;
+        m_i = other.m_i;
+    }
+    
+    /// \brief Explicit move assignment.
+    inline void move_assign(ConstItemRef&& other) {
+        m_vec = other.m_vec;
+        m_i = other.m_i;
+    }
 
     /// \brief Reads the referred item.
     inline operator item_t() const {

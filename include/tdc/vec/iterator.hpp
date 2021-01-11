@@ -23,10 +23,23 @@ public:
     inline Iterator(itemref_t ref) : m_ref(ref) {
     }
     
-    Iterator(const Iterator& other) = default;
-    Iterator(Iterator&& other) = default;
-    Iterator& operator=(const Iterator&) = default;
-    Iterator& operator=(Iterator&&) = default;
+    inline Iterator(const Iterator& other) {
+        m_ref.copy_assign(other.m_ref);
+    }
+    
+    inline Iterator(Iterator&& other) {
+        m_ref.move_assign(std::move(other.m_ref));
+    }
+    
+    inline Iterator& operator=(const Iterator& other) {
+        m_ref.copy_assign(other.m_ref);
+        return *this;
+    }
+    
+    inline Iterator& operator=(Iterator&& other) {
+        m_ref.move_assign(std::move(other.m_ref));
+        return *this;
+    }
     
     /// \brief Prefix increment.
     inline Iterator& operator++() {
@@ -86,16 +99,3 @@ public:
 };
 
 }} // namespace tdc::vec
-
-/*
-#include <iterator>
-
-namespace std {
-
-template<typename itemref_t>
-struct iterator_traits<tdc::vec::Iterator<itemref_t>> {
-    
-};
-
-} // namespace std
-*/
