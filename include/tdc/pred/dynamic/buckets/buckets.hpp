@@ -1,30 +1,45 @@
 #pragma once
 
-#include <assert.h>
+#include <cassert>
+#include <type_traits>
+#include <vector>
+
+#include <tdc/math/bit_mask.hpp>
+#include <tdc/vec/fixed_width_int_vector.hpp>
 
 namespace tdc {
 namespace pred {
 namespace dynamic {
 
-// return the x_wordl more significant bits of i
-template <uint8_t b_wordl>
-inline uint64_t prefix(uint64_t i) {
-  return i >> b_wordl;
-}
-// return the b_wordl less significant bits
-template <uint8_t b_wordl>
-inline uint64_t suffix(uint64_t i) {
-  return i & ((1ULL << b_wordl) - 1);
-}
+template<uint8_t b_wordl>
+struct bucket_base {
+    static_assert(b_wordl <= 32, "bucket sizes beyond 2^32 not supported");
+    using suffix_t = typename std::conditional<b_wordl <= 16, uint16_t, uint32_t>::type;
+    using list_t = std::vector<suffix_t>;
+    
+    static constexpr uint64_t SUFFIX_MAX = tdc::math::bit_mask<uint64_t>(b_wordl);
+    static constexpr uint64_t MAX_NUM = 1ULL << b_wordl;
+    
+    inline static constexpr uint64_t prefix(uint64_t i) {
+        return i >> b_wordl;
+    }
+    
+    inline static constexpr uint64_t suffix(uint64_t i) {
+        return i & SUFFIX_MAX;
+    }
+};
 
 // This is a bucket that holds a bit vector.
 template <uint8_t b_wordl>
-struct bucket_bv {
-  uint16_t m_size = 0;
+struct bucket_bv : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+    
+  suffix_t m_size = 0;
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_bv *m_next_b = nullptr;  // next bucket
-  std::bitset<1ULL << b_wordl> m_bits;
+  std::bitset<base::MAX_NUM> m_bits;
 
   bucket_bv(uint64_t prefix, uint64_t prev_pred, bucket_bv *next_b, uint64_t suf)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {
@@ -65,7 +80,7 @@ struct bucket_bv {
     return m_size;
   }
   uint64_t predecessor(int64_t key) const {
-    key = prefix<b_wordl>(key) != m_prefix ? (1ULL << b_wordl) - 1 : suffix<b_wordl>(key);
+    key = base::prefix(key) != m_prefix ? base::SUFFIX_MAX : base::suffix(key);
     for (; key >= 0; --key) {
       if (m_bits[key]) {
         return (m_prefix << b_wordl) + key;
@@ -77,26 +92,28 @@ struct bucket_bv {
 
 // This is a bucket that holds an std::vector.
 template <uint8_t b_wordl>
-struct bucket_list {
-  uint16_t m_size = 0;
+struct bucket_list : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+  using list_t = typename base::list_t;
+    
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_list *m_next_b = nullptr;
-  std::vector<uint16_t> m_list;
+  list_t m_list;
 
-  bucket_list(uint64_t prefix, uint64_t prev_pred, bucket_list *next_b, uint16_t suf)
+  bucket_list(uint64_t prefix, uint64_t prev_pred, bucket_list *next_b, suffix_t suf)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {
     set(suf);
   }
 
   uint64_t get_min() {
-    assert(m_size > 0);
+    assert(m_list.size() > 0);
     return (m_prefix << b_wordl) + *std::min_element(std::begin(m_list), std::end(m_list));
   }
 
   void set(uint64_t suf) {
     m_list.push_back(suf);
-    ++m_size;
     if (tdc_likely(m_next_b != nullptr)) {
       m_next_b->m_prev_pred = std::max((m_prefix << b_wordl) + suf, m_next_b->m_prev_pred);
     }
@@ -107,7 +124,6 @@ struct bucket_list {
     assert(p != m_list.end());
     *p = m_list.back();
     m_list.pop_back();
-    --m_size;
     // here we update next_b->prev_pred
     if (tdc_likely(m_next_b != nullptr)) {
       if (m_next_b->m_prev_pred == (m_prefix << b_wordl) + suf) {
@@ -117,20 +133,20 @@ struct bucket_list {
   }
 
   size_t size() {
-    return m_size;
+    return m_list.size();
   }
 
   uint64_t predecessor(int64_t key) const {
-    key = prefix<b_wordl>(key) != m_prefix ? (1ULL << b_wordl) - 1 : suffix<b_wordl>(key);
+    key = base::prefix(key) != m_prefix ? base::SUFFIX_MAX : base::suffix(key);
 
     auto p = std::find_if(m_list.begin(), m_list.end(), [key](const uint64_t x) { return x <= key; });
     if (p == m_list.end()) {
       return m_prev_pred;
     }
-    uint16_t max_pred = *p;
+    suffix_t max_pred = *p;
     for (; p != m_list.end(); ++p) {
       if ((*p) <= key) {
-        max_pred = std::max(*p, max_pred);
+        max_pred = std::max((suffix_t)*p, max_pred);
       }
     }
     return (m_prefix << b_wordl) + max_pred;
@@ -139,20 +155,24 @@ struct bucket_list {
 
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <uint8_t b_wordl>
-struct bucket_hybrid {
-  static constexpr size_t upper_threshhold = 1ULL << 9;
-  static constexpr size_t lower_threshhold = 1ULL << 8;
-  uint16_t m_size = 0;
+template <uint8_t b_wordl, uint8_t b_lower_threshold = b_wordl/2>
+struct bucket_hybrid : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+  using list_t = typename base::list_t;
+    
+  static constexpr size_t upper_threshhold = 1ULL << (b_lower_threshold+1);
+  static constexpr size_t lower_threshhold = 1ULL << b_lower_threshold;
+  suffix_t m_size = 0;
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_hybrid *m_next_b = nullptr;
 
   bool m_is_list = true;
-  std::vector<uint16_t> m_list;
-  std::bitset<1ULL<<b_wordl>* m_bits = nullptr;
+  list_t m_list;
+  std::bitset<base::MAX_NUM>* m_bits = nullptr;
 
-  bucket_hybrid(uint64_t prefix, uint64_t prev_pred, bucket_hybrid *next_b, uint16_t suf)
+  bucket_hybrid(uint64_t prefix, uint64_t prev_pred, bucket_hybrid *next_b, suffix_t suf)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {
     set(suf);
   }
@@ -216,16 +236,16 @@ struct bucket_hybrid {
   }
 
   uint64_t predecessor(int64_t key) const {
-    key = prefix<b_wordl>(key) != m_prefix ? (1ULL << b_wordl) - 1 : suffix<b_wordl>(key);
+    key = base::prefix(key) != m_prefix ? base::SUFFIX_MAX : base::suffix(key);
     if (m_is_list) {
       auto p = std::find_if(m_list.begin(), m_list.end(), [key](const uint64_t x) { return x <= key; });
       if (p == m_list.end()) {
         return m_prev_pred;
       }
-      uint16_t max_pred = *p;
+      suffix_t max_pred = *p;
       for (; p != m_list.end(); ++p) {
         if ((*p) <= key) {
-          max_pred = std::max(*p, max_pred);
+          max_pred = std::max((suffix_t)*p, max_pred);
         }
       }
       return (m_prefix << b_wordl) + max_pred;
@@ -244,16 +264,16 @@ struct bucket_hybrid {
     if (m_is_list) {
       m_is_list = false;
       m_size = 0;
-      m_bits = new std::bitset<1ULL<<b_wordl>; //std::vector<bool>(1ULL << b_wordl);
-      for (uint16_t key : m_list) {
+      m_bits = new std::bitset<base::MAX_NUM>; //std::vector<bool>(1ULL << b_wordl);
+      for (suffix_t key : m_list) {
         set(key);
       }
       // this frees the memory allocated by the vector
-      std::vector<uint16_t>().swap(m_list);
+      list_t().swap(m_list);
     } else {
       m_is_list = true;
       m_size = 0;
-      for (size_t i = 0; i < (1ULL << b_wordl); ++i) {
+      for (size_t i = 0; i < base::MAX_NUM; ++i) {
         if ((*m_bits)[i]) {
           set(i);
         }
@@ -265,9 +285,12 @@ struct bucket_hybrid {
 };
 
 template <uint8_t b_wordl>
-struct map_bucket_bv {
-  uint16_t m_size = 0;
-  std::bitset<1ULL << b_wordl> m_bits;
+struct map_bucket_bv : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+    
+  suffix_t m_size = 0;
+  std::bitset<base::MAX_NUM> m_bits;
 
   map_bucket_bv() {
   }
@@ -310,9 +333,12 @@ struct map_bucket_bv {
 
 // This is a bucket that holds an std::vector.
 template <uint8_t b_wordl>
-struct map_bucket_list {
-  uint16_t m_size = 0;
-  std::vector<uint16_t> m_list;
+struct map_bucket_list : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+  using list_t = typename base::list_t;
+
+  list_t m_list;
 
   map_bucket_list() {
   }
@@ -322,13 +348,12 @@ struct map_bucket_list {
   }
 
   uint64_t get_min() {
-    assert(m_size > 0);
+    assert(m_list.size() > 0);
     return *std::min_element(std::begin(m_list), std::end(m_list));
   }
 
   void set(uint64_t suf) {
     m_list.push_back(suf);
-    ++m_size;
   }
 
   void remove(uint64_t suf) {
@@ -336,11 +361,10 @@ struct map_bucket_list {
     assert(p != m_list.end());
     *p = m_list.back();
     m_list.pop_back();
-    --m_size;
   }
 
   size_t size() {
-    return m_size;
+    return m_list.size();
   }
 
   KeyResult<uint64_t> predecessor(int64_t suf) const {
@@ -348,10 +372,10 @@ struct map_bucket_list {
     if (p == m_list.end()) {
       return {false, 0};
     }
-    uint16_t max_pred = *p;
+    suffix_t max_pred = *p;
     for (; p != m_list.end(); ++p) {
       if ((*p) <= suf) {
-        max_pred = std::max(*p, max_pred);
+        max_pred = std::max((suffix_t)*p, max_pred);
       }
     }
     return {true, max_pred};
@@ -360,19 +384,23 @@ struct map_bucket_list {
 
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <uint8_t b_wordl>
-struct map_bucket_hybrid {
-  static constexpr size_t upper_threshhold = 1ULL << 9;
-  static constexpr size_t lower_threshhold = 1ULL << 8;
-  uint16_t m_size = 0;
+template <uint8_t b_wordl, uint8_t b_lower_threshold = b_wordl/2>
+struct map_bucket_hybrid : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+  using list_t = typename base::list_t;
+    
+  static constexpr size_t upper_threshhold = 1ULL << (b_lower_threshold+1);
+  static constexpr size_t lower_threshhold = 1ULL << b_lower_threshold;
+  suffix_t m_size = 0;
   bool m_is_list = true;
-  std::vector<uint16_t> m_list;
-  std::bitset<1ULL << b_wordl> *m_bits = nullptr;
+  std::vector<suffix_t> m_list;
+  std::bitset<base::MAX_NUM> *m_bits = nullptr;
 
   map_bucket_hybrid() {
   }
 
-  map_bucket_hybrid(uint16_t suf) {
+  map_bucket_hybrid(suffix_t suf) {
     set(suf);
   }
 
@@ -430,10 +458,10 @@ struct map_bucket_hybrid {
       if (p == m_list.end()) {
         return {false, 0};
       }
-      uint16_t max_pred = *p;
+      suffix_t max_pred = *p;
       for (; p != m_list.end(); ++p) {
         if ((*p) <= suf) {
-          max_pred = std::max(*p, max_pred);
+          max_pred = std::max((suffix_t)*p, max_pred);
         }
       }
       return {true, max_pred};
@@ -451,16 +479,16 @@ struct map_bucket_hybrid {
     if (m_is_list) {
       m_is_list = false;
       m_size = 0;
-      m_bits = new std::bitset<1ULL<<b_wordl>;
-      for (uint16_t key : m_list) {
+      m_bits = new std::bitset<base::MAX_NUM>;
+      for (suffix_t key : m_list) {
         set(key);
       }
       // this frees the memory allocated by the vector
-      std::vector<uint16_t>().swap(m_list);
+      list_t().swap(m_list);
     } else {
       m_is_list = true;
       m_size = 0;
-      for (size_t i = 0; i < (1ULL << b_wordl); ++i) {
+      for (size_t i = 0; i < base::MAX_NUM; ++i) {
         if ((*m_bits)[i]) {
           set(i);
         }
