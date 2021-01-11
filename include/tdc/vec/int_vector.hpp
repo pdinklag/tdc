@@ -6,6 +6,7 @@
 
 #include "allocate.hpp"
 #include "item_ref.hpp"
+#include "iterator.hpp"
 #include "vector_builder.hpp"
 
 #include <tdc/math/bit_mask.hpp>
@@ -26,6 +27,7 @@ public:
 
 private:
     friend class ItemRef<IntVector, uint64_t>;
+    friend class ConstItemRef<IntVector, uint64_t>;
 
     size_t m_size;
     size_t m_width;
@@ -38,6 +40,9 @@ private:
 public:
     /// \brief Proxy for reading and writing a single integer.
     using IntRef = ItemRef<IntVector, uint64_t>;
+    
+    /// \brief Proxy for reading a single integer.
+    using ConstIntRef = ConstItemRef<IntVector, uint64_t>;
 
     /// \brief Constructs an empty integer vector of zero length and width.
     inline IntVector() : m_size(0), m_width(0), m_mask(0) {
@@ -67,6 +72,16 @@ public:
     }
 
     IntVector& operator=(IntVector&& other) = default;
+    
+    /// \brief Exchanges the contents of this vector with that of the other.
+    ///
+    /// \param other the other vector
+    inline void swap(IntVector& other) {
+        std::swap(m_size, other.m_size);
+        std::swap(m_width, other.m_width);
+        std::swap(m_mask, other.m_mask);
+        std::swap(m_data, other.m_data);
+    }
 
     /// \brief Resizes the integer vector with the specified new length and width.
     ///
@@ -92,6 +107,26 @@ public:
     inline IntRef operator[](const size_t i) {
         return IntRef(*this, i);
     }
+    
+    /// \brief Accesses the first integer.
+    inline uint64_t front() const {
+        return get(0);
+    }
+    
+    /// \brief Accesses the first integer.
+    inline IntRef front() {
+        return IntRef(*this, 0);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline uint64_t back() const {
+        return get(m_size-1);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline IntRef back() {
+        return IntRef(*this, m_size-1);
+    }
 
     /// \brief The width of each integer in bits.
     inline size_t width() const {
@@ -101,6 +136,36 @@ public:
     /// \brief The number of integers in the vector.
     inline size_t size() const {
         return m_size;
+    }
+    
+    /// \brief STL-like iterator to the beginning of the vector.
+    inline Iterator<IntRef> begin() {
+        return Iterator<IntRef>(IntRef(*this, 0));
+    }
+    
+    /// \brief STL-like iterator to the i-th element of the vector.
+    inline Iterator<IntRef> at(const size_t i) {
+        return Iterator(IntRef(*this, i));
+    }
+    
+    /// \brief STL-like iterator to the end of the vector.
+    inline Iterator<IntRef> end() {
+        return Iterator<IntRef>(IntRef(*this, m_size));
+    }
+    
+    /// \brief STL-like const iterator to the beginning of the vector.
+    inline Iterator<ConstIntRef> begin() const {
+        return Iterator(ConstIntRef(*this, 0));
+    }
+    
+    /// \brief STL-like iterator to the i-th element of the vector.
+    inline Iterator<ConstIntRef> at(const size_t i) const {
+        return Iterator(ConstIntRef(*this, i));
+    }
+    
+    /// \brief STL-like const iterator to the end of the vector.
+    inline Iterator<ConstIntRef> end() const {
+        return Iterator(ConstIntRef(*this, m_size));
     }
 };
 

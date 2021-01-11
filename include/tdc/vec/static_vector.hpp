@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "item_ref.hpp"
+#include "iterator.hpp"
 #include "vector_builder.hpp"
 #include <tdc/math/idiv.hpp>
 
@@ -29,6 +30,7 @@ private:
     static_assert(!std::is_same<T, bool>::value, "A StaticVector of boolean values is not supported. You'll want to use a BitVector instead.");
 
     friend class ItemRef<StaticVector<T>, T>;
+    friend class ConstItemRef<StaticVector<T>, T>;
 
     static constexpr size_t s_item_size = sizeof(T);
     
@@ -54,8 +56,11 @@ private:
     }
     
 public:
-    /// \brief Proxy for reading and writing a single integer.
+    /// \brief Proxy for reading and writing a single item.
     using ItemRef_ = ItemRef<StaticVector<T>, T>;
+    
+    /// \brief Proxy for reading a single item.
+    using ConstItemRef_ = ConstItemRef<StaticVector<T>, T>;
 
     /// \brief Constructs an empty vector.
     inline StaticVector() : m_size(0) {
@@ -106,10 +111,60 @@ public:
     inline ItemRef_ operator[](const size_t i) {
         return ItemRef_(*this, i);
     }
+    
+    /// \brief Accesses the first integer.
+    inline T front() const {
+        return get(0);
+    }
+    
+    /// \brief Accesses the first integer.
+    inline ItemRef_ front() {
+        return ItemRef_(*this, 0);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline T back() const {
+        return get(m_size-1);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline ItemRef_ back() {
+        return ItemRef_(*this, m_size-1);
+    }
 
     /// \brief The number of items in the vector.
     inline size_t size() const {
         return m_size;
+    }
+    
+    /// \brief STL-like iterator to the beginning of the vector.
+    inline Iterator<ItemRef_> begin() {
+        return Iterator(ItemRef_(*this, 0));
+    }
+    
+    /// \brief STL-like iterator to the i-th element of the vector.
+    inline Iterator<ItemRef_> at(const size_t i) {
+        return Iterator(ItemRef_(*this, i));
+    }
+    
+    /// \brief STL-like iterator to the end of the vector.
+    inline Iterator<ItemRef_> end() {
+        return Iterator(ItemRef_(*this, m_size));
+    }
+    
+    /// \brief STL-like const iterator to the beginning of the vector.
+    inline Iterator<ConstItemRef_> begin() const {
+        return Iterator(ConstItemRef_(*this, 0));
+    }
+    
+    /// \brief STL-like const iterator to the i-th element of the vector.
+    inline Iterator<ConstItemRef_> at(const size_t i) const {
+        return Iterator(ConstItemRef_(*this, i));
+    }
+    
+    /// \brief STL-like const iterator to the end of the vector.
+    inline Iterator<ConstItemRef_> end() const {
+        return Iterator(ConstItemRef_(*this, m_size));
     }
 };
 

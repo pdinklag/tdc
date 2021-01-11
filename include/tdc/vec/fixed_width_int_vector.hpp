@@ -7,6 +7,7 @@
 
 #include "allocate.hpp"
 #include "item_ref.hpp"
+#include "iterator.hpp"
 #include "bit_vector.hpp"
 #include "static_vector.hpp"
 #include "vector_builder.hpp"
@@ -41,6 +42,7 @@ public:
     
 private:
     friend class ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
+    friend class ConstItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
 
     static constexpr uint64_t m_mask = math::bit_mask<uint64_t>(m_width);
 
@@ -105,6 +107,9 @@ private:
 public:
     /// \brief Proxy for reading and writing a single integer.
     using IntRef = ItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
+    
+    /// \brief Proxy for reading a single integer.
+    using ConstIntRef = ConstItemRef<FixedWidthIntVector_<m_width>, uint64_t>;
 
     /// \brief Constructs an empty integer vector of zero length.
     inline FixedWidthIntVector_() : m_size(0) {
@@ -129,6 +134,14 @@ public:
     }
 
     FixedWidthIntVector_& operator=(FixedWidthIntVector_&& other) = default;
+
+    /// \brief Exchanges the contents of this vector with that of the other.
+    ///
+    /// \param other the other vector
+    inline void swap(FixedWidthIntVector_& other) {
+        std::swap(m_size, other.m_size);
+        std::swap(m_data, other.m_data);
+    }
 
     /// \brief Resizes the integer vector with the specified new length and current bit width.
     ///
@@ -156,6 +169,26 @@ public:
         return IntRef(*this, i);
     }
 
+    /// \brief Accesses the first integer.
+    inline uint64_t front() const {
+        return get(0);
+    }
+    
+    /// \brief Accesses the first integer.
+    inline IntRef front() {
+        return IntRef(*this, 0);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline uint64_t back() const {
+        return get(m_size-1);
+    }
+    
+    /// \brief Accesses the last integer.
+    inline IntRef back() {
+        return IntRef(*this, m_size-1);
+    }
+
     /// \brief The width of each integer in bits.
     static constexpr size_t width() {
         return m_width;
@@ -164,6 +197,36 @@ public:
     /// \brief The number of integers in the vector.
     inline size_t size() const {
         return m_size;
+    }
+    
+    /// \brief STL-like iterator to the beginning of the vector.
+    inline Iterator<IntRef> begin() {
+        return Iterator<IntRef>(IntRef(*this, 0));
+    }
+    
+    /// \brief STL-like iterator to the i-th element of the vector.
+    inline Iterator<IntRef> at(const size_t i) {
+        return Iterator(IntRef(*this, i));
+    }
+    
+    /// \brief STL-like iterator to the end of the vector.
+    inline Iterator<IntRef> end() {
+        return Iterator<IntRef>(IntRef(*this, m_size));
+    }
+    
+    /// \brief STL-like const iterator to the beginning of the vector.
+    inline Iterator<ConstIntRef> begin() const {
+        return Iterator(ConstIntRef(*this, 0));
+    }
+    
+    /// \brief STL-like iterator to the i-th element of the vector.
+    inline Iterator<ConstIntRef> at(const size_t i) const {
+        return Iterator(ConstIntRef(*this, i));
+    }
+    
+    /// \brief STL-like const iterator to the end of the vector.
+    inline Iterator<ConstIntRef> end() const {
+        return Iterator(ConstIntRef(*this, m_size));
     }
 };
 
