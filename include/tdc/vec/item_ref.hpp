@@ -23,8 +23,9 @@ public:
     
     ItemRef(const ItemRef& other) = default;
     ItemRef(ItemRef&& other) = default;
-    ItemRef& operator=(const ItemRef&) = default;
-    ItemRef& operator=(ItemRef&&) = default;
+    
+    ItemRef& operator=(const ItemRef&) = delete; // ambiguity with value assignment - use explicit casts!
+    ItemRef& operator=(ItemRef&&) = delete; // ambiguity with value assignment - use explicit casts!
 
     /// \brief Reads the referred item.
     inline operator item_t() const {
@@ -33,7 +34,7 @@ public:
 
     /// \brief Writes the referred integer.
     /// \param v the value to write
-    inline void operator=(const item_t v) const {
+    inline void operator=(item_t v) const {
         m_vec->set(m_i, v);
     }
     
