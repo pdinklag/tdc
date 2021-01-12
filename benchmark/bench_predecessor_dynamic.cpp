@@ -573,6 +573,7 @@ template<typename key_t>
 void benchmark_medium_universe() {
     benchmark_large_universe<key_t>();
 
+    /*
     bench<key_t>("index_list_16",
         [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>(); },
         [](const auto& ds){ return ds.size(); },
@@ -659,6 +660,7 @@ void benchmark_medium_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
+    */
 }
 
 template<typename key_t>
@@ -810,7 +812,7 @@ int main(int argc, char** argv) {
         } else if(options.universe <= 128) {
             benchmark_tiny_num<uint128_t>();
         }
-        //return 0;
+        return 0;
     }
     
     if(options.universe <= 32) {

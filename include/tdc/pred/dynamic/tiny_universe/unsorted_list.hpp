@@ -28,10 +28,12 @@ class UnsortedList {
   inline KeyResult<t_value_type> predecessor(t_value_type key) const {
     bool found = false;
     t_value_type max_pred = 0;
-    for (auto elem : m_elem) {
-      found = found || (elem <= key);
-      max_pred = std::max(elem, max_pred);
-    } 
+    for (auto const& elem : m_elem) {
+      if (elem <= key) {
+        found = true;
+        max_pred = std::max(elem, max_pred);
+      }
+    }
     return {found, max_pred};
   }
 };  // namespace dynamic
