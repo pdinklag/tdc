@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
+#include <limits>
 
 #include <tdc/pred/result.hpp>
 

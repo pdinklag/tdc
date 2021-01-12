@@ -22,6 +22,10 @@
 #include <tdc/pred/dynamic/dynamic_pred_bv.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 #include <tdc/pred/dynamic/yfast.hpp>
+#include <tdc/pred/dynamic/yfast_sorted_list.hpp>
+
+#include <tdc/pred/dynamic/tiny_universe/unsorted_list.hpp>
+#include <tdc/pred/dynamic/tiny_universe/sorted_list.hpp>
 
 #include <tdc/pred/dynamic/btree.hpp>
 #include <tdc/pred/dynamic/btree/dynamic_fusion_node.hpp>
@@ -524,6 +528,34 @@ void benchmark_large_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
+    bench<key_t>("yfast_trie_sl-06",
+        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 6>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
+    bench<key_t>("yfast_trie_sl-07",
+        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 7>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
+    bench<key_t>("yfast_trie_sl-08",
+        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 8>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
+    bench<key_t>("yfast_trie_sl-09",
+        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 9>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
+        [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
+    );
 #ifdef BENCH_BURST
     /*
     bench<key_t>("burst_trie",
@@ -646,6 +678,35 @@ void benchmark_small_universe() {
 #endif
 }
 
+template<typename key_t>
+void benchmark_tiny_num() {
+    bench<key_t>("set",
+        [](const key_t){ return std::set<key_t>(); },
+        [](const auto& set){ return set.size(); },
+        [](auto& set, const key_t x){ set.insert(x); },
+        [](const auto& set, const key_t x){
+            auto it = set.upper_bound(x);
+            return pred::KeyResult<key_t> { it != set.begin(), *(--it) };
+        },
+        [](auto& set, const key_t x){ set.erase(x); }
+    );
+    bench<key_t>("unsorted_list",
+        [](const key_t){ return pred::dynamic::UnsortedList<key_t>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert(x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor(x); },
+        [](auto& ds, const key_t x){ ds.remove(x); }
+    );
+    bench<key_t>("sorted_list",
+        [](const key_t){ return pred::dynamic::SortedList<key_t>(); },
+        [](const auto& ds){ return ds.size(); },
+        [](auto& ds, const key_t x){ ds.insert(x); },
+        [](const auto& ds, const key_t x){ return ds.predecessor(x); },
+        [](auto& ds, const key_t x){ ds.remove(x); }
+    );
+}
+
+
 const std::string MODE_BASIC = "basic";
 const std::string MODE_OPS = "ops";
 const std::string MODE_SORT = "sort";
@@ -737,6 +798,19 @@ int main(int argc, char** argv) {
     } else {
         std::cout << "nothing to do!" << std::endl;
         return 0;
+    }
+    
+    if(options.num <= 1024) {
+        if(options.universe <= 32) {
+            benchmark_tiny_num<uint32_t>();
+        } else if(options.universe <= 40) {
+            benchmark_tiny_num<uint40_t>();
+        } else if(options.universe <= 64) {
+            benchmark_tiny_num<uint64_t>();
+        } else if(options.universe <= 128) {
+            benchmark_tiny_num<uint128_t>();
+        }
+        //return 0;
     }
     
     if(options.universe <= 32) {
