@@ -14,7 +14,7 @@ namespace tdc {
 namespace pred {
 namespace dynamic {
 
-template <template <uint8_t> class t_bucket, uint8_t t_sampling>
+template <typename key_t, template <class, uint8_t> class t_bucket, uint8_t t_sampling>
 class DynIndexMap {
  private:
   static_assert(t_sampling <= 32);
@@ -23,7 +23,7 @@ class DynIndexMap {
   // a bit vector, std::array, or a hybrid.
   static constexpr size_t b_wordl = t_sampling;
   static constexpr size_t b_max = (1ULL << b_wordl) - 1;
-  using bucket = t_bucket<t_sampling>;
+  using bucket = t_bucket<key_t, t_sampling>;
   size_t m_size = 0;
   uint64_t m_min = std::numeric_limits<uint64_t>::max();  // stores the minimal key
   uint64_t m_max = std::numeric_limits<uint64_t>::min();  // stores the maximal key

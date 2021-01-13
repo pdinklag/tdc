@@ -573,30 +573,29 @@ template<typename key_t>
 void benchmark_medium_universe() {
     benchmark_large_universe<key_t>();
 
-    /*
     bench<key_t>("index_list_16",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 16>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_list, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("index_hybrid_16",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 16>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_list_16",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_list, 16>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_list, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_hybrid_16",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_hybrid, 16>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
@@ -604,28 +603,28 @@ void benchmark_medium_universe() {
     );
     
     bench<key_t>("index_list_20",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 20>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_list, 20>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("index_hybrid_20",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 20>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_hybrid, 20>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_list_20",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_list, 20>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_list, 20>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_hybrid_20",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 20>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_hybrid, 20>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
@@ -633,34 +632,33 @@ void benchmark_medium_universe() {
     );
 
     bench<key_t>("index_list_24",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_list, 24>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_list, 24>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("index_hybrid_24",
-        [](const key_t){ return pred::dynamic::DynIndex<tdc::pred::dynamic::bucket_hybrid, 24>(); },
+        [](const key_t){ return pred::dynamic::DynIndex<key_t, tdc::pred::dynamic::bucket_hybrid, 24>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_list_24",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_list, 24>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_list, 24>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("map_hybrid_24",
-        [](const key_t){ return pred::dynamic::DynIndexMap<tdc::pred::dynamic::map_bucket_hybrid, 24>(); },
+        [](const key_t){ return pred::dynamic::DynIndexMap<key_t, tdc::pred::dynamic::map_bucket_hybrid, 24>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
-    */
 }
 
 template<typename key_t>
@@ -682,16 +680,6 @@ void benchmark_small_universe() {
 
 template<typename key_t>
 void benchmark_tiny_num() {
-    bench<key_t>("set",
-        [](const key_t){ return std::set<key_t>(); },
-        [](const auto& set){ return set.size(); },
-        [](auto& set, const key_t x){ set.insert(x); },
-        [](const auto& set, const key_t x){
-            auto it = set.upper_bound(x);
-            return pred::KeyResult<key_t> { it != set.begin(), *(--it) };
-        },
-        [](auto& set, const key_t x){ set.erase(x); }
-    );
     bench<key_t>("unsorted_list",
         [](const key_t){ return pred::dynamic::UnsortedList<key_t>(); },
         [](const auto& ds){ return ds.size(); },
@@ -812,7 +800,6 @@ int main(int argc, char** argv) {
         } else if(options.universe <= 128) {
             benchmark_tiny_num<uint128_t>();
         }
-        return 0;
     }
     
     if(options.universe <= 32) {

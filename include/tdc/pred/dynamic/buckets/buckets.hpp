@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <limits>
 #include <type_traits>
 
 #include <tdc/math/bit_mask.hpp>
@@ -26,10 +27,17 @@ struct bucket_base {
     inline static constexpr uint64_t suffix(uint64_t i) {
         return i & SUFFIX_MAX;
     }
+
+    template<typename key_t>
+    inline static constexpr size_t hybrid_threshold() {
+        // in the hybrid data structures, we want to use an unsorted list when it is smaller than a bit vector of length 2^t
+        // this is the case while b'*(lg u) < 2^t <=> b' < 2^t / (lg u)
+        return MAX_NUM / std::numeric_limits<key_t>::digits;
+    }
 };
 
 // This is a bucket that holds a bit vector.
-template <uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl>
 struct bucket_bv : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
@@ -90,7 +98,7 @@ struct bucket_bv : bucket_base<b_wordl> {
 };
 
 // This is a bucket that holds an std::vector.
-template <uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl>
 struct bucket_list : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
@@ -154,14 +162,14 @@ struct bucket_list : bucket_base<b_wordl> {
 
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <uint8_t b_wordl, uint8_t b_lower_threshold = b_wordl/2>
+template <typename key_t, uint8_t b_wordl>
 struct bucket_hybrid : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
   using list_t = typename base::list_t;
     
-  static constexpr size_t upper_threshhold = 1ULL << (b_lower_threshold+1);
-  static constexpr size_t lower_threshhold = 1ULL << b_lower_threshold;
+  static constexpr size_t upper_threshhold = base::template hybrid_threshold<key_t>();
+  static constexpr size_t lower_threshhold = base::template hybrid_threshold<key_t>() / 2;
   suffix_t m_size = 0;
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
@@ -283,7 +291,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
   }
 };
 
-template <uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl>
 struct map_bucket_bv : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
@@ -331,7 +339,7 @@ struct map_bucket_bv : bucket_base<b_wordl> {
 };
 
 // This is a bucket that holds an std::vector.
-template <uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl>
 struct map_bucket_list : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
@@ -383,14 +391,14 @@ struct map_bucket_list : bucket_base<b_wordl> {
 
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <uint8_t b_wordl, uint8_t b_lower_threshold = b_wordl/2>
+template <typename key_t, uint8_t b_wordl>
 struct map_bucket_hybrid : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
   using list_t = typename base::list_t;
     
-  static constexpr size_t upper_threshhold = 1ULL << (b_lower_threshold+1);
-  static constexpr size_t lower_threshhold = 1ULL << b_lower_threshold;
+  static constexpr size_t upper_threshhold = base::template hybrid_threshold<key_t>();
+  static constexpr size_t lower_threshhold = base::template hybrid_threshold<key_t>() / 2;
   suffix_t m_size = 0;
   bool m_is_list = true;
   list_t m_list;

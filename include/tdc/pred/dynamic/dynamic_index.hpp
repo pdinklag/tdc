@@ -17,7 +17,7 @@ namespace dynamic {
 
 // TODO: use int_vector so that sampling parameter works
 /// \brief Dynamic predecessor search using universe-based sampling.
-template <template <uint8_t> class t_bucket, uint8_t t_sampling>
+template <typename key_t, template <class, uint8_t> class t_bucket, uint8_t t_sampling>
 class DynIndex {
  private:
   // The bottom part of the data structure is either
@@ -25,7 +25,7 @@ class DynIndex {
   static constexpr size_t b_wordl = t_sampling;
   static constexpr size_t b_max = (1ULL << b_wordl) - 1;
 
-  using bucket = t_bucket<b_wordl>;
+  using bucket = t_bucket<key_t, b_wordl>;
   uint64_t m_size = 0;                                    // number of keys stored
   uint64_t m_min = std::numeric_limits<uint64_t>::max();  // stores the minimal key
   uint64_t m_max = std::numeric_limits<uint64_t>::min();  // stores the maximal key
