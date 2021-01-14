@@ -2,9 +2,11 @@
 
 #include <cassert>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 #include <tdc/math/bit_mask.hpp>
+#include <tdc/util/hybrid_ptr.hpp>
 #include <tdc/vec/fixed_width_int_vector.hpp>
 
 namespace tdc {
@@ -174,38 +176,25 @@ struct bucket_hybrid : bucket_base<b_wordl> {
   
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
-  bucket_hybrid *m_next_b = nullptr;
-  
-  void* m_ptr; // points to a list_t or a bv_t, the least significant bit tells us which  
-  inline bool m_is_list() const { return !((uint64_t)m_ptr & 1); }
-  inline list_t* m_list() { return ((list_t*)m_ptr); }
-  inline bv_t* m_bv() { return ((bv_t*)((uint64_t)m_ptr - 1)); }
-  inline const list_t* m_list() const { return ((const list_t*)m_ptr); }
-  inline const bv_t* m_bv() const { return ((const bv_t*)((uint64_t)m_ptr - 1)); }
+  bucket_hybrid* m_next_b;
+  hybrid_ptr<list_t, bv_t> m_ptr;
 
   suffix_t m_size = 0;
 
   bucket_hybrid(uint64_t prefix, uint64_t prev_pred, bucket_hybrid *next_b, suffix_t suf)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {
 
-    m_ptr = (void*)new list_t(); // start as a list
+    m_ptr = std::make_unique<list_t>(); // start as a list
     set(suf);
   }
 
-  ~bucket_hybrid() {
-    if(m_is_list()) {
-      delete m_list();
-    } else {
-      delete m_bv();
-    }
-  }
   uint64_t get_min() {
     assert(m_size > 0);
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       return (m_prefix << b_wordl) + *std::min_element(std::begin(list), std::end(list));
     } else {
-      auto& bv = *m_bv();
+      auto& bv = *m_ptr.as_second();
       size_t i = 0;
       while (!bv[i]) {
         ++i;
@@ -215,30 +204,30 @@ struct bucket_hybrid : bucket_base<b_wordl> {
   }
 
   void set(const uint64_t suf) {
-    if (m_is_list()) {
-      m_list()->push_back(suf);
+    if (m_ptr.is_first()) {
+      m_ptr.as_first()->push_back(suf);
     } else {
-      (*m_bv())[suf] = true;
+      (*m_ptr.as_second())[suf] = true;
     }
 
     ++m_size;
     if (tdc_likely(m_next_b != nullptr)) {
       m_next_b->m_prev_pred = std::max((m_prefix << b_wordl) + suf, m_next_b->m_prev_pred);
     }
-    if (m_is_list() && (m_size > upper_threshhold)) {
+    if (m_ptr.is_first() && (m_size > upper_threshhold)) {
       rebuild();
     }
   }
 
   void remove(const uint64_t suf) {
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       auto p = std::find(list.begin(), list.end(), suf);
       assert(p != list.end());
       *p = (suffix_t)list.back();
       list.pop_back();
     } else {
-      (*m_bv())[suf] = false;
+      (*m_ptr.as_second())[suf] = false;
     }
 
     --m_size;
@@ -248,7 +237,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
         m_next_b->m_prev_pred = predecessor((m_prefix << b_wordl) + suf);
       }
     }
-    if (!m_is_list() && (m_size < lower_threshhold)) {
+    if (!m_ptr.is_first() && (m_size < lower_threshhold)) {
       rebuild();
     }
   }
@@ -259,8 +248,8 @@ struct bucket_hybrid : bucket_base<b_wordl> {
 
   uint64_t predecessor(int64_t key) const {
     key = base::prefix(key) != m_prefix ? base::SUFFIX_MAX : base::suffix(key);
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       auto p = std::find_if(list.begin(), list.end(), [key](const uint64_t x) { return x <= key; });
       if (p == list.end()) {
         return m_prev_pred;
@@ -273,7 +262,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
       }
       return (m_prefix << b_wordl) + max_pred;
     } else {
-      auto& bv = *m_bv();
+      auto& bv = *m_ptr.as_second();
       for (; key >= 0; --key) {
         if (bv[key]) {
           return (m_prefix << b_wordl) + key;
@@ -285,24 +274,22 @@ struct bucket_hybrid : bucket_base<b_wordl> {
 
   void
   rebuild() {
-    if (m_is_list()) {
+    if (m_ptr.is_first()) {
       m_size = 0;
-      auto plist = m_list();
-      m_ptr = (void*)((uint64_t)new bv_t() | 1); // set the LSB to tell that this is a bit vector
+      auto plist = m_ptr.release_as_first();
+      m_ptr = std::make_unique<bv_t>();
       for (suffix_t key : *plist) {
         set(key);
       }
-      delete plist;
     } else {
-      auto pbv = m_bv();
-      m_ptr = (void*)new list_t(m_size);
+      auto pbv = m_ptr.release_as_second();
+      m_ptr = std::make_unique<list_t>((size_t)m_size);
       m_size = 0;
       for (size_t i = 0; i < base::MAX_NUM; ++i) {
         if ((*pbv)[i]) {
           set(i);
         }
       }
-      delete pbv;
     }
   }
 } __attribute__((__packed__));
@@ -417,21 +404,15 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
   static constexpr size_t upper_threshhold = base::template hybrid_threshold<key_t>();
   static constexpr size_t lower_threshhold = base::template hybrid_threshold<key_t>() / 2;
 
-  void* m_ptr; // points to a list_t or a bv_t, the least significant bit tells us which  
-  inline bool m_is_list() const { return !((uint64_t)m_ptr & 1); }
-  inline list_t* m_list() { return ((list_t*)m_ptr); }
-  inline bv_t* m_bv() { return ((bv_t*)((uint64_t)m_ptr - 1)); }
-  inline const list_t* m_list() const { return ((const list_t*)m_ptr); }
-  inline const bv_t* m_bv() const { return ((const bv_t*)((uint64_t)m_ptr - 1)); }
-
+  hybrid_ptr<list_t, bv_t> m_ptr;
   suffix_t m_size = 0;
 
   map_bucket_hybrid() {
-    m_ptr = (void*)new list_t(); // start as a list
+    m_ptr = std::make_unique<list_t>(); // start as a list
   }
 
   map_bucket_hybrid(suffix_t suf) {
-    m_ptr = (void*)new list_t(); // start as a list
+    m_ptr = std::make_unique<list_t>(); // start as a list
     set(suf);
   }
 
@@ -440,55 +421,44 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
   map_bucket_hybrid& operator=(const map_bucket_hybrid& other) = delete;
   map_bucket_hybrid& operator=(map_bucket_hybrid&& other) = delete;
 
-  ~map_bucket_hybrid() {
-    if(m_ptr) {
-      if(m_is_list()) {
-        delete m_list();
-      } else {
-        delete m_bv();
-      }
-      m_ptr = nullptr;
-    }
-  }
-
   uint64_t get_min() {
     assert(m_size > 0);
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       return *std::min_element(std::begin(list), std::end(list));
     } else {
       size_t suf = 0;
-      while (!(*m_bv())[suf]) {
+      while (!(*m_ptr.as_second())[suf]) {
         ++suf;
       }
       return suf;
     }
   }
   void set(const uint64_t suf) {
-    if (m_is_list()) {
-      m_list()->push_back(suf);
+    if (m_ptr.is_first()) {
+      m_ptr.as_first()->push_back(suf);
     } else {
-      (*m_bv())[suf] = true;
+      (*m_ptr.as_second())[suf] = true;
     }
     ++m_size;
-    if (m_is_list() && (m_size > upper_threshhold)) {
+    if (m_ptr.is_first() && (m_size > upper_threshhold)) {
       rebuild();
     }
   }
 
   void remove(const uint64_t suf) {
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       auto p = std::find(list.begin(), list.end(), suf);
       assert(p != list.end());
       *p = (suffix_t)list.back();
       list.pop_back();
     } else {
-      (*m_bv())[suf] = false;
+      (*m_ptr.as_second())[suf] = false;
     }
 
     --m_size;
-    if (!m_is_list() && (m_size < lower_threshhold)) {
+    if (!m_ptr.is_first() && (m_size < lower_threshhold)) {
       rebuild();
     }
   }
@@ -498,8 +468,8 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
   }
 
   KeyResult<uint64_t> predecessor(int64_t suf) const {
-    if (m_is_list()) {
-      auto& list = *m_list();
+    if (m_ptr.is_first()) {
+      auto& list = *m_ptr.as_first();
       auto p = std::find_if(list.begin(), list.end(), [suf](const uint64_t x) { return x <= suf; });
       if (p == list.end()) {
         return {false, 0};
@@ -512,7 +482,7 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
       }
       return {true, max_pred};
     } else {
-      auto& bv = *m_bv();
+      auto& bv = *m_ptr.as_second();
       for (; suf >= 0; --suf) {
         if (bv[suf]) {
           return {true, static_cast<uint64_t>(suf)};
@@ -523,24 +493,22 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
   }
 
   void rebuild() {
-    if (m_is_list()) {
+    if (m_ptr.is_first()) {
       m_size = 0;
-      auto plist = m_list();
-      m_ptr = (void*)((uint64_t)new bv_t() | 1); // set the LSB to tell that this is a bit vector
+      auto plist = m_ptr.release_as_first();
+      m_ptr = std::make_unique<bv_t>();
       for (suffix_t key : *plist) {
         set(key);
       }
-      delete plist;
     } else {
-      auto pbv = m_bv();
-      m_ptr = (void*)new list_t(m_size);
+      auto pbv = m_ptr.release_as_second();
+      m_ptr = std::make_unique<list_t>((size_t)m_size);
       m_size = 0;
       for (size_t i = 0; i < base::MAX_NUM; ++i) {
         if ((*pbv)[i]) {
           set(i);
         }
       }
-      delete pbv;
     }
   }
 } __attribute__((__packed__));
