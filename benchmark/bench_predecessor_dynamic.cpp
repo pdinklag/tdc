@@ -22,7 +22,6 @@
 #include <tdc/pred/dynamic/dynamic_pred_bv.hpp>
 #include <tdc/pred/dynamic/dynamic_rankselect.hpp>
 #include <tdc/pred/dynamic/yfast.hpp>
-#include <tdc/pred/dynamic/yfast_sorted_list.hpp>
 
 #include <tdc/pred/dynamic/tiny_universe/unsorted_list.hpp>
 #include <tdc/pred/dynamic/tiny_universe/sorted_list.hpp>
@@ -500,56 +499,57 @@ template<typename key_t>
 void benchmark_large_universe() {
     benchmark_arbitrary_universe<key_t>();
     bench<key_t>("yfast_trie-06",
-        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 6>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket<key_t, 6>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie-07",
-        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 7>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket<key_t, 7>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie-08",
-        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 8>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket<key_t, 8>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie-09",
-        [](const key_t){ return pred::dynamic::YFastTrie<key_t, std::numeric_limits<key_t>::digits, 9>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket<key_t, 9>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
+    
     bench<key_t>("yfast_trie_sl-06",
-        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 6>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket_sl<key_t, 6>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie_sl-07",
-        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 7>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket_sl<key_t, 7>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie_sl-08",
-        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 8>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket_sl<key_t, 8>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
     bench<key_t>("yfast_trie_sl-09",
-        [](const key_t){ return pred::dynamic::YFastTrieSL<key_t, std::numeric_limits<key_t>::digits, 9>(); },
+        [](const key_t){ return pred::dynamic::YFastTrie<pred::dynamic::yfast_bucket_sl<key_t, 9>, std::numeric_limits<key_t>::digits>(); },
         [](const auto& ds){ return ds.size(); },
         [](auto& ds, const key_t x){ ds.insert((uint64_t)x); },
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
