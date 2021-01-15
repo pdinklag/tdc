@@ -5,6 +5,7 @@
 #include <memory>
 #include <type_traits>
 
+#include <tdc/pred/binary_search.hpp>
 #include <tdc/math/bit_mask.hpp>
 #include <tdc/util/hybrid_ptr.hpp>
 #include <tdc/vec/fixed_width_int_vector.hpp>
@@ -16,6 +17,9 @@ namespace dynamic {
 template<uint8_t b_wordl>
 struct bucket_base {
     static_assert(b_wordl <= 32, "bucket sizes beyond 2^32 not supported");
+    
+    static constexpr uint8_t suffix_bits = b_wordl;
+    
     using suffix_t = typename std::conditional<b_wordl <= 16, uint16_t, uint32_t>::type;
     using list_t = typename tdc::vec::FixedWidthIntVector<b_wordl>::builder_type;
     
@@ -29,13 +33,6 @@ struct bucket_base {
     inline static constexpr uint64_t suffix(uint64_t i) {
         return i & SUFFIX_MAX;
     }
-
-    template<typename key_t>
-    inline static constexpr size_t hybrid_threshold() {
-        // in the hybrid data structures, we want to use an unsorted list when it is smaller than a bit vector of length 2^t
-        // this is the case while b'*(lg u) < 2^t <=> b' < 2^t / (lg u)
-        return MAX_NUM / std::numeric_limits<key_t>::digits;
-    }
 };
 
 // This is a bucket that holds a bit vector.
@@ -44,11 +41,11 @@ struct bucket_bv : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
     
-  suffix_t m_size = 0;
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
   bucket_bv *m_next_b = nullptr;  // next bucket
   std::bitset<base::MAX_NUM> m_bits;
+  suffix_t m_size = 0;
 
   bucket_bv(uint64_t prefix, uint64_t prev_pred, bucket_bv *next_b, uint64_t suf)
       : m_prefix(prefix), m_prev_pred(prev_pred), m_next_b(next_b) {
@@ -164,15 +161,14 @@ struct bucket_list : bucket_base<b_wordl> {
 
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <typename key_t, uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl, size_t upper_threshold = 1ULL << 9>
 struct bucket_hybrid : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
   using list_t = typename base::list_t;
   using bv_t = std::bitset<base::MAX_NUM>;
-    
-  static constexpr size_t upper_threshhold = base::template hybrid_threshold<key_t>();
-  static constexpr size_t lower_threshhold = base::template hybrid_threshold<key_t>() / 2;
+  
+  static constexpr size_t lower_threshold = upper_threshold / 2;
   
   const uint64_t m_prefix;
   uint64_t m_prev_pred = 0;
@@ -214,7 +210,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
     if (tdc_likely(m_next_b != nullptr)) {
       m_next_b->m_prev_pred = std::max((m_prefix << b_wordl) + suf, m_next_b->m_prev_pred);
     }
-    if (m_ptr.is_first() && (m_size > upper_threshhold)) {
+    if (m_ptr.is_first() && (m_size >= upper_threshold)) {
       rebuild();
     }
   }
@@ -237,7 +233,7 @@ struct bucket_hybrid : bucket_base<b_wordl> {
         m_next_b->m_prev_pred = predecessor((m_prefix << b_wordl) + suf);
       }
     }
-    if (!m_ptr.is_first() && (m_size < lower_threshhold)) {
+    if (!m_ptr.is_first() && (m_size < lower_threshold)) {
       rebuild();
     }
   }
@@ -299,31 +295,42 @@ struct map_bucket_bv : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
     
+  std::bitset<base::MAX_NUM>* m_bits;
   suffix_t m_size = 0;
-  std::bitset<base::MAX_NUM> m_bits;
 
   map_bucket_bv() {
+    m_bits = new std::bitset<base::MAX_NUM>();
   }
 
   map_bucket_bv(uint64_t suf) {
+    m_bits = new std::bitset<base::MAX_NUM>();
     set(suf);
   }
+  
+  ~map_bucket_bv() {
+    delete m_bits;
+  }
+  
+  map_bucket_bv(const map_bucket_bv&) = delete;
+  map_bucket_bv(map_bucket_bv&&) = delete;
+  map_bucket_bv& operator=(const map_bucket_bv&) = delete;
+  map_bucket_bv& operator=(map_bucket_bv&&) = delete;
 
   uint64_t get_min() {
     assert(m_size > 0);
     size_t suf = 0;
-    while (!m_bits[suf]) {
+    while (!(*m_bits)[suf]) {
       ++suf;
     }
     return suf;
   }
   void set(const uint64_t suf) {
-    m_bits[suf] = true;
+    (*m_bits)[suf] = true;
     ++m_size;
   }
 
   void remove(uint64_t suf) {
-    m_bits[suf] = false;
+    (*m_bits)[suf] = false;
     --m_size;
   }
 
@@ -333,13 +340,13 @@ struct map_bucket_bv : bucket_base<b_wordl> {
 
   KeyResult<uint64_t> predecessor(int64_t suf) const {
     for (; suf >= 0; --suf) {
-      if (m_bits[suf]) {
+      if ((*m_bits)[suf]) {
         return {true, static_cast<uint64_t>(suf)};
       }
     }
     return {false, 0};
   }
-};
+} __attribute__((__packed__));
 
 // This is a bucket that holds an std::vector.
 template <typename key_t, uint8_t b_wordl>
@@ -356,6 +363,11 @@ struct map_bucket_list : bucket_base<b_wordl> {
   map_bucket_list(uint64_t suf) {
     set(suf);
   }
+  
+  map_bucket_list(const map_bucket_list&) = delete;
+  map_bucket_list(map_bucket_list&&) = delete;
+  map_bucket_list& operator=(const map_bucket_list&) = delete;
+  map_bucket_list& operator=(map_bucket_list&&) = delete;
 
   uint64_t get_min() {
     assert(m_list.size() > 0);
@@ -392,17 +404,85 @@ struct map_bucket_list : bucket_base<b_wordl> {
   }
 };
 
+// This is a bucket that holds a sorted std::vector.
+template <typename key_t, uint8_t b_wordl>
+struct map_bucket_slist : bucket_base<b_wordl> {
+  using base = bucket_base<b_wordl>;
+  using suffix_t = typename base::suffix_t;
+  using list_t = typename base::list_t;
+
+  list_t m_list;
+
+  map_bucket_slist() {
+  }
+
+  map_bucket_slist(uint64_t suf) {
+    set(suf);
+  }
+  
+  map_bucket_slist(const map_bucket_slist&) = delete;
+  map_bucket_slist(map_bucket_slist&&) = delete;
+  map_bucket_slist& operator=(const map_bucket_slist&) = delete;
+  map_bucket_slist& operator=(map_bucket_slist&&) = delete;
+
+  uint64_t get_min() {
+    assert(m_list.size() > 0);
+    return m_list[0];
+  }
+
+  void set(uint64_t suf) {
+    const auto sz = size();
+    if(sz > 0) {
+        // find rank
+        auto rank = BinarySearch<suffix_t>::predecessor(m_list, sz, suf);
+        const size_t insert_pos = rank.exists ? rank.pos + 1 : 0;
+        
+        // insert
+        m_list.push_back((suffix_t)m_list.back()); // duplicate largest
+        for(size_t i = sz - 1; i > insert_pos; i--) {
+            m_list[i] = (suffix_t)m_list[i-1];
+        }
+        m_list[insert_pos] = suf;
+    } else {
+        m_list.push_back(suf);
+    }
+  }
+
+  void remove(uint64_t suf) {
+    auto pred = BinarySearch<suffix_t>::predecessor(m_list, size(), suf);
+    assert(pred.exists);
+    assert(m_list[pred.pos] == suf);
+    
+    for(size_t i = pred.pos; i < size() - 1; i++) {
+        m_list[i] = (suffix_t)m_list[i + 1];
+    }
+    m_list.pop_back();
+  }
+
+  size_t size() const {
+    return m_list.size();
+  }
+
+  KeyResult<uint64_t> predecessor(int64_t suf) const {
+    auto pred = BinarySearch<suffix_t>::predecessor(m_list, size(), suf);
+    if(pred.exists) {
+        return {true, m_list[pred.pos]};
+    } else {
+        return {false, 0};
+    }
+  }
+};
+
 // This is a bucket that either holds an std::vector or a bit_vector depending
 // on fill rate
-template <typename key_t, uint8_t b_wordl>
+template <typename key_t, uint8_t b_wordl, size_t upper_threshold = 1ULL << 9>
 struct map_bucket_hybrid : bucket_base<b_wordl> {
   using base = bucket_base<b_wordl>;
   using suffix_t = typename base::suffix_t;
   using list_t = typename base::list_t;
   using bv_t = std::bitset<base::MAX_NUM>;
     
-  static constexpr size_t upper_threshhold = base::template hybrid_threshold<key_t>();
-  static constexpr size_t lower_threshhold = base::template hybrid_threshold<key_t>() / 2;
+  static constexpr size_t lower_threshold = upper_threshold / 2;
 
   hybrid_ptr<list_t, bv_t> m_ptr;
   suffix_t m_size = 0;
@@ -441,7 +521,7 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
       (*m_ptr.as_second())[suf] = true;
     }
     ++m_size;
-    if (m_ptr.is_first() && (m_size > upper_threshhold)) {
+    if (m_ptr.is_first() && (m_size >= upper_threshold)) {
       rebuild();
     }
   }
@@ -458,7 +538,7 @@ struct map_bucket_hybrid : bucket_base<b_wordl> {
     }
 
     --m_size;
-    if (!m_ptr.is_first() && (m_size < lower_threshhold)) {
+    if (!m_ptr.is_first() && (m_size < lower_threshold)) {
       rebuild();
     }
   }
