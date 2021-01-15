@@ -12,8 +12,6 @@ private:
     size_t m_full_octree_size_ub;
     size_t m_cut_levels;
     size_t m_search_interval;
-    
-    BinarySearchHybrid m_search;
 
 public:
     /// \brief Constructs an empty octrie.

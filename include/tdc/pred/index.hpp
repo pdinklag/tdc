@@ -26,7 +26,6 @@ private:
     uint64_t m_key_min, m_key_max;
 
     vec::IntVector m_hi_idx;
-    BinarySearchHybrid m_lo_pred;
     
 public:
     inline Index() : m_lo_bits(0), m_min(0), m_max(UINT64_MAX), m_key_min(0), m_key_max(UINT64_MAX) {

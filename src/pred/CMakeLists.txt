@@ -1,6 +1,4 @@
 add_library(tdc-pred
-    binary_search.cpp
-    binary_search_hybrid.cpp
     fusion_node.cpp
     fusion_node_internals.cpp
     index.cpp

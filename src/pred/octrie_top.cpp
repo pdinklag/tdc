@@ -13,7 +13,6 @@ OctrieTop::OctrieTop(const uint64_t* keys, const size_t num, const size_t cut_le
     m_cut_levels = cut_levels;
     m_full_octree_size_ub = octree_size(m_full_octree_height);
     m_search_interval = eight_to_the(cut_levels);
-    m_search = BinarySearchHybrid(keys, num);
 }
 
 PosResult OctrieTop::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
@@ -31,5 +30,5 @@ PosResult OctrieTop::predecessor(const uint64_t* keys, const size_t num, const u
     
     const size_t p = node - m_full_octree_size_ub;
     const size_t q = std::min(p + m_search_interval, num);
-    return m_search.predecessor_seeded(keys, p, q, x);
+    return BinarySearchHybrid<uint64_t>::predecessor_seeded(keys, p, q, x);
 }

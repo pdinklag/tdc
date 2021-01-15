@@ -117,8 +117,8 @@ int main(int argc, char** argv) {
     options.queries = random::vector_range<uint64_t>(options.num_queries, options.data[0], options.data[options.num - 1] - 1, options.seed);
     
     // benchmark
-    bench("BinarySearch", [](const std::vector<uint64_t>& data){ return pred::BinarySearch(data.data(), data.size()); });
-    bench("BinarySearchHybrid", [](const std::vector<uint64_t>& data){ return pred::BinarySearchHybrid(data.data(), data.size()); });
+    bench("BinarySearch", [](const std::vector<uint64_t>& data){ return pred::BinarySearch<uint64_t>{}; });
+    bench("BinarySearchHybrid", [](const std::vector<uint64_t>& data){ return pred::BinarySearchHybrid<uint64_t>{}; });
     bench("Octrie", [](const std::vector<uint64_t>& data){ return pred::Octrie(data.data(), data.size()); });
     bench("OctrieTop(2)", [](const std::vector<uint64_t>& data){ return pred::OctrieTop(data.data(), data.size(), 2); });
     bench("OctrieTop(3)", [](const std::vector<uint64_t>& data){ return pred::OctrieTop(data.data(), data.size(), 3); });

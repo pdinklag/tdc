@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/util/likely.hpp>
 
@@ -43,31 +44,12 @@ public:
     /// \brief Finds the rank of the predecessor of the specified key in the node.
     /// \param x the key in question
     PosResult predecessor(const key_t x) const {
-        if(tdc_unlikely(x < m_keys[0]))  return { false, 0 };
-        if(tdc_unlikely(x >= m_keys[m_size-1])) return { true, m_size - 1ULL };
-        
         if constexpr(m_binary_search) {
-            size_t p = 0;
-            size_t q = m_size - 1;
-            while(p < q - 1) {
-                assert(x >= m_keys[p]);
-                assert(x < m_keys[q]);
-
-                const size_t m = (p + q) >> 1ULL;
-                const bool le = (m_keys[m] <= x);
-                
-                /*
-                    the following is a fast form of:
-                    if(le) p = m; else q = m;
-                */
-                const size_t le_mask = -size_t(le);
-                const size_t gt_mask = ~le_mask;
-
-                p = (le_mask & m) | (gt_mask & p);
-                q = (gt_mask & m) | (le_mask & q);
-            }
-            return { true, p };
+            return BinarySearch<key_t>::predecessor(m_keys, m_size, x);
         } else {
+            if(tdc_unlikely(x < m_keys[0]))  return { false, 0 };
+            if(tdc_unlikely(x >= m_keys[m_size-1])) return { true, m_size - 1ULL };
+            
             size_t i = 1;
             while(m_keys[i] <= x) ++i;
             return { true, i-1 };

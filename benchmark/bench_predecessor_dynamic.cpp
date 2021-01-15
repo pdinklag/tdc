@@ -126,7 +126,6 @@ struct {
     
     bool check;
     std::vector<uint64_t> data; // only used if check == true
-    pred::BinarySearch data_pred;
 } options;
 
 stat::Phase benchmark_phase(std::string&& title) {
@@ -249,7 +248,7 @@ void bench(
                     assert(r.exists);
                     
                     // make sure that the result equals that of a simple binary search on the input
-                    auto correct_result = options.data_pred.predecessor(options.data.data(), options.num + 1, x);
+                    auto correct_result = pred::BinarySearch<uint64_t>::predecessor(options.data.data(), options.num + 1, x);
                     assert(correct_result.exists);
                     if(r.key == options.data[correct_result.pos]) {
                         // OK
@@ -781,7 +780,6 @@ int main(int argc, char** argv) {
 
             // prepare verification
             std::sort(options.data.begin(), options.data.end());
-            options.data_pred = pred::BinarySearch(options.data.data(), options.num + 1);
         }
         
         options.perm_queries = random::Permutation(u, options.seed ^ 0x1234ABCD);

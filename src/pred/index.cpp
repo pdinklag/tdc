@@ -50,9 +50,6 @@ Index::Index(const uint64_t* keys, const size_t num, const size_t lo_bits) : m_l
         // std::cout << m_hi_idx[h - m_key_min] << ' ';
     // }
     // std::cout << std::endl;
-
-    // build the predecessor data structure for low bits
-    m_lo_pred = BinarySearchHybrid(keys, num);
 }
 
 PosResult Index::predecessor(const uint64_t* keys, const size_t num, const uint64_t x) const {
@@ -67,6 +64,6 @@ PosResult Index::predecessor(const uint64_t* keys, const size_t num, const uint6
         return PosResult { true, q };
     } else {
         const size_t p = m_hi_idx[key];
-        return m_lo_pred.predecessor_seeded(keys, p, q, x);
+        return BinarySearchHybrid<uint64_t>::predecessor_seeded(keys, p, q, x);
     }
 }
