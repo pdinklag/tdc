@@ -17,6 +17,30 @@ namespace dynamic {
 template <typename key_t, uint8_t t_sampling, typename bucket>
 class DynIndexMap {
  private:
+  // for large universes, the hashmap may become pretty full
+  // this is a replacement for robin_hood::hash as suggested in https://github.com/martinus/robin-hood-hashing/issues/21
+  // because the original hashing function caused overflows
+  template <typename T>
+  struct hash : public std::hash<T> {
+    inline static size_t hash_int(uint64_t obj) noexcept {
+        // murmurhash 3 finalizer
+        uint64_t h = obj;
+        h ^= h >> 33;
+        h *= 0xff51afd7ed558ccd;
+        h ^= h >> 33;
+        h *= 0xc4ceb9fe1a85ec53;
+        h ^= h >> 33;
+        return static_cast<size_t>(h);
+    }
+
+    size_t operator()(T const& obj) const noexcept(noexcept(std::declval<std::hash<T>>().operator()(std::declval<T const&>()))) {
+      // call base hash
+      auto result = std::hash<T>::operator()(obj);
+      // return mixed of that, to be save against identity has
+      return hash_int(static_cast<robin_hood::detail::SizeT>(result));
+    }
+  };
+
   static_assert(t_sampling <= 32);
 
   // The bottom part of the data structure is either
@@ -27,7 +51,8 @@ class DynIndexMap {
   uint64_t m_min = std::numeric_limits<uint64_t>::max();  // stores the minimal key
   uint64_t m_max = std::numeric_limits<uint64_t>::min();  // stores the maximal key
 
-  robin_hood::unordered_map<uint32_t, bucket> m_map;
+  using hashmap_t = robin_hood::unordered_map<uint32_t, bucket, hash<uint32_t>>;
+  hashmap_t m_map;
 
   // return the x_wordl more significant bits of i
   inline uint64_t prefix(uint64_t i) const { return i >> b_wordl; }
@@ -76,7 +101,7 @@ class DynIndexMap {
     if (m_size == 0) {
       m_min = std::numeric_limits<uint64_t>::max();
       m_max = std::numeric_limits<uint64_t>::min();
-      robin_hood::unordered_map<uint32_t, bucket>().swap(m_map);
+      hashmap_t().swap(m_map);
       return;
     }
 
