@@ -551,8 +551,6 @@ void benchmark_large_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
-    //TODO: burst trie does not work with uint40_t yet
-    if constexpr (sizeof(key_t) == 4 || sizeof(key_t) == 8) {
     bench<key_t>("burst_trie",
         [](const key_t){ return LPCBTrieWrapper<key_t>(); },
         [](const auto& trie){ return trie.size(); },
@@ -560,7 +558,6 @@ void benchmark_large_universe() {
         [](const auto& trie, const key_t x){ return trie.pred(x); },
         [](auto& trie, const key_t x){ trie.remove(x); }
     );
-    }
 }
 
 template<typename key_t>
