@@ -83,6 +83,11 @@
     #include <veb/STree_orig.h>
 #endif
 
+#if defined(INTEGERSTRUCTURES_FOUND)
+    #define BENCH_INTEGERSTRUCTURES
+    #include <btrie/lpcbtrie.h>
+#endif
+
 using namespace tdc;
 
 constexpr size_t OPS_READ_BUFSIZE = 64_Mi;
@@ -802,4 +807,3 @@ int main(int argc, char** argv) {
     
     return 0;
 }
-    

@@ -26,10 +26,7 @@ if(LEDA_FOUND AND STREE_FOUND)
     target_include_directories(bench_predecessor_dynamic PUBLIC ${LEDA_INCLUDE_DIRS} ${STREE_INCLUDE_DIRS})
     target_link_libraries(bench_predecessor_dynamic ${LEDA_LIBRARIES})
 endif()
-
-if(INTEGERSTRUCTURES_FOUND)
-    target_include_directories(bench_predecessor_dynamic PUBLIC ${INTEGERSTRUCTURES_INCLUDE_DIRS})
-endif()
-
+target_include_directories(bench_predecessor_dynamic PUBLIC ${TDC_EXTLIB_SOURCE_DIR}/integer-structures)
+    
 add_executable(bench_sorted_sequence bench_sorted_sequence.cpp)
 target_link_libraries(bench_sorted_sequence tlx tdc-stat tdc-random tdc-math tdc-vec)
