@@ -10,3 +10,6 @@
 [submodule "extlib/ips4o"]
 	path = extlib/ips4o
 	url = https://github.com/ips4o/ips4o
+[submodule "extlib/integer-structures"]
+	path = extlib/integer-structures
+	url = https://github.com/herlez/integer-structures

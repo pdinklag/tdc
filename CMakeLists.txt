@@ -42,9 +42,9 @@ include_directories(${TDC_EXTLIB_SOURCE_DIR}/json/single_include)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/robin-hood-hashing/src/include)
 add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
+include_directories(${TDC_EXTLIB_SOURCE_DIR}/integer-structures)
 
 # find optional packages
-find_package(IntegerStructures)
 find_package(MPFR)
 find_package(LEDA)
 find_package(Plads)

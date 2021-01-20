@@ -35,10 +35,7 @@
 
 #include <tlx/cmdline_parser.hpp>
 
-#ifdef INTEGERSTRUCTURES_FOUND
-    #define BENCH_BURST
     #include <btrie/lpcbtrie.h>
-    
     // wrapper around lpcbtrie
     // - adds a size field
     // - implements predecessor rather than successor by negating keys
@@ -80,7 +77,6 @@
             return m_size;
         }
     };
-#endif
 
 #if defined(LEDA_FOUND) && defined(STREE_FOUND)
     #define BENCH_STREE
@@ -555,8 +551,6 @@ void benchmark_large_universe() {
         [](const auto& ds, const key_t x){ return ds.predecessor((uint64_t)x); },
         [](auto& ds, const key_t x){ ds.remove((uint64_t)x); }
     );
-#ifdef BENCH_BURST
-    /*
     bench<key_t>("burst_trie",
         [](const key_t){ return LPCBTrieWrapper<key_t>(); },
         [](const auto& trie){ return trie.size(); },
@@ -564,14 +558,11 @@ void benchmark_large_universe() {
         [](const auto& trie, const key_t x){ return trie.pred(x); },
         [](auto& trie, const key_t x){ trie.remove(x); }
     );
-    */
-#endif
 }
 
 template<typename key_t>
 void benchmark_medium_universe() {
     benchmark_large_universe<key_t>();
-
     bench<key_t>("index_list_10",
         [](const key_t){ return pred::dynamic::DynIndex<key_t, 10, tdc::pred::dynamic::bucket_list<key_t, 10>>(); },
         [](const auto& ds){ return ds.size(); },

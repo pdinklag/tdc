@@ -16,9 +16,9 @@ class yfast_bucket_sl;
 // These updated to the xfast_trie are then applied.
 template <typename t_bucket>
 struct xfast_update {
-  uint64_t repr_to_remove = 0;           // The representants that have be removed from the xfast_trie.
-  t_bucket* repr_to_insert = nullptr;    // The representants that have be inserted into the xfast_trie.
-  t_bucket* bucket_to_delete = nullptr;  // The buckets that have to be deleted.
+  uint64_t repr_to_remove = 0;           // The representant that has be removed from the xfast_trie.
+  t_bucket* repr_to_insert = nullptr;    // The representant that has be inserted into the xfast_trie.
+  t_bucket* bucket_to_delete = nullptr;  // The bucket that has to be deleted.
 };
 
 // The bottom part of the yfast_trie consists of yfast_buckets. A bucket stores a pointer to the next smaller and next greater bucket.
