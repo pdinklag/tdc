@@ -1,6 +1,6 @@
 # Engineering Predecessor Data Structures for Dynamic Integer Sets
 
-This is the supplementary code repository for our SEA 2021 submission entitled *Engineering Predecessor Data Structures for Dynamic Integer Sets*. It contains the source code for our dynamic predecessor data structures that are the fastest and most memory efficient, in our experiments.
+This is the supplementary code repository for our SEA 2021 submission entitled *Engineering Predecessor Data Structures for Dynamic Integer Sets*. It contains the source code for our dynamic predecessor data structures that are the fastest and most memory efficient in our experiments.
 
 Note that the repository is a stripped down version of a repository containing many other experimental data structures. For this reason, there may be code left that is not actually used in the context of our dynamic predecessor data structures.
 
