@@ -1,9 +1,6 @@
 add_library(tdc-pred
     fusion_node.cpp
     fusion_node_internals.cpp
-    index.cpp
-    octrie.cpp
-    octrie_top.cpp
     dynamic/dynamic_fusion_node.cpp
     dynamic/btree.cpp
     dynamic/dynamic_rankselect.cpp)

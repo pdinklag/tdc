@@ -4,17 +4,12 @@
 #include <set>
 #include <vector>
 
-#include <ips4o.hpp>
-
-#include <tdc/io/mmap_file.hpp>
 #include <tdc/math/ilog2.hpp>
 #include <tdc/random/permutation.hpp>
 #include <tdc/random/vector.hpp>
 #include <tdc/stat/phase.hpp>
 #include <tdc/stat/time.hpp>
-#include <tdc/rapl/rapl_phase_extension.hpp>
 #include <tdc/uint/uint40.hpp>
-#include <tdc/uint/uint256.hpp>
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/dynamic/dynamic_index.hpp>
@@ -95,7 +90,7 @@ constexpr size_t OPS_READ_BUFSIZE = 64_Mi;
 struct {
     size_t num = 1_M;
     uint64_t universe = 0;
-    size_t num_queries = 1_M;
+    size_t num_queries = 10_M;
     uint64_t seed = random::DEFAULT_SEED;
     
     std::string ds; // if non-empty, only benchmarks the selected data structure
@@ -492,7 +487,6 @@ void benchmark_arbitrary_universe() {
 
     if(options.do_sort()) {
         bench_sort<key_t>("std_sort", [](std::vector<key_t>& v){ std::sort(v.begin(), v.end()); });
-        bench_sort<key_t>("ips4o", [](std::vector<key_t>& v){ ips4o::sort(v.begin(), v.end()); });
     }
 }
 
@@ -696,19 +690,13 @@ const std::string MODE_OPS = "ops";
 const std::string MODE_SORT = "sort";
 
 int main(int argc, char** argv) {
-#ifdef TDC_RAPL_AVAILABLE
-    // stat::Phase::register_extension<rapl::RAPLPhaseExtension>();
-#endif
-
     std::string mode;
     tlx::CmdlineParser cp_mode;
     cp_mode.add_param_string("mode", mode, "The benchmark mode (basic, ops, sort)");
-    if(argc < 2) {
-        cp_mode.print_usage();
+    if(!cp_mode.process(std::min(argc, 2), argv)) {
         return -1;
     }
 
-    mode = argv[1];
     if(mode != MODE_BASIC && mode != MODE_OPS && mode != MODE_SORT) {
         cp_mode.print_usage();
         return -1;
@@ -721,12 +709,12 @@ int main(int argc, char** argv) {
         cp.add_param_string("ops", options.ops_filename, "The file containing the operation sequence to benchmark, if any.");
     } else {
         cp.add_bytes('n', "num", options.num, "The length of the sequence (default: 1M).");
-        cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (default: 2x num)");
+        cp.add_bytes('u', "universe", options.universe, "The base-2 logarithm of the universe to draw from (REQUIRED)");
         cp.add_bytes('s', "seed", options.seed, "The random seed.");
         
         if(mode == MODE_BASIC) {
             // basic
-            cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 1M).");
+            cp.add_bytes('q', "queries", options.num_queries, "The number to draw from the universe (default: 10M).");
             cp.add_flag("check", options.check, "Check results for correctness.");
         } else {
             // sort

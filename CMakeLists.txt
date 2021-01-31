@@ -44,10 +44,7 @@ add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 
 # find optional packages
-find_package(MPFR)
 find_package(LEDA)
-find_package(Plads)
-find_package(Powercap)
 find_package(STree)
 
 # include
@@ -58,5 +55,3 @@ add_subdirectory(benchmark)
 add_subdirectory(docs)
 add_subdirectory(examples)
 add_subdirectory(src)
-add_subdirectory(test)
-add_subdirectory(tools)
