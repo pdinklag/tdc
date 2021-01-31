@@ -4,6 +4,8 @@ This is the supplementary code repository for our SEA 2021 submission entitled *
 
 Note that the repository is a stripped down version of a repository containing many other experimental data structures. For this reason, there may be code left that is not actually used in the context of our dynamic predecessor data structures.
 
+The main source code for our data structures is contained in the `include/tdc/pred` directory.
+
 ## Building
 
 This is a CMake project that should be built using a compiler supporting C++17 or later as well as the `__uint128_t` type. We used GCC version 9.3 with the highest optimization (`-O3`). In order to activate optimizations, make sure to build the project with the `Release` CMake build type.
@@ -34,11 +36,19 @@ The only exception is the stratisfied tree (STree) by Dementiev et al. It was re
 
 The [URL stated in their paper](http://www.mpi-sb.mpg.de/~kettner/proj/veb/) appears to be dead by now, so we offer to provide a copy in direct contact.
 
-## Experiments
+## Results
 
-The experiments for our paper have been conducted as follows.
+The raw results of our experiment are contained in the file `results/pred_dynamic.txt`.
 
-### Reproduction
+The output is in a format that can be processed by Bingmann's [sqlplot-tools](https://github.com/bingmann/sqlplot-tools), but is also human readable. In our paper, we refer to the following fields:
+
+* `algo` - the data structure in question.
+* `time_insert` - the runtime in milliseconds for inserting *n* keys.
+* `time_predecessor_rnd` - the runtime in milliseconds for performing `q` random predecessor queries.
+* `time_delete` - the runtime in milliseconds for deleting the *n* keys.
+* `memData` - the heap size of the data structure, in bytes,  after inserting `n` keys.
+
+## Reproducing Experiments
 
 After building the project, the `bench_predecessor_dynamic` executable can be used to run our benchmarks. There are several modes of which we only used the `basic` mode for our experiments, which  corresponds to the three-step experiments described in the *Methodology* section of our paper.
 
@@ -49,13 +59,6 @@ The following command line runs the experiment for all data structures for 2^20 
 ```
 
 Passing `--help` following `basic` will list the available parameters.
-
-The output is in a format that can be processed by Bingmann's [sqlplot-tools](https://github.com/bingmann/sqlplot-tools), but is also human readable. For our paper, we refer to the following output fields:
-
-* `time_insert` - the runtime in milliseconds for inserting *n* keys.
-* `time_predecessor_rnd` - the runtime in milliseconds for performing `q` random predecessor queries.
-* `time_delete` - the runtime in milliseconds for deleting the *n* keys.
-* `memData` - the heap size of the data structure, in bytes,  after inserting `n` keys.
 
 #### Random Seeds
 
