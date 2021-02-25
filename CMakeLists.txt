@@ -11,16 +11,21 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules")
 set(TDC_EXTLIB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extlib")
 set(TDC_EXTLIB_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/extlib")
 
+# compiler
+set(GCC_MIN_VERSION "10.1")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS GCC_MIN_VERSION)
+        message(FATAL_ERROR "GCC version must be at least ${GCC_MIN_VERSION}!")
+    else()
+        message(STATUS "Using GCC version ${CMAKE_CXX_COMPILER_VERSION}")
+    endif()
+endif()
+
 # build flags
-set(CXX_STANDARD c++17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=gnu++17 ${GCC_WARNINGS}")
+set(CXX_STANDARD c++20)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -std=gnu++20 ${GCC_WARNINGS}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -ggdb")
-
-# proper std::filesystem linking for broken g++8
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    link_libraries(stdc++fs)
-endif()
 
 # build type
 if(NOT CMAKE_BUILD_TYPE)
