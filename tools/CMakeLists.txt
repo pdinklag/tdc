@@ -5,3 +5,6 @@ endif()
 
 add_executable(permutation permutation.cpp)
 target_link_libraries(permutation tlx tdc-random tdc-math)
+
+add_executable(primes primes.cpp)
+target_link_libraries(primes tlx tdc-math)
