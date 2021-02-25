@@ -4,20 +4,28 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <type_traits>
 #include <limits>
+#include <type_traits>
 
 #include <tdc/pred/result.hpp>
+#include <tdc/util/concepts.hpp>
 
 namespace tdc {
 namespace pred {
 namespace dynamic {
 
+template<typename T, typename key_t>
+concept BTreeNodeImpl = SizedIndexAccessTo<T, key_t> && requires(T node, key_t key) {
+    { node.predecessor(key) } -> std::same_as<PosResult>;
+    { node.insert(key) };
+    { node.remove(key) } -> std::same_as<bool>;
+};
+
 /// \brief A B-Tree.
 /// \tparam key_t the key type
 /// \tparam degree the maximum number of children per node
 /// \tparam node_impl_t node implementation; must be sorted and support array access, size, insert, remove and predecessor
-template<typename key_t, size_t m_degree, typename node_impl_t>
+template<std::totally_ordered key_t, size_t m_degree, BTreeNodeImpl<key_t> node_impl_t>
 class BTree {
 private:
     static_assert((m_degree % 2) == 1); // we only allow odd maximum degrees for the sake of implementation simplicity

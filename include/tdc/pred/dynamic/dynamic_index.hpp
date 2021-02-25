@@ -8,6 +8,7 @@
 #include <tdc/pred/dynamic/buckets/buckets.hpp>
 #include <tdc/pred/result.hpp>
 #include <tdc/util/assert.hpp>
+#include <tdc/util/concepts.hpp>
 #include <tdc/vec/int_vector.hpp>
 #include <vector>
 
@@ -17,7 +18,7 @@ namespace dynamic {
 
 // TODO: use int_vector so that sampling parameter works
 /// \brief Dynamic predecessor search using universe-based sampling.
-template <typename key_t, uint8_t t_sampling, typename bucket>
+template <std::totally_ordered key_t, uint8_t t_sampling, typename bucket>
 class DynIndex {
  private:
   // The bottom part of the data structure is either
@@ -40,15 +41,6 @@ class DynIndex {
 
  public:
   inline DynIndex() {}
-
-  /// \brief Constructs the index for the given keys.
-  /// \param keys a pointer to the keys, that must be in ascending order
-  /// \param num the number of keys
-  DynIndex(const uint64_t *keys, const size_t num) {
-    for (size_t i = 0; i < num; ++i) {
-      insert(keys[i]);
-    }
-  }
 
   ~DynIndex() {
     bucket *cur = m_first_b;

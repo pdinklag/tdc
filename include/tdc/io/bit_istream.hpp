@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <climits>
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 
@@ -60,7 +61,7 @@ public:
     /// \brief Decodes the binary encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     /// \param bits the number of bits to read; defaults to the byte-aligned size of the value type
-    template<typename T = uint64_t>
+    template<std::integral T = uint64_t>
     T read_binary(size_t bits = sizeof(T) * CHAR_BIT) {
         assert(bits <= 64ULL);
 
@@ -132,7 +133,7 @@ public:
 
     /// \brief Decodes the unary encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
-    template<typename T = uint64_t>
+    template<std::integral T = uint64_t>
     T read_unary() {
         T v = 0;
         while(!read_bit()) ++v;
@@ -141,7 +142,7 @@ public:
 
     /// \brief Decodes the Elias gamma encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
-    template<typename T = uint64_t>
+    template<std::integral T = uint64_t>
     T read_gamma() {
         auto m = read_unary<>();
         if(m > 0) {
@@ -153,7 +154,7 @@ public:
     
     /// \brief Decodes the Elias delta encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
-    template<typename T = uint64_t>
+    template<std::integral T = uint64_t>
     T read_delta() {
         auto m = read_gamma<>() - 1;
         if(m > 0) {
@@ -166,7 +167,7 @@ public:
     /// \brief Decodes the Rice encoding of an integer from the input stream.
     /// \tparam T the type of the value to read
     /// \param p the exponent of the Golomb code divisor, which will be <tt>2^p</tt>
-    template<typename T = uint64_t>
+    template<std::integral T = uint64_t>
     T read_rice(uint8_t p) {
         const auto q = read_gamma<>() - 1;
         const auto r = read_binary<>(p);

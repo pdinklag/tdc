@@ -1,5 +1,7 @@
 #pragma once
 
+#include <concepts>
+
 namespace tdc {
 namespace math {
 
@@ -7,7 +9,7 @@ namespace math {
 /// \tparam T integer type
 /// \param a the first integer
 /// \param b the second integer
-template<typename T>
+template<std::totally_ordered T>
 constexpr T imin(T a, const T b) {
     return a < b ? a : b; // TODO: branchless version?
 }
@@ -16,7 +18,7 @@ constexpr T imin(T a, const T b) {
 /// \tparam T integer type
 /// \param a the first integer
 /// \param b the second integer
-template<typename T>
+template<std::totally_ordered T>
 constexpr T imax(T a, const T b) {
     return a < b ? b : a; // TODO: branchless version?
 }

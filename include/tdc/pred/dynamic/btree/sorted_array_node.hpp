@@ -7,6 +7,7 @@
 
 #include <tdc/pred/binary_search.hpp>
 #include <tdc/pred/result.hpp>
+#include <tdc/util/concepts.hpp>
 #include <tdc/util/likely.hpp>
 
 namespace tdc {
@@ -15,7 +16,7 @@ namespace dynamic {
 
 using PosResult = ::tdc::pred::PosResult;
 
-template<typename key_t, size_t m_capacity, bool m_binary_search = false>
+template<std::totally_ordered key_t, size_t m_capacity, bool m_binary_search = false>
 class SortedArrayNode {
 private:
     static_assert(m_capacity < 65536);

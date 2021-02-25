@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <climits>
+#include <concepts>
 #include <iostream>
 #include <utility>
 
@@ -65,7 +66,7 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write
     /// \param bits the number of bits to write; defaults to the byte-aligned size of the value type
-    template<typename T>
+    template<std::integral T>
     void write_binary(const T value, size_t bits = sizeof(T) * CHAR_BIT) {
         assert(bits <= 64ULL);
         assert(m_cursor >= 0);
@@ -130,7 +131,7 @@ public:
     ///
     /// \tparam T the type of the value to write
     /// \param value the value to write
-    template<typename T>
+    template<std::integral T>
     void write_unary(T value) {
         while(value--) {
             write_bit(0);
@@ -142,7 +143,7 @@ public:
     ///
     /// \tparam T the type of the value to write
     /// \param value the value to write, must be greater than zero
-    template<typename T>
+    template<std::integral T>
     void write_gamma(T value) {
         assert(value > T(0));
 
@@ -155,7 +156,7 @@ public:
     ///
     /// \tparam T the type of the value to write
     /// \param value the value to write, must be greater than zero
-    template<typename T>
+    template<std::integral T>
     void write_delta(T value) {
         assert(value > T(0));
 
@@ -170,7 +171,7 @@ public:
     /// \tparam T the type of the value to write
     /// \param value the value to write
     /// \param p the exponent of the Golomb code divisor, which will be <tt>2^p</tt>
-    template<typename T>
+    template<std::integral T>
     void write_rice(T value, const uint8_t p) {
         const uint64_t q = uint64_t(value) >> p;
 

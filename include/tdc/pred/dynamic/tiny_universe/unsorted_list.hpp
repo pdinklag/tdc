@@ -1,12 +1,13 @@
 #pragma once
 
+#include <concepts>
 #include <tdc/pred/result.hpp>
 
 namespace tdc {
 namespace pred {
 namespace dynamic {
 
-template <typename t_value_type>
+template <std::totally_ordered t_value_type>
 class UnsortedList {
   std::vector<t_value_type> m_elem;
 

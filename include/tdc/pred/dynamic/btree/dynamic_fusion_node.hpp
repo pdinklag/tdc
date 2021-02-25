@@ -9,10 +9,11 @@
 #include <iostream> // FIXME: Debug
 
 #include <tdc/math/bit_mask.hpp>
-#include <tdc/util/likely.hpp>
 #include <tdc/intrisics/popcnt.hpp>
 #include <tdc/intrisics/select.hpp>
 #include <tdc/intrisics/tzcnt.hpp>
+#include <tdc/util/concepts.hpp>
+#include <tdc/util/likely.hpp>
 
 #include <tdc/pred/fusion_node_internals.hpp>
 #include <tdc/pred/result.hpp>
@@ -26,7 +27,7 @@ using PosResult = ::tdc::pred::PosResult;
 /// \brief A dynamic fusion node for B-trees as per Patrascu & Thorup, 2014.
 /// \tparam the key type
 /// \tparam the maximum number of keys
-template<typename key_t = uint64_t, size_t m_max_keys = 8, bool linear_rank = false>
+template<std::totally_ordered key_t = uint64_t, size_t m_max_keys = 8, bool linear_rank = false>
 class DynamicFusionNode {
 private:
     static constexpr size_t NUM_DEBUG_BITS = 24; // FIXME: Debug

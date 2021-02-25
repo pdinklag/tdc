@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstddef>
+#include <utility>
+
+#include <tdc/util/concepts.hpp>
+
 namespace tdc {
 namespace hash {
     /// \brief A simple hash function where the hash value equals the key.
@@ -12,7 +17,7 @@ namespace hash {
         /// \brief Computes the hash value for a key.
         /// \tparam key_t the key type
         /// \param key the key to hash
-        template<typename key_t>
+        template<std::integral key_t>
         inline size_t operator()(const key_t& key) {
             return (size_t)key;
         }
@@ -40,7 +45,8 @@ namespace hash {
         /// \brief Computes the hash value for a key.
         /// \tparam key_t the key type
         /// \param key the key to hash
-        template<typename key_t>
+        template<Arithmetic key_t>
+        requires std::integral<decltype(std::declval<key_t>() * std::declval<size_t>())>
         inline size_t operator()(const key_t& key) {
             return (size_t)(key * m_prime);
         }

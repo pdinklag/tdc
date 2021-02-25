@@ -7,6 +7,7 @@
 #include <tdc/vec/bit_rank.hpp>
 #include <tdc/vec/bit_select.hpp>
 #include <tdc/util/assert.hpp>
+#include <tdc/util/concepts.hpp>
 
 namespace tdc {
 namespace vec {
@@ -35,7 +36,7 @@ public:
     /// \tparam the array type, must support the <tt>[]</tt> operator and items must be convertible to unsigned 64-bit integers
     /// \param array the array, items must be in ascending order
     /// \param size the number of items in the array
-    template<typename array_t>
+    template<IndexAccess array_t>
     SortedSequence(const array_t& array, const size_t size) : m_size(size) {
         assert_sorted_ascending(array, size);
 

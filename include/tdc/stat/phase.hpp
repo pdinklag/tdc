@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <functional>
 #include <memory>
 #include <string>
@@ -109,7 +110,7 @@ public:
     /// \tparam E the extension class type, which must inherit from \ref PhaseExtension.
     ///
     /// After registration, all phases will include data from the extension.
-    template<typename E>
+    template<std::derived_from<PhaseExtension> E>
     static void register_extension() {
         if(s_current != nullptr) {
             throw std::runtime_error(

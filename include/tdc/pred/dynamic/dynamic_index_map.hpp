@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <tdc/pred/dynamic/buckets/buckets.hpp>
 #include <tdc/pred/result.hpp>
+#include <tdc/util/concepts.hpp>
 #include <tdc/util/likely.hpp>
 #include <unordered_map>
 #include <utility>
@@ -14,7 +15,7 @@ namespace tdc {
 namespace pred {
 namespace dynamic {
 
-template <typename key_t, uint8_t t_sampling, typename bucket>
+template <std::totally_ordered key_t, uint8_t t_sampling, typename bucket>
 class DynIndexMap {
  private:
   // for large universes, the hashmap may become pretty full

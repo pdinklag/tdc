@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 
+#include <tdc/util/concepts.hpp>
 #include <tdc/util/likely.hpp>
 
 #include "result.hpp"
@@ -13,7 +14,7 @@ namespace pred {
 
 /// \brief Simple binary predecessor search.
 /// \tparam key_t the key type
-template<typename key_t>
+template<std::totally_ordered key_t>
 class BinarySearch {
 public:
     /// \brief Finds the rank of the predecessor of the specified key in the given interval.
@@ -22,7 +23,7 @@ public:
     /// \param p the left search interval border
     /// \param q the right search interval border
     /// \param x the key in question
-    template<typename keyarray_t>
+    template<IndexAccessTo<key_t> keyarray_t>
     static PosResult predecessor_seeded(const keyarray_t& keys, size_t p, size_t q, const key_t& x)  {
         assert(p <= q);
         while(p < q - 1) {
@@ -54,7 +55,7 @@ public:
     /// \param keys the keys that the compressed trie was constructed for
     /// \param num the number of keys
     /// \param x the key in question
-    template<typename keyarray_t>
+    template<IndexAccessTo<key_t> keyarray_t>
     static PosResult predecessor(const keyarray_t& keys, const size_t num, const key_t& x)  {
         if(tdc_unlikely(x < keys[0]))  return PosResult { false, 0 };
         if(tdc_unlikely(x >= keys[num-1])) return PosResult { true, num-1 };
