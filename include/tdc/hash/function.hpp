@@ -18,7 +18,7 @@ namespace hash {
         /// \tparam key_t the key type
         /// \param key the key to hash
         template<std::integral key_t>
-        inline size_t operator()(const key_t& key) {
+        inline size_t operator()(const key_t& key) const {
             return (size_t)key;
         }
     };
@@ -42,12 +42,17 @@ namespace hash {
         inline Multiplicative(const size_t& prime) : m_prime(prime) {
         }
         
+        inline Multiplicative(const Multiplicative& other) = default;
+        inline Multiplicative(Multiplicative&& other) = default;
+        inline Multiplicative& operator=(const Multiplicative& other) = default;
+        inline Multiplicative& operator=(Multiplicative&& other) = default;
+        
         /// \brief Computes the hash value for a key.
         /// \tparam key_t the key type
         /// \param key the key to hash
         template<Arithmetic key_t>
         requires std::integral<decltype(std::declval<key_t>() * std::declval<size_t>())>
-        inline size_t operator()(const key_t& key) {
+        inline size_t operator()(const key_t& key) const {
             return (size_t)(key * m_prime);
         }
     };
