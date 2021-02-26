@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
+#include <tdc/comp/lz77/lzqgram_trie.hpp>
 
 #include <tdc/uint/uint128.hpp>
 #include <tdc/io/null_ostream.hpp>
@@ -47,6 +48,12 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("LZQGramHash<32>(2)", [](){ return LZQGramHash<unsigned char, uint32_t, true>(2); });
-    bench("LZQGramHash<64>(2)", [](){ return LZQGramHash<unsigned char, uint64_t, true>(2); });
+    bench("LZQGramHash(4, 2)", [](){ return LZQGramHash<unsigned char, uint32_t, true>(2); });
+    bench("LZQGramTrie(4, 2)", [](){ return LZQGramTrie<unsigned char, true>(4, 2); });
+    
+    bench("LZQGramHash(8, 2)", [](){ return LZQGramHash<unsigned char, uint64_t, true>(2); });
+    bench("LZQGramTrie(8, 2)", [](){ return LZQGramTrie<unsigned char, true>(8, 2); });
+    
+    // bench("LZQGramHash(16, 2)", [](){ return LZQGramHash<unsigned char, uint128_t, true>(2); });
+    bench("LZQGramTrie(16, 2)", [](){ return LZQGramTrie<unsigned char, true>(16, 2); });
 }

@@ -23,17 +23,13 @@ private:
     using count_t = index_t;
     
     struct FilterEntry {
-        count_t old_count;
-        count_t new_count;
+        count_t count;
         index_t last_seen_at;
 
         FilterEntry() {
         }
 
-        FilterEntry(count_t count, index_t seen_at) : old_count(count), new_count(count), last_seen_at(seen_at) {
-        }
-
-        FilterEntry(count_t _old_count, count_t _new_count, index_t seen_at) : old_count(_old_count), new_count(_new_count), last_seen_at(seen_at) {
+        FilterEntry(count_t _count, index_t seen_at) : count(_count), last_seen_at(seen_at) {
         }
     };
     
@@ -88,17 +84,17 @@ private:
                     
                     if(m_pos >= m_next_factor) {
                         // output reference
-                        // std::cout << "\t\toutput reference to " << std::dec << e.last_seen_at << std::endl;
+                        // std::cout << "\t\toutput reference (" << std::dec << e.last_seen_at << "," << len << std::endl;
                         out << "(" << e.last_seen_at << "," << len << ")";
                         m_next_factor = m_pos + len;
                         
                         if constexpr(m_track_stats) ++m_stats->num_refs;
                     }
                     
-                    e.new_count++;
+                    e.count++;
                     e.last_seen_at = m_pos;
                 } else {
-                    m_filter.emplace(prefix, FilterEntry(0, 1, m_pos));
+                    m_filter.emplace(prefix, FilterEntry(1, m_pos));
                 }
                 
                 prefix >>= std::numeric_limits<char_t>::digits;
