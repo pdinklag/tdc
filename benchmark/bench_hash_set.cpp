@@ -2,7 +2,7 @@
 #include <iostream>
 #include <unordered_set>
 
-#include <tdc/hash/set.hpp>
+#include <tdc/hash/table.hpp>
 
 #include <tdc/hash/function.hpp>
 #include <tdc/hash/linear_probing.hpp>
@@ -17,7 +17,7 @@ using namespace tdc;
 
 struct {
     size_t capacity = 0;
-    double load_factor = 1.0;
+    double load_factor = 0.95;
     double growth_factor = 2.0;
     size_t num = 1'000;
     size_t num_queries = 100'000;
@@ -108,7 +108,7 @@ void bench(const std::string& name, ctor_t ctor, diag_func_t diag) {
     std::cout << "RESULT algo=" << name << " " << result.to_keyval() << " " << result.subphases_keyval() << std::endl;
 }
 
-void diag_tdc(stat::Phase& result, const hash::Set<uint64_t>& set) {
+void diag_tdc(stat::Phase& result, const hash::Table<uint64_t>& set) {
     result.log("load", set.load());
     result.log("max_probe", set.max_probe());
     
@@ -120,7 +120,7 @@ void diag_tdc(stat::Phase& result, const hash::Set<uint64_t>& set) {
 
 template<typename hash_func_t, typename probe_func_t>
 void bench_tdc(const std::string& name, hash_func_t hash_func, probe_func_t probe_func) {
-    bench(name, [&](){ return hash::Set<uint64_t>(hash_func, options.capacity, options.load_factor, options.growth_factor, probe_func); }, diag_tdc);
+    bench(name, [&](){ return hash::Table<uint64_t>(hash_func, options.capacity, options.load_factor, options.growth_factor, probe_func); }, diag_tdc);
 }
 
 int main(int argc, char** argv) {
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
     cp.add_bytes('u', "universe", options.universe, "the universe to draw hashtable entries from (default: 32 bit numbers)");
     cp.add_bytes('n', "num", options.num, "the number of hashtable entries to draw (default: 1024)");
     cp.add_bytes('c', "capacity", options.capacity, "the initial capacity (default: input size)");
-    cp.add_double('l', "load-factor", options.load_factor, "the maximum load factor (default: 1)");
+    cp.add_double('l', "load-factor", options.load_factor, "the maximum load factor (default: 0.95)");
     cp.add_double('g', "growth-factor", options.growth_factor, "the growth factor (default: 2)");
     cp.add_bytes('q', "queries", options.num_queries, "the number of membership queries to perform");
     cp.add_bytes('s', "seed", options.seed, "the random seed");

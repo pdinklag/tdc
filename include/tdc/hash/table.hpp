@@ -6,15 +6,16 @@
 #include <vector>
 #include <utility>
 
+#include "entry.hpp"
 #include "linear_probing.hpp"
 
 namespace tdc {
 namespace hash {
 
-/// \brief A hash set.
+/// \brief A hash table.
 /// \tparam K the key type, must support default construction, copy assignment and equality
-template<typename K>
-class Set {
+template<std::semiregular K, TableEntry<K> E = KeyEntry<K>>
+class Table {
 public:
     /// \brief The hash function type.
     using hash_func_t  = std::function<size_t(K)>;
@@ -22,17 +23,17 @@ public:
     /// \brief The probe function type.
     using probe_func_t = std::function<size_t(size_t)>;
 
-    /// \brief Used to access an item.
+    /// \brief Used to access an entry.
     ///
-    /// Note that accessors may become invalid when the underlying set is modified after retrieval.
+    /// Note that accessors may become invalid when the underlying table is modified after retrieval.
     class Accessor {
-        friend class Set;
+        friend class Table;
         
     private:
-        const Set* m_set;
+        const Table* m_set;
         size_t     m_pos;
 
-        inline Accessor(const Set& set, const size_t pos) : m_set(&set), m_pos(pos) {
+        inline Accessor(const Table& table, const size_t pos) : m_set(&table), m_pos(pos) {
         }
 
     public:
@@ -55,10 +56,10 @@ public:
             return exists();
         }
 
-        /// \brief Retrieves the key.
-        const K& key() const {
+        /// \brief Retrieves the entry.
+        const E& key() const {
             assert(exists());
-            return m_set->m_keys[m_pos];
+            return m_set->m_entries[m_pos];
         }
 
         /// \brief Comparison for standard library use pattern.
@@ -83,7 +84,7 @@ private:
     double m_growth_factor;
 
     std::vector<bool> m_used;
-    std::vector<K>    m_keys;
+    std::vector<E>    m_entries;
 
     // caches to avoid floating point computations on each insert
     size_t m_size_max;
@@ -103,8 +104,8 @@ private:
         m_probe_total = 0;
         #endif
         
-        m_used   = std::vector<bool>(m_cap);
-        m_keys   = std::vector<K>(m_cap);
+        m_used    = std::vector<bool>(m_cap);
+        m_entries = std::vector<E>(m_cap);
 
         m_size_max = size_t(m_load_factor * (double)m_cap);
         m_size_grow = std::max(m_size_max + 1, size_t((double)m_cap * m_growth_factor));
@@ -114,8 +115,8 @@ private:
         return size_t(m_hash_func(key)) % m_cap;
     }
 
-    void insert_internal(const K& key) {
-        const size_t hkey = hash(key);
+    void insert_internal(const E& entry) {
+        const size_t hkey = hash(entry.key());
         
         size_t h = hkey;
         size_t i = 0;
@@ -135,7 +136,7 @@ private:
         m_probe_max = std::max(m_probe_max, probe);
         
         m_used[h] = 1;
-        m_keys[h] = key;
+        m_entries[h] = entry;
         
         ++m_size;
     }
@@ -147,25 +148,25 @@ private:
         
         auto old_cap = m_cap;
         auto used = m_used;
-        auto keys = std::move(m_keys);
+        auto entries = std::move(m_entries);
 
         init(new_cap);
 
         for(size_t i = 0; i < old_cap; i++) {
-            if(used[i]) insert_internal(keys[i]);
+            if(used[i]) insert_internal(entries[i]);
         }
     }
 
 public:
-    Set() {
+    Table() {
     }
 
     /// \brief Main constructor.
     /// \param hash_func the hash function to use
-    /// \param capacity the initial capacity of the set
+    /// \param capacity the initial capacity of the table
     /// \param load_factor the maximum load factor - once reached, the capacity is increased
     /// \param growth_factor the factor for increasing the capacity when the load has been reached
-    Set(
+    Table(
         hash_func_t hash_func,
         size_t capacity,
         double load_factor = 1.0,
@@ -183,22 +184,22 @@ public:
         init(capacity);
     }
 
-    Set(const Set&) = default;
-    Set(Set&&) = default;
-    Set& operator=(const Set&) = default;
-    Set& operator=(Set&&) = default;
+    Table(const Table&) = default;
+    Table(Table&&) = default;
+    Table& operator=(const Table&) = default;
+    Table& operator=(Table&&) = default;
 
-    /// \brief Returns the number of items stored in the set.
+    /// \brief Returns the number of items stored in the table.
     inline size_t size() const {
         return m_size;
     }
 
-    /// \brief The current capacity of the set.
+    /// \brief The current capacity of the table.
     inline size_t capacity() const {
         return m_cap;
     }
 
-    /// \brief The current load of the set.
+    /// \brief The current load of the table.
     inline double load() const {
         return (double)m_size / (double)m_cap;
     }
@@ -220,16 +221,16 @@ public:
     }
     #endif
 
-    /// \brief Inserts the given key into the set.
-    /// \param key the key
-    void insert(const K& key) {
+    /// \brief Inserts the given entry into the table.
+    /// \param entry the entry
+    void insert(const E& entry) {
         // first, check if growing is necessary
         if(m_size + 1 > m_size_max) {
             resize(m_size_grow);
         }
         
         // now it's safe to insert
-        insert_internal(key);
+        insert_internal(entry);
     }
 
     /// \brief Attempts to find the given key and returns an \ref Accessor to the associated item, if any.
@@ -238,14 +239,14 @@ public:
         const size_t hkey = hash(key);
         
         size_t h = hkey;
-        if(m_used[h] && m_keys[h] == key) {
+        if(m_used[h] && m_entries[h].key() == key) {
             return Accessor(*this, h);
         } else {
             size_t i = 0;
             for(size_t probe = 0; probe < m_probe_max; probe++) {
                 i = m_probe_func(i);
                 h = (hkey + i) % m_cap;
-                if(m_used[h] && m_keys[h] == key) {
+                if(m_used[h] && m_entries[h].key() == key) {
                     return Accessor(*this, h);
                 }
             }
@@ -260,7 +261,7 @@ public:
         return Accessor();
     }
     
-    /// \brief Tests whether a key exists in the set.
+    /// \brief Tests whether a key exists in the table.
     /// \param key the key in question
     bool contains(const K& key) const {
         return find(key) != end();
