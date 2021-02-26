@@ -8,7 +8,7 @@
 #include <robin_hood.h>
 #include <tlx/container/ring_buffer.hpp>
 
-#include <tdc/sketch/count_min.hpp>
+#include <tdc/util/index.hpp>
 
 #include "stats.hpp"
 
@@ -17,11 +17,10 @@ namespace comp {
 namespace lz77 {
 
 template<std::unsigned_integral char_t = unsigned char, std::unsigned_integral packed_chars_t = uint64_t, bool m_track_stats = false>
-class LZSketch {
+class LZQGramHash {
 private:
-    using sketch_t = sketch::CountMin<packed_chars_t>;
     using buffer_t = tlx::RingBuffer<char_t>;
-    using count_t = sketch_t::count_t;
+    using count_t = index_t;
     
     struct FilterEntry {
         count_t old_count;
@@ -51,7 +50,6 @@ private:
     }
     
     filter_t m_filter;
-    sketch_t m_sketch;
     buffer_t m_buffer;
     std::unique_ptr<Stats> m_stats;
     
@@ -124,7 +122,7 @@ private:
     }
 
 public:
-    LZSketch(size_t threshold = 2) : m_buffer(pack_num), m_threshold(threshold) {
+    LZQGramHash(size_t threshold = 2) : m_buffer(pack_num), m_threshold(threshold) {
     }
 
     void compress(std::istream& in, std::ostream& out) {
