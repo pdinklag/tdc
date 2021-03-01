@@ -25,7 +25,7 @@ private:
 
     trie_t m_trie;
     buffer_t m_buffer;
-    std::unique_ptr<Stats> m_stats;
+    Stats m_stats;
     
     size_t m_q;
     size_t m_pos;
@@ -39,10 +39,6 @@ private:
         
         m_buffer.clear();
         m_trie = trie_t();
-        
-        if constexpr(m_track_stats) {
-            m_stats = std::make_unique<Stats>();
-        }
     }
     
     void process(char_t c, std::ostream& out) {
@@ -66,7 +62,7 @@ private:
                         ref_len = len;
                     }
                 } else {
-                    if constexpr(m_track_stats) ++m_stats->debug;
+                    if constexpr(m_track_stats) ++m_stats.debug;
                 }
 
                 // log occurence
@@ -82,14 +78,14 @@ private:
                     out << "(" << prev_occ << "," << ref_len << ")";
                     m_next_factor = m_pos + ref_len;
                     
-                    if constexpr(m_track_stats) ++m_stats->num_refs;
+                    if constexpr(m_track_stats) ++m_stats.num_refs;
                 } else {
                     // output literal
                     // std::cout << "\toutput literal " << m_buffer.front() << std::endl;
                     out << m_buffer.front();
                     ++m_next_factor;
                     
-                    if constexpr(m_track_stats) ++m_stats->num_literals;
+                    if constexpr(m_track_stats) ++m_stats.num_literals;
                 }
             }
             
@@ -118,16 +114,10 @@ public:
             process(0, out);
         }
         
-        if constexpr(m_track_stats) m_stats->input_size = m_pos;
+        if constexpr(m_track_stats) m_stats.input_size = m_pos;
     }
     
-    const Stats& stats() const {
-        if constexpr(m_track_stats) {
-            return *m_stats.get();
-        } else {
-            return Stats {};
-        }
-    }
+    const Stats& stats() const { return m_stats; }
 };
     
 }}} // namespace tdc::comp::lz77

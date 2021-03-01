@@ -11,6 +11,9 @@ struct Stats {
     size_t num_refs;
     
     size_t debug;
+    
+    Stats() : input_size(0), num_literals(0), num_refs(0), debug(0) {
+    }
 };
 
 }}}

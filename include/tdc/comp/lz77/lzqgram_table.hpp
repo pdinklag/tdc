@@ -56,7 +56,7 @@ private:
     }
     
     buffer_t m_buffer;
-    std::unique_ptr<Stats> m_stats;
+    Stats m_stats;
     
     size_t m_pos;
     size_t m_next_factor;
@@ -74,10 +74,6 @@ private:
         // TODO table
         
         m_buffer.clear();
-        
-        if constexpr(m_track_stats) {
-            m_stats = std::make_unique<Stats>();
-        }
     }
     
     void process(char_t c, std::ostream& out) {
@@ -104,11 +100,11 @@ private:
                             if(src == m_last_ref_src + m_last_ref_len) {
                                 // attach to last reference!
                                 m_last_ref_len += len;          
-                                if constexpr(m_track_stats) m_stats->debug += len;
+                                if constexpr(m_track_stats) m_stats.debug += len;
                             } else {
                                 if(m_last_ref_src != SIZE_MAX) {
                                     out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
-                                    if constexpr(m_track_stats) ++m_stats->num_refs;
+                                    if constexpr(m_track_stats) ++m_stats.num_refs;
                                 }
                                 
                                 m_last_ref_src = src;
@@ -139,7 +135,7 @@ private:
                 // output literal
                 // std::cout << "\toutput literal " << m_buffer.front() << std::endl;
                 if(m_last_ref_src != SIZE_MAX) {
-                    if constexpr(m_track_stats) ++m_stats->num_refs;
+                    if constexpr(m_track_stats) ++m_stats.num_refs;
                     out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
                 }
                 m_last_ref_src = SIZE_MAX;
@@ -147,7 +143,7 @@ private:
                 out << m_buffer.front();
                 ++m_next_factor;
                 
-                if constexpr(m_track_stats) ++m_stats->num_literals;
+                if constexpr(m_track_stats) ++m_stats.num_literals;
             }
             m_buffer.pop_front();
             
@@ -193,20 +189,14 @@ public:
         
         if(m_last_ref_src != SIZE_MAX) {
             out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
-            if constexpr(m_track_stats) ++m_stats->num_refs;
+            if constexpr(m_track_stats) ++m_stats.num_refs;
         }
         
-        if constexpr(m_track_stats) m_stats->input_size = m_pos;
-        // if constexpr(m_track_stats) m_stats->debug = m_filter.size();
+        if constexpr(m_track_stats) m_stats.input_size = m_pos;
+        // if constexpr(m_track_stats) m_stats.debug = m_filter.size();
     }
     
-    const Stats& stats() const {
-        if constexpr(m_track_stats) {
-            return *m_stats.get();
-        } else {
-            return Stats {};
-        }
-    }
+    const Stats& stats() const { return m_stats; }
 };
     
 }}} // namespace tdc::comp::lz77

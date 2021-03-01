@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_table.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
@@ -55,6 +56,8 @@ int main(int argc, char** argv) {
     if(!cp.process(argc, argv)) {
         return -1;
     }
+    
+    bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
     
     bench("LZQGramTable(8, 4096x1)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 1, options.threshold); });
     bench("LZQGramTable(8, 4096x2)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 2, options.threshold); });

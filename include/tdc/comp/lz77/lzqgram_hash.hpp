@@ -47,7 +47,7 @@ private:
     
     filter_t m_filter;
     buffer_t m_buffer;
-    std::unique_ptr<Stats> m_stats;
+    Stats m_stats;
     
     size_t m_pos;
     size_t m_next_factor;
@@ -88,7 +88,7 @@ private:
                         out << "(" << e.last_seen_at << "," << len << ")";
                         m_next_factor = m_pos + len;
                         
-                        if constexpr(m_track_stats) ++m_stats->num_refs;
+                        if constexpr(m_track_stats) ++m_stats.num_refs;
                     }
                     
                     e.count++;
@@ -108,7 +108,7 @@ private:
                 out << m_buffer.front();
                 ++m_next_factor;
                 
-                if constexpr(m_track_stats) ++m_stats->num_literals;
+                if constexpr(m_track_stats) ++m_stats.num_literals;
             }
             m_buffer.pop_front();
             
@@ -134,17 +134,11 @@ public:
             process(0, out);
         }
         
-        if constexpr(m_track_stats) m_stats->input_size = m_pos;
-        if constexpr(m_track_stats) m_stats->debug = m_filter.size();
+        if constexpr(m_track_stats) m_stats.input_size = m_pos;
+        if constexpr(m_track_stats) m_stats.debug = m_filter.size();
     }
     
-    const Stats& stats() const {
-        if constexpr(m_track_stats) {
-            return *m_stats.get();
-        } else {
-            return Stats {};
-        }
-    }
+    const Stats& stats() const { return m_stats; }
 };
     
 }}} // namespace tdc::comp::lz77
