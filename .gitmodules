@@ -13,3 +13,6 @@
 [submodule "extlib/integer-structures"]
 	path = extlib/integer-structures
 	url = https://github.com/herlez/integer-structures
+[submodule "extlib/libdivsufsort"]
+	path = extlib/libdivsufsort
+	url = https://github.com/kurpicz/libdivsufsort
