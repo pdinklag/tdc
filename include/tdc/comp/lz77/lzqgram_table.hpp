@@ -186,10 +186,17 @@ public:
     void compress(std::istream& in, std::ostream& out) {
         reset();
         
-        char_t c;
-        while(in.read((char*)&c, sizeof(char_t))) {
-            process(c, out);
-        }
+        constexpr size_t bufsize = 1_Mi;
+        char_t* buffer = new char_t[bufsize];
+        bool b;
+        do {
+            b = (bool)in.read((char*)buffer, bufsize * sizeof(char_t));
+            const size_t num = in.gcount() / sizeof(char_t);
+            for(size_t i = 0; i < num; i++) {
+                process(buffer[i], out);
+            }
+        } while(b);
+        delete[] buffer;
         
         // process remainder
         for(size_t i = 0; i < pack_num - 1; i++) {

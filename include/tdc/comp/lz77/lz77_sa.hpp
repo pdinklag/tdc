@@ -7,6 +7,7 @@
 
 #include <divsufsort.h>
 
+#include <tdc/util/literals.hpp>
 #include "stats.hpp"
 
 namespace tdc {
@@ -24,17 +25,8 @@ public:
     }
     
     void compress(std::istream& in, std::ostream& out) {
-        std::string text;
-        
         // read input fully
-        {
-            std::ostringstream text_stream;
-            char c;
-            while(in.read(&c, 1)) {
-                text_stream << c;
-            }
-            text = text_stream.str();
-        }
+        std::string text(std::istreambuf_iterator<char>(in), {});
         
         // construct suffix and LCP array
         const size_t n = text.length();
