@@ -11,40 +11,19 @@
 #include <tdc/util/index.hpp>
 
 #include "stats.hpp"
+#include "tries.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<std::unsigned_integral char_t = unsigned char, bool m_track_stats = false>
+template<std::unsigned_integral char_t = unsigned char, Trie<char_t> trie_t = TrieHash<char_t>, bool m_track_stats = false>
 class LZQGramTrie {
 private:
     using count_t = index_t;
-
-    struct Trie {
-        robin_hood::unordered_map<char_t, std::unique_ptr<Trie>> children;
-        
-        count_t count;
-        index_t last_seen_at;
-        
-        Trie() : count(0), last_seen_at(0) {
-        }
-        
-        Trie* get_or_create_child(const char_t c) {
-            auto it = children.find(c);
-            if(it != children.end()) {
-                return it->second.get();
-            } else {
-                Trie* child = new Trie();
-                children.emplace(c, std::unique_ptr<Trie>(child));
-                return child;
-            }
-        }
-    };
-
     using buffer_t = tlx::RingBuffer<char_t>;
 
-    Trie m_trie;
+    trie_t m_trie;
     buffer_t m_buffer;
     std::unique_ptr<Stats> m_stats;
     
@@ -59,7 +38,7 @@ private:
         m_next_factor = 0;
         
         m_buffer.clear();
-        m_trie = Trie();
+        m_trie = trie_t();
         
         if constexpr(m_track_stats) {
             m_stats = std::make_unique<Stats>();
@@ -72,7 +51,7 @@ private:
         
         if(m_buffer.size() == m_q) {
             // navigate trie
-            Trie* trie = &m_trie;
+            auto* trie = &m_trie;
             
             index_t prev_occ = 0;
             size_t ref_len = 0;
@@ -80,10 +59,10 @@ private:
             size_t len = 1;
             for(size_t i = 0; i < m_q; i++) {
                 trie = trie->get_or_create_child(m_buffer[i]);
-                if(trie->count) {
+                if(trie->count()) {
                     // seen before
                     if(len >= m_threshold) {
-                        prev_occ = trie->last_seen_at;
+                        prev_occ = trie->last_seen_at();
                         ref_len = len;
                     }
                 } else {
@@ -91,8 +70,7 @@ private:
                 }
 
                 // log occurence
-                ++trie->count;
-                trie->last_seen_at = m_pos;
+                trie->update(trie->count() + 1, m_pos);
                 
                 // next prefix
                 ++len;

@@ -14,6 +14,8 @@
 
 using namespace tdc::comp::lz77;
 
+using char_t = unsigned char;
+
 struct {
     std::string filename;
 } options;
@@ -48,12 +50,15 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("LZQGramHash(4, 2)", [](){ return LZQGramHash<unsigned char, uint32_t, true>(2); });
-    bench("LZQGramTrie(4, 2)", [](){ return LZQGramTrie<unsigned char, true>(4, 2); });
+    bench("LZQGramHash(4, 2)", [](){ return LZQGramHash<char_t, uint32_t, true>(2); });
+    bench("LZQGramTrie<Hash>(4, 2)", [](){ return LZQGramTrie<char_t, TrieHash<char_t>, true>(4, 2); });
+    bench("LZQGramTrie<List>(4, 2)", [](){ return LZQGramTrie<char_t, TrieList<char_t>, true>(4, 2); });
     
-    bench("LZQGramHash(8, 2)", [](){ return LZQGramHash<unsigned char, uint64_t, true>(2); });
-    bench("LZQGramTrie(8, 2)", [](){ return LZQGramTrie<unsigned char, true>(8, 2); });
+    bench("LZQGramHash(8, 2)", [](){ return LZQGramHash<char_t, uint64_t, true>(2); });
+    bench("LZQGramTrie<Hash>(8, 2)", [](){ return LZQGramTrie<char_t, TrieHash<char_t>, true>(8, 2); });
+    bench("LZQGramTrie<List>(8, 2)", [](){ return LZQGramTrie<char_t, TrieList<char_t>, true>(8, 2); });
     
-    // bench("LZQGramHash(16, 2)", [](){ return LZQGramHash<unsigned char, uint128_t, true>(2); });
-    bench("LZQGramTrie(16, 2)", [](){ return LZQGramTrie<unsigned char, true>(16, 2); });
+    // bench("LZQGramHash(16, 2)", [](){ return LZQGramHash<char_t, uint128_t, true>(2); });
+    bench("LZQGramTrie<Hash>(16, 2)", [](){ return LZQGramTrie<char_t, TrieHash<char_t>, true>(16, 2); });
+    bench("LZQGramTrie<List>(16, 2)", [](){ return LZQGramTrie<char_t, TrieList<char_t>, true>(16, 2); });
 }
