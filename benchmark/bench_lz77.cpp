@@ -12,6 +12,7 @@
 #include <tdc/uint/uint256.hpp>
 #include <tdc/io/null_ostream.hpp>
 #include <tdc/stat/phase.hpp>
+#include <tdc/util/literals.hpp>
 
 #include <tlx/cmdline_parser.hpp>
 
@@ -59,28 +60,10 @@ int main(int argc, char** argv) {
     
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
     
-    bench("LZQGramTable(8, 4096x1)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 1, options.threshold); });
-    bench("LZQGramTable(8, 4096x2)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 2, options.threshold); });
-    bench("LZQGramTable(8, 4096x4)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 4, options.threshold); });
-    bench("LZQGramTable(8, 4096x8)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 8, options.threshold); });
-    bench("LZQGramTable(8, 4096x12)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 12, options.threshold); });
-    bench("LZQGramTable(8, 4096x16)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 16, options.threshold); });
-    bench("LZQGramTable(8, 4096x24)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 24, options.threshold); });
-    bench("LZQGramTable(8, 4096x32)", [](){ return LZQGramTable<char_t, uint64_t, true>(4096, 32, options.threshold); });
-    
-    bench("LZQGramTable(16, 4096x1)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 1, options.threshold); });
-    bench("LZQGramTable(16, 4096x2)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 2, options.threshold); });
-    bench("LZQGramTable(16, 4096x4)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 4, options.threshold); });
-    bench("LZQGramTable(16, 4096x8)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 8, options.threshold); });
-    bench("LZQGramTable(16, 4096x12)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 12, options.threshold); });
-    bench("LZQGramTable(16, 4096x16)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 16, options.threshold); });
-    bench("LZQGramTable(16, 4096x24)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 24, options.threshold); });
-    bench("LZQGramTable(16, 4096x32)", [](){ return LZQGramTable<char_t, uint128_t, true>(4096, 32, options.threshold); });
-    
-    // bench("LZQGramTable(32, 4096x1)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 1, options.threshold); });
-    // bench("LZQGramTable(32, 4096x2)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 2, options.threshold); });
-    // bench("LZQGramTable(32, 4096x4)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 4, options.threshold); });
-    // bench("LZQGramTable(32, 4096x8)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 8, options.threshold); });
-    // bench("LZQGramTable(32, 4096x16)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 16, options.threshold); });
-    // bench("LZQGramTable(32, 4096x32)", [](){ return LZQGramTable<char_t, uint256_t, true>(4096, 32, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 1)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 1, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 2)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 2, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 4)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 4, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 8)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 8, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 16)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 16, options.threshold); });
+    bench("LZQGramTable(8, 256_Ki x 32)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 32, options.threshold); });
 }

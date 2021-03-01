@@ -1,9 +1,11 @@
 #pragma once
 
+#include <bit>
 #include <cstdint>
 #include <concepts>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 
 #include <robin_hood.h>
 #include <tlx/container/ring_buffer.hpp>
@@ -44,6 +46,7 @@ private:
     } __attribute__((__packed__));
     
     size_t m_num_rows, m_num_cols;
+    size_t m_row_mask, m_col_mask;
     std::vector<hash::Multiplicative> m_hash;
     std::vector<std::vector<Entry>> m_data;
     size_t m_cur_row;
@@ -52,7 +55,7 @@ private:
         size_t h = m_hash[i](key);
         h += (h >> 48);
         // std::cout << "\t\th" << std::dec << i << "(0x" << std::hex << key << ") = 0x" << h << std::endl;
-        return h % m_num_cols;
+        return h & m_col_mask;
     }
     
     buffer_t m_buffer;
@@ -123,7 +126,7 @@ private:
                     m_data[m_cur_row][h].last = prefix;
                     m_data[m_cur_row][h].seen_at = m_pos;
                     // std::cout << "\t\tenter into cell [" << std::dec << m_cur_row << "," << h << "]" << std::endl;
-                    m_cur_row = (m_cur_row + 1) % m_num_rows;
+                    m_cur_row = (m_cur_row + 1) & m_row_mask;
                 }
                 
                 prefix >>= std::numeric_limits<char_t>::digits;
@@ -157,9 +160,15 @@ public:
         : m_buffer(pack_num),
           m_num_cols(num_cols),
           m_num_rows(num_rows),
+          m_col_mask(num_cols-1),
+          m_row_mask(num_rows-1),
           m_threshold(threshold),
           m_cur_row(0),
           m_last_ref_src(SIZE_MAX) {
+
+        if(!std::has_single_bit(num_cols)) throw std::runtime_error("use powers of two for num_cols");
+        if(!std::has_single_bit(num_rows)) throw std::runtime_error("use powers of two for num_rows");
+
         // initialize hash functions and data rows
         assert(m_num_rows <= math::NUM_POOL_PRIMES);
         random::Permutation perm(math::NUM_POOL_PRIMES, seed);
