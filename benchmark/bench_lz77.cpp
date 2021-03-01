@@ -33,6 +33,7 @@ void bench(std::string&& name, ctor_t ctor) {
         Stats stats;
         {
             auto c = ctor();
+            // c.compress(input, std::cout);
             c.compress(input, devnull);
             stats = c.stats();
         }
@@ -41,7 +42,8 @@ void bench(std::string&& name, ctor_t ctor) {
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
         phase.log("num_refs", stats.num_refs);
-        phase.log("filter_size", stats.debug);
+        phase.log("debug", stats.debug);
+        // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
     }
 }

@@ -61,6 +61,10 @@ private:
     size_t m_pos;
     size_t m_next_factor;
     
+    size_t m_last_ref_src;
+    size_t m_last_ref_len;
+    size_t m_last_ref_src_end;
+    
     size_t m_threshold;
 
     void reset() {
@@ -94,11 +98,24 @@ private:
                     for(size_t i = 0; i < m_num_rows; i++) {
                         const auto h = hash(i, prefix);
                         if(m_data[i][h].last == prefix) {
-                            // std::cout << "\t\toutput reference (" << std::dec << m_data[i][h].seen_at << "," << len << ")" << std::endl;
-                            out << "(" << m_data[i][h].seen_at << "," << len << ")";
-                            m_next_factor = m_pos + len;
+                            const auto src = m_data[i][h].seen_at;
                             
-                            if constexpr(m_track_stats) ++m_stats->num_refs;
+                            // std::cout << "\t\toutput reference (" << std::dec << m_data[i][h].seen_at << "," << len << ")" << std::endl;
+                            if(src == m_last_ref_src + m_last_ref_len) {
+                                // attach to last reference!
+                                m_last_ref_len += len;          
+                                if constexpr(m_track_stats) m_stats->debug += len;
+                            } else {
+                                if(m_last_ref_src != SIZE_MAX) {
+                                    out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
+                                    if constexpr(m_track_stats) ++m_stats->num_refs;
+                                }
+                                
+                                m_last_ref_src = src;
+                                m_last_ref_len = len;
+                            }
+                            
+                            m_next_factor = m_pos + len;
                             break;
                         }
                     }
@@ -121,6 +138,12 @@ private:
             if(m_pos >= m_next_factor) {
                 // output literal
                 // std::cout << "\toutput literal " << m_buffer.front() << std::endl;
+                if(m_last_ref_src != SIZE_MAX) {
+                    if constexpr(m_track_stats) ++m_stats->num_refs;
+                    out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
+                }
+                m_last_ref_src = SIZE_MAX;
+                
                 out << m_buffer.front();
                 ++m_next_factor;
                 
@@ -134,7 +157,13 @@ private:
     }
 
 public:
-    LZQGramTable(size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED) : m_buffer(pack_num), m_num_cols(num_cols), m_num_rows(num_rows), m_threshold(threshold), m_cur_row(0) {
+    LZQGramTable(size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
+        : m_buffer(pack_num),
+          m_num_cols(num_cols),
+          m_num_rows(num_rows),
+          m_threshold(threshold),
+          m_cur_row(0),
+          m_last_ref_src(SIZE_MAX) {
         // initialize hash functions and data rows
         assert(m_num_rows <= math::NUM_POOL_PRIMES);
         random::Permutation perm(math::NUM_POOL_PRIMES, seed);
@@ -160,6 +189,11 @@ public:
         // process remainder
         for(size_t i = 0; i < pack_num - 1; i++) {
             process(0, out);
+        }
+        
+        if(m_last_ref_src != SIZE_MAX) {
+            out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
+            if constexpr(m_track_stats) ++m_stats->num_refs;
         }
         
         if constexpr(m_track_stats) m_stats->input_size = m_pos;
