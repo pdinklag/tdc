@@ -53,7 +53,7 @@ namespace hash {
         template<Arithmetic key_t>
         requires std::integral<decltype(std::declval<key_t>() * std::declval<size_t>())>
         inline size_t operator()(const key_t& key) const {
-            return (size_t)(key * m_prime);
+            return (size_t)(key * (key_t)m_prime);
         }
     };
 }
