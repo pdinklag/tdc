@@ -47,7 +47,7 @@ void bench(std::string&& name, ctor_t ctor) {
         phase.log("num_literals", stats.num_literals);
         phase.log("num_refs", stats.num_refs);
         phase.log("num_collisions", stats.num_collisions);
-        phase.log("num_extensions", stats.num_collisions);
+        phase.log("num_extensions", stats.num_extensions);
         phase.log("extension_sum", stats.extension_sum);
         phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
@@ -65,6 +65,8 @@ int main(int argc, char** argv) {
     
     bench("Noop()", [](){ return Noop<true>(); });
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("LZQGramTable(8, 1_Mi x 8)", [](){ return LZQGramTable<char_t, uint64_t, true>(1_Mi, 8, options.threshold); });
+    bench("LZQGramTable(8, 80_Mi x 1)", [](){ return LZQGramTable<80_Mi, 1, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGramTable(16, 40_Mi x 1)", [](){ return LZQGramTable<40_Mi, 1, uint128_t, char_t, true>(options.threshold); });
+    // bench("LZQGramTable(32, 20_Mi x 1)", [](){ return LZQGramTable<20_Mi, 1, uint256_t, char_t, true>(options.threshold); });
     // bench("LZQGramTableRolling(8, 1_Mi x 8)", [](){ return LZQGramTableRolling<char_t, true>(8, 1_Mi, 8, options.threshold); });
 }

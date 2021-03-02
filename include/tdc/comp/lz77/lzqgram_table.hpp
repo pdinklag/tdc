@@ -18,14 +18,14 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<std::unsigned_integral char_t = unsigned char, std::unsigned_integral packed_chars_t = uint64_t, bool m_track_stats = false>
+template<size_t m_num_cols, size_t m_num_rows, std::unsigned_integral packed_chars_t = uint64_t, std::unsigned_integral char_t = unsigned char, bool m_track_stats = false>
 class LZQGramTable {
 private:
-    using buffer_t = tlx::RingBuffer<char_t>;
     using count_t = index_t;
 
     static constexpr size_t pack_num = sizeof(packed_chars_t) / sizeof(char_t);
     static constexpr size_t char_bits = std::numeric_limits<char_t>::digits;
+    static constexpr uint64_t m_col_prime = math::prime_predecessor(m_num_cols);
     
     static char_t extract_front(packed_chars_t packed) {
         constexpr size_t front_rsh = (pack_num - 1) * std::numeric_limits<char_t>::digits;
@@ -39,18 +39,13 @@ private:
         Entry() : last(0), seen_at(0) {
         }
     } __attribute__((__packed__));
-    
-    size_t m_num_rows, m_num_cols;
-    size_t m_row_mask, m_col_mask;
+
     std::vector<hash::Multiplicative> m_hash;
     std::vector<std::vector<Entry>> m_data;
-    size_t m_cur_row;
     
-    size_t hash(const size_t i, const packed_chars_t& key) const {
-        size_t h = m_hash[i](key);
-        h += (h >> 48);
+    uint64_t hash(const size_t i, const packed_chars_t& key) const {
         // std::cout << "\t\th" << std::dec << i << "(0x" << std::hex << key << ") = 0x" << h << std::endl;
-        return h & m_col_mask;
+        return (uint64_t)((key % m_col_prime) % m_num_cols);
     }
     
     packed_chars_t m_buffer;
@@ -98,6 +93,7 @@ private:
                         const auto h = hash(i, prefix);
                         if(m_data[i][h].last == prefix) {
                             const auto src = m_data[i][h].seen_at;
+                            m_data[i][h].seen_at = m_pos;
                             
                             // std::cout << "\t\toutput reference (" << std::dec << m_data[i][h].seen_at << "," << len << ")" << std::endl;
                             if(src == m_last_ref_src + m_last_ref_len) {
@@ -118,23 +114,14 @@ private:
                             }
                             
                             m_next_factor = m_pos + len;
+                            
                             break;
+                        } else {
+                            if(m_data[i][h].last) ++m_stats.num_collisions;
+                            m_data[i][h].last = prefix;
+                            m_data[i][h].seen_at = m_pos;
                         }
                     }
-                }
-                
-                // enter
-                {
-                    const auto h = hash(m_cur_row, prefix);
-                    
-                    if constexpr(m_track_stats) {
-                        if(m_data[m_cur_row][h].last) ++m_stats.num_collisions;
-                    }
-                    
-                    m_data[m_cur_row][h].last = prefix;
-                    m_data[m_cur_row][h].seen_at = m_pos;
-                    // std::cout << "\t\tenter into cell [" << std::dec << m_cur_row << "," << h << "]" << std::endl;
-                    m_cur_row = (m_cur_row + 1) & m_row_mask;
                 }
                 
                 prefix >>= std::numeric_limits<char_t>::digits;
@@ -163,19 +150,11 @@ private:
     }
 
 public:
-    LZQGramTable(size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
+    LZQGramTable(size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
         : m_buffer(0),
           m_read(0),
-          m_num_cols(num_cols),
-          m_num_rows(num_rows),
-          m_col_mask(num_cols-1),
-          m_row_mask(num_rows-1),
           m_threshold(threshold),
-          m_cur_row(0),
           m_last_ref_src(SIZE_MAX) {
-
-        if(!std::has_single_bit(num_cols)) throw std::runtime_error("use powers of two for num_cols");
-        if(!std::has_single_bit(num_rows)) throw std::runtime_error("use powers of two for num_rows");
 
         // initialize hash functions and data rows
         assert(m_num_rows <= math::NUM_POOL_PRIMES);
