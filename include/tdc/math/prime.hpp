@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <cstddef>
 
+#include <tdc/math/isqrt.hpp>
+#include <tdc/util/likely.hpp>
+
 namespace tdc {
 namespace math {
     
@@ -168,14 +171,54 @@ constexpr uint16_t SMALL_PRIMES[] = {
 
 /// \brief Tests whether the given number is a prime.
 /// \param p the number in question
-bool is_prime(const uint64_t p);
+constexpr bool is_prime(const uint64_t p) {
+    if(p % 2 == 0) {
+        return false;
+    } else {    
+        const uint64_t m = isqrt_ceil(p);
+
+        // first, check against small primes less than sqrt(p)
+        size_t j = 2;
+        uint64_t i = SMALL_PRIMES[j];
+        while(i <= m && j < NUM_SMALL_PRIMES - 1) {
+            if((p % i) == 0) return false;
+            i = SMALL_PRIMES[++j];
+        }
+
+        // afterwards, use folklore algorithm for i less than sqrt(p)
+        i = 5ULL + ((i - 5ULL) / 6ULL) * 6ULL;
+        while(i <= m) {
+            if(((p % i) == 0) || (p % (i+2) == 0)) return false;
+            i += 6ULL;
+        }
+        return true;
+    }
+}
 
 /// \brief Finds the smallest prime number greater than or equal to the given number.
 /// \param p the number to start from
-uint64_t prime_successor(const uint64_t p);
+constexpr uint64_t prime_successor(uint64_t p) {
+    if(tdc_unlikely(p == 0)) return 0;
+    if(tdc_unlikely(p == 2)) return 2;
+    if(p % 2 == 0) ++p; // all primes > 2 are odd
+
+    // linear search - the gap between two primes is hopefully very low
+    // in the worst case, because there must be a prime between p and 2p, this takes p steps
+    while(!is_prime(p)) p += 2;
+    return p;
+}
 
 /// \brief Finds the greatest prime number less than or equal to the given number.
 /// \param p the number to start from
-uint64_t prime_predecessor(const uint64_t p);
+constexpr uint64_t prime_predecessor(uint64_t p) {
+    if(tdc_unlikely(p == 0)) return 0;
+    if(tdc_unlikely(p == 2)) return 2;
+    if(p % 2 == 0) --p; // all primes > 2 are odd
+
+    // linear search - the gap between two primes is hopefully very low
+    // in the worst case, because there must be a prime between p and 2p, this takes p steps
+    while(!is_prime(p)) p -= 2;
+    return p;
+}
 
 }} // namespace tdc::math

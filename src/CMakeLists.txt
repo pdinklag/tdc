@@ -1,7 +1,6 @@
 add_subdirectory(code)
 add_subdirectory(intrisics)
 add_subdirectory(io)
-add_subdirectory(math)
 add_subdirectory(pred)
 add_subdirectory(random)
 add_subdirectory(rapl)
