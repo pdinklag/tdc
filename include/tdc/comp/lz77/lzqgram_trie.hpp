@@ -62,7 +62,7 @@ private:
                         ref_len = len;
                     }
                 } else {
-                    if constexpr(m_track_stats) ++m_stats.debug;
+                    if constexpr(m_track_stats) ++m_stats.trie_size;
                 }
 
                 // log occurence

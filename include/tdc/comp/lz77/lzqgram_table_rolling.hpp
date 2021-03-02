@@ -11,6 +11,7 @@
 #include <tlx/container/ring_buffer.hpp>
 
 #include <tdc/hash/function.hpp>
+#include <tdc/hash/rolling.hpp>
 #include <tdc/math/prime.hpp>
 #include <tdc/random/permutation.hpp>
 #include <tdc/util/index.hpp>
@@ -21,44 +22,29 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<std::unsigned_integral char_t = unsigned char, std::unsigned_integral packed_chars_t = uint64_t, bool m_track_stats = false>
-class LZQGramTable {
+template<std::unsigned_integral char_t = unsigned char, bool m_track_stats = false>
+class LZQGramTableRolling {
 private:
     using buffer_t = tlx::RingBuffer<char_t>;
     using count_t = index_t;
 
-    static constexpr size_t pack_num = sizeof(packed_chars_t) / sizeof(char_t);
-    static packed_chars_t pack(const buffer_t& buffer) {
-        packed_chars_t packed = buffer[0];
-        for(size_t i = 1; i < pack_num; i++) {
-            packed <<= std::numeric_limits<char_t>::digits;
-            packed |= buffer[i];
-        }
-        return packed;
-    }
-    
     struct Entry {
-        packed_chars_t last;
+        uint64_t last;
         index_t seen_at;
         
         Entry() : last(0), seen_at(0) {
         }
     } __attribute__((__packed__));
     
+    size_t m_window;
     size_t m_num_rows, m_num_cols;
     size_t m_row_mask, m_col_mask;
-    std::vector<hash::Multiplicative> m_hash;
+    
     std::vector<std::vector<Entry>> m_data;
+    std::vector<hash::RollingKarpRabinFingerprint<char_t>> m_buffers;
+    std::vector<hash::Multiplicative> m_hash;
     size_t m_cur_row;
     
-    size_t hash(const size_t i, const packed_chars_t& key) const {
-        size_t h = m_hash[i](key);
-        h += (h >> 48);
-        // std::cout << "\t\th" << std::dec << i << "(0x" << std::hex << key << ") = 0x" << h << std::endl;
-        return h & m_col_mask;
-    }
-    
-    buffer_t m_buffer;
     Stats m_stats;
     
     size_t m_pos;
@@ -69,34 +55,43 @@ private:
     size_t m_last_ref_src_end;
     
     size_t m_threshold;
+    
+    size_t hash(const size_t i, const uint64_t key) {
+        size_t h = m_hash[i](key);
+        h += (h >> 48);
+        // std::cout << "\t\th" << std::dec << i << "(0x" << std::hex << key << ") = 0x" << h << std::endl;
+        return h & m_col_mask;
+    }
 
     void reset() {
         m_pos = 0;
         m_next_factor = 0;
         
-        // TODO table
-        
-        m_buffer.clear();
+        // TODO table, buffers
     }
     
     void process(char_t c, std::ostream& out) {
-        // std::cout << "T[" << std::dec << m_pos << "] = " << c << " = 0x" << std::hex << size_t(c) << std::endl;
-        m_buffer.push_back(c);
+        // advance fingerprints
+        const char_t front = m_buffers[0].advance(c);
+        for(size_t i = 1; i < m_window - m_threshold; i++) {
+            m_buffers[i].advance(c);
+        }
         
-        if(m_buffer.size() == pack_num) {
-            // read buffer contents
-            // std::cout << "process buffer" << std::endl;
-            auto prefix = pack(m_buffer);
-            size_t len = pack_num;
-            for(size_t j = 0; j < pack_num - (m_threshold-1); j++) {
-                // std::cout << "\tprefix 0x" << std::hex << prefix << std::endl;
+        // test if at least m_window characters have been read
+        if(m_buffers[0].full()) {
+            // std::cout << "T[" << std::dec << m_pos << "] = " << c << " = 0x" << std::hex << size_t(c) << std::endl;
+            
+            // process prefixes
+            size_t len = m_window;
+            for(size_t j = 0; j < m_window - m_threshold; j++) {
+                const auto prefix_fp = m_buffers[j].fingerprint();
+                // std::cout << "\tprefix " << m_buffers[j].str() << ", fp=0x" << std::hex << prefix_fp << std::endl;
                 
                 // test if prefix has been seen before
-                size_t cur_h;
                 if(m_pos >= m_next_factor) {
                     for(size_t i = 0; i < m_num_rows; i++) {
-                        const auto h = hash(i, prefix);
-                        if(m_data[i][h].last == prefix) {
+                        const auto h = hash(i, prefix_fp);
+                        if(m_data[i][h].last == prefix_fp) {
                             const auto src = m_data[i][h].seen_at;
                             
                             // std::cout << "\t\toutput reference (" << std::dec << m_data[i][h].seen_at << "," << len << ")" << std::endl;
@@ -123,49 +118,47 @@ private:
                     }
                 }
                 
-                // enter
+                // enter prefix
                 {
-                    const auto h = hash(m_cur_row, prefix);
+                    const auto h = hash(m_cur_row, prefix_fp);
                     
                     if constexpr(m_track_stats) {
                         if(m_data[m_cur_row][h].last) ++m_stats.num_collisions;
                     }
                     
-                    m_data[m_cur_row][h].last = prefix;
+                    m_data[m_cur_row][h].last = prefix_fp;
                     m_data[m_cur_row][h].seen_at = m_pos;
                     // std::cout << "\t\tenter into cell [" << std::dec << m_cur_row << "," << h << "]" << std::endl;
                     m_cur_row = (m_cur_row + 1) & m_row_mask;
                 }
                 
-                prefix >>= std::numeric_limits<char_t>::digits;
                 --len;
             }
             
-            // advance buffer
+            // advance
             if(m_pos >= m_next_factor) {
                 // output literal
-                // std::cout << "\toutput literal " << m_buffer.front() << std::endl;
+                // std::cout << "\toutput literal " << front << std::endl;
                 if(m_last_ref_src != SIZE_MAX) {
                     if constexpr(m_track_stats) ++m_stats.num_refs;
                     out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
                 }
                 m_last_ref_src = SIZE_MAX;
                 
-                out << m_buffer.front();
+                out << front;
                 ++m_next_factor;
                 
                 if constexpr(m_track_stats) ++m_stats.num_literals;
             }
-            m_buffer.pop_front();
             
-            // advance
+            // advance position
             ++m_pos;
         }
     }
 
 public:
-    LZQGramTable(size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
-        : m_buffer(pack_num),
+    LZQGramTableRolling(size_t window, size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
+        : m_window(window),
           m_num_cols(num_cols),
           m_num_rows(num_rows),
           m_col_mask(num_cols-1),
@@ -177,7 +170,7 @@ public:
         if(!std::has_single_bit(num_cols)) throw std::runtime_error("use powers of two for num_cols");
         if(!std::has_single_bit(num_rows)) throw std::runtime_error("use powers of two for num_rows");
 
-        // initialize hash functions and data rows
+        // initialize data rows and prime offsets
         assert(m_num_rows <= math::NUM_POOL_PRIMES);
         random::Permutation perm(math::NUM_POOL_PRIMES, seed);
         
@@ -188,6 +181,16 @@ public:
             m_hash.emplace_back(hash::Multiplicative(math::PRIME_POOL[perm(i)]));
             m_data.emplace_back(std::vector<Entry>(m_num_cols, Entry()));
             // std::cout << "h" << std::dec << " = 0x" << std::hex << math::PRIME_POOL[perm(i)] << std::endl;
+        }
+        
+        // initialize fingerprints
+        {
+            size_t prefix_len = m_window;
+            m_buffers.reserve(m_window - m_threshold);
+            for(size_t i = 0; i < m_window - m_threshold; i++) {
+                m_buffers.emplace_back(hash::RollingKarpRabinFingerprint<char_t>(prefix_len));
+                --prefix_len;
+            }
         }
     }
 
@@ -207,7 +210,7 @@ public:
         delete[] buffer;
         
         // process remainder
-        for(size_t i = 0; i < pack_num - 1; i++) {
+        for(size_t i = 0; i < m_window - 1; i++) {
             process(0, out);
         }
         

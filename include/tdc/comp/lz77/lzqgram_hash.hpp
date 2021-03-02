@@ -135,7 +135,7 @@ public:
         }
         
         if constexpr(m_track_stats) m_stats.input_size = m_pos;
-        if constexpr(m_track_stats) m_stats.debug = m_filter.size();
+        if constexpr(m_track_stats) m_stats.trie_size = m_filter.size();
     }
     
     const Stats& stats() const { return m_stats; }

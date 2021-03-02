@@ -7,6 +7,7 @@
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_table.hpp>
+#include <tdc/comp/lz77/lzqgram_table_rolling.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
 
 #include <tdc/uint/uint128.hpp>
@@ -45,7 +46,10 @@ void bench(std::string&& name, ctor_t ctor) {
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
         phase.log("num_refs", stats.num_refs);
-        phase.log("debug", stats.debug);
+        phase.log("num_collisions", stats.num_collisions);
+        phase.log("num_extensions", stats.num_collisions);
+        phase.log("extension_sum", stats.extension_sum);
+        phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
     }
@@ -61,10 +65,6 @@ int main(int argc, char** argv) {
     
     bench("Noop()", [](){ return Noop<true>(); });
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 1)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 1, options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 2)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 2, options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 4)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 4, options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 8)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 8, options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 16)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 16, options.threshold); });
-    bench("LZQGramTable(8, 256_Ki x 32)", [](){ return LZQGramTable<char_t, uint64_t, true>(256_Ki, 32, options.threshold); });
+    bench("LZQGramTable(8, 1_Mi x 8)", [](){ return LZQGramTable<char_t, uint64_t, true>(1_Mi, 8, options.threshold); });
+    // bench("LZQGramTableRolling(8, 1_Mi x 8)", [](){ return LZQGramTableRolling<char_t, true>(8, 1_Mi, 8, options.threshold); });
 }
