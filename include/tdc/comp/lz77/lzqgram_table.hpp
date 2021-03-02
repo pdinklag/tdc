@@ -7,9 +7,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <robin_hood.h>
-#include <tlx/container/ring_buffer.hpp>
-
 #include <tdc/hash/function.hpp>
 #include <tdc/math/prime.hpp>
 #include <tdc/random/permutation.hpp>
@@ -28,13 +25,11 @@ private:
     using count_t = index_t;
 
     static constexpr size_t pack_num = sizeof(packed_chars_t) / sizeof(char_t);
-    static packed_chars_t pack(const buffer_t& buffer) {
-        packed_chars_t packed = buffer[0];
-        for(size_t i = 1; i < pack_num; i++) {
-            packed <<= std::numeric_limits<char_t>::digits;
-            packed |= buffer[i];
-        }
-        return packed;
+    static constexpr size_t char_bits = std::numeric_limits<char_t>::digits;
+    
+    static char_t extract_front(packed_chars_t packed) {
+        constexpr size_t front_rsh = (pack_num - 1) * std::numeric_limits<char_t>::digits;
+        return (char_t)(packed >> front_rsh);
     }
     
     struct Entry {
@@ -58,7 +53,9 @@ private:
         return h & m_col_mask;
     }
     
-    buffer_t m_buffer;
+    packed_chars_t m_buffer;
+    size_t m_read;
+    
     Stats m_stats;
     
     size_t m_pos;
@@ -76,17 +73,20 @@ private:
         
         // TODO table
         
-        m_buffer.clear();
+        m_buffer = 0;
+        m_read = 0;
     }
     
     void process(char_t c, std::ostream& out) {
         // std::cout << "T[" << std::dec << m_pos << "] = " << c << " = 0x" << std::hex << size_t(c) << std::endl;
-        m_buffer.push_back(c);
+        const char_t front = extract_front(m_buffer);
+        m_buffer = (m_buffer << char_bits) | c;
+        ++m_read;
         
-        if(m_buffer.size() == pack_num) {
+        if(m_read >= pack_num) {
             // read buffer contents
             // std::cout << "process buffer" << std::endl;
-            auto prefix = pack(m_buffer);
+            auto prefix = m_buffer;
             size_t len = pack_num;
             for(size_t j = 0; j < pack_num - (m_threshold-1); j++) {
                 // std::cout << "\tprefix 0x" << std::hex << prefix << std::endl;
@@ -144,19 +144,18 @@ private:
             // advance buffer
             if(m_pos >= m_next_factor) {
                 // output literal
-                // std::cout << "\toutput literal " << m_buffer.front() << std::endl;
+                // std::cout << "\toutput literal " << front << std::endl;
                 if(m_last_ref_src != SIZE_MAX) {
                     if constexpr(m_track_stats) ++m_stats.num_refs;
                     out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
                 }
                 m_last_ref_src = SIZE_MAX;
                 
-                out << m_buffer.front();
+                out << front;
                 ++m_next_factor;
                 
                 if constexpr(m_track_stats) ++m_stats.num_literals;
             }
-            m_buffer.pop_front();
             
             // advance
             ++m_pos;
@@ -165,7 +164,8 @@ private:
 
 public:
     LZQGramTable(size_t num_cols, size_t num_rows, size_t threshold = 2, uint64_t seed = random::DEFAULT_SEED)
-        : m_buffer(pack_num),
+        : m_buffer(0),
+          m_read(0),
           m_num_cols(num_cols),
           m_num_rows(num_rows),
           m_col_mask(num_cols-1),
