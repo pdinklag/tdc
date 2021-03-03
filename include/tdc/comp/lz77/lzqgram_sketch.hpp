@@ -67,6 +67,7 @@ private:
     filter_table_t m_filter_table;
     size_t m_filter_num;
     MinCount<FilterEntry*> m_filter_min;
+    sketch::CountMin<packed_chars_t> m_sketch;
     
     packed_chars_t m_buffer;
     size_t m_read;
@@ -113,8 +114,9 @@ private:
                     if(e != m_filter_table.end()) {
                         auto& filter_entry = e->second;
                         assert(filter_entry.pattern == prefix);
-                        assert(filter_entry.min_ds_entry.item() == &filter_entry);
+                        assert(filter_entry.min_ds_entry.valid());
                         assert(filter_entry.min_ds_entry.count() == filter_entry.new_count);
+                        assert(filter_entry.min_ds_entry.item() == &filter_entry);
                         
                         const auto src = filter_entry.seen_at;
                         filter_entry.seen_at = m_pos;
@@ -143,19 +145,47 @@ private:
                         
                         break;
                     } else {
+                        bool enter_into_filter;
+                        index_t count;
                         if(m_filter_table.size() >= m_filter_size) {
-                            // TODO: move into sketch!
                             if constexpr(m_track_stats) ++m_stats.num_collisions;
+                            
+                            // move into sketch!
+                            count = m_sketch.process_and_count(prefix);
+                            if(count > m_filter_min.min()) {
+                                enter_into_filter = true;
+                                if constexpr(m_track_stats) ++m_stats.num_swaps;
+                                
+                                // extract minimum from filter
+                                FilterEntry* min = m_filter_min.extract_min();
+                                assert(m_filter_table.find(min->pattern) != m_filter_table.end());
+                                const auto delta = min->new_count - min->old_count;
+                                m_filter_table.erase(min->pattern);
+                                assert(m_filter_table.find(min->pattern) == m_filter_table.end());
+                                
+                                // "put it into sketch"
+                                if(delta > 0) {
+                                    m_sketch.process(prefix, delta);
+                                }
+                            } else {
+                                enter_into_filter = false;
+                            }
+                        } else {
+                            count = 1;
+                            enter_into_filter = true;
                         }
                         
-                        auto result = m_filter_table.emplace(prefix, FilterEntry(prefix, m_pos, 1));
-                        if(result.second) {
-                            auto& table_entry = result.first->second;
-                            auto min_entry = m_filter_min.insert(&table_entry);
-                            assert(min_entry.item() == &table_entry);
-                            table_entry.min_ds_entry = min_entry;
-                        } else {
-                            std::abort();
+                        // enter into filter
+                        if(enter_into_filter) {
+                            auto result = m_filter_table.emplace(prefix, FilterEntry(prefix, m_pos, count));
+                            if(result.second) {
+                                auto& filter_entry = result.first->second;
+                                auto min_entry = m_filter_min.insert(&filter_entry, count);
+                                assert(min_entry.item() == &filter_entry);
+                                filter_entry.min_ds_entry = min_entry;
+                            } else {
+                                std::abort();
+                            }
                         }
                     }
                 }
@@ -186,11 +216,12 @@ private:
     }
 
 public:
-    LZQGramSketch(size_t threshold = 2)
+    LZQGramSketch(size_t sketch_cols, size_t sketch_rows, size_t threshold = 2)
         : m_buffer(0),
           m_read(0),
           m_filter_table(m_filter_size),
           m_filter_num(0),
+          m_sketch(sketch_cols, sketch_rows),
           m_threshold(threshold),
           m_last_ref_src(SIZE_MAX),
           m_last_ref_len(0) {
@@ -222,6 +253,7 @@ public:
         }
         
         if constexpr(m_track_stats) m_stats.input_size = m_pos;
+        if constexpr(m_track_stats) m_stats.trie_size = m_filter_table.size();
     }
     
     const Stats& stats() const { return m_stats; }

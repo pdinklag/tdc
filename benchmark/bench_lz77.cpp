@@ -47,6 +47,7 @@ void bench(std::string&& name, ctor_t ctor) {
         phase.log("num_collisions", stats.num_collisions);
         phase.log("num_extensions", stats.num_extensions);
         phase.log("extension_sum", stats.extension_sum);
+        phase.log("num_swaps", stats.num_swaps);
         phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
@@ -61,10 +62,8 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("Noop()", [](){ return Noop<true>(); });
+    bench("LZQGramHash(16, 56_Mi)", [](){ return LZQGramHash<56_Mi, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGramSketch(16, 1_Mi, 16_Ki x 4)", [](){ return LZQGramSketch<1_Mi, uint128_t, char_t, true>(16_Ki, 4, options.threshold); });
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<8_Mi, uint64_t, char_t, true>(options.threshold); });
-    bench("LZQGramSketch(8, 8_Mi)", [](){ return LZQGramSketch<8_Mi, uint64_t, char_t, true>(options.threshold); });
-    bench("LZQGramHash(16, 4_Mi)", [](){ return LZQGramHash<4_Mi, uint128_t, char_t, true>(options.threshold); });
-    bench("LZQGramSketch(16, 4_Mi)", [](){ return LZQGramSketch<4_Mi, uint128_t, char_t, true>(options.threshold); });
+    bench("Noop()", [](){ return Noop<true>(); });
 }

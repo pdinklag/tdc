@@ -12,6 +12,7 @@ struct Stats {
     
     size_t num_collisions;
     size_t num_extensions;
+    size_t num_swaps;
     size_t extension_sum;
     size_t trie_size;
     
@@ -21,6 +22,7 @@ struct Stats {
           num_refs(0),
           num_collisions(0),
           num_extensions(0),
+          num_swaps(0),
           extension_sum(0),
           trie_size(0)
     {}

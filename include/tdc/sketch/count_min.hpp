@@ -25,7 +25,7 @@ public:
 
 private:
     size_t m_num_rows, m_num_cols;
-    std::vector<hash::Multiplicative> m_hash;
+    std::vector<hash::Modulo> m_hash;
     std::vector<std::vector<count_t>> m_data;
 
     size_t hash(size_t i, const key_t& key) const {
@@ -48,8 +48,9 @@ public:
         m_hash.reserve(m_num_rows);
         m_data.reserve(m_num_rows);
         
+        const uint64_t mod = math::prime_predecessor(num_cols);
         for(size_t i = 0; i < m_num_rows; i++) {
-            m_hash.emplace_back(hash::Multiplicative(math::PRIME_POOL[perm(i)]));
+            m_hash.emplace_back(hash::Modulo(math::PRIME_POOL[perm(i)]));
             m_data.emplace_back(std::vector<count_t>(m_num_cols, 0));
         }
     }

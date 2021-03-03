@@ -31,6 +31,7 @@ public:
         Entry() : m_bucket(nullptr) {
         }
     
+        bool valid() const { return m_bucket != nullptr; }
         index_t count() const { return m_bucket->count(); }
         item_t& item() { return *m_it; }
     };
@@ -94,21 +95,21 @@ public:
 
     /// \brief Extracts the count of the entries with the minimum count.
     index_t min() const {
-        return m_buckets.empty() ? 0 : m_buckets.front().count();
+        assert(!empty());
+        return m_buckets.front().count();
     }
 
     /// \brief Extracts an entry with the minimum count.
-    std::pair<item_t, index_t> extract_min() {
+    item_t extract_min() {
         assert(!empty());
         auto& bucket = m_buckets.front();
-        auto count = bucket.count();
         auto item = bucket.extract_head();
         
         if(bucket.empty()) {
             m_buckets.pop_front();
         }
         
-        return std::pair(item, count);
+        return item;
     }
     
     /// \brief Inserts a new item.
