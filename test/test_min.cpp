@@ -90,10 +90,13 @@ int main(int argc, char** argv) {
             ASSERT_EQ(ds.min(), 3);
         }
         
-        auto& e = ds.insert('E');
-        ds.increment(e);
-        
+        // finally, insert items with starting count
+        auto& e = ds.insert('E', 2);        
         ASSERT_EQ(e.count(), 2);
+        ASSERT_EQ(ds.min(), 2);
+        
+        auto& f = ds.insert('F', 4);  
+        ASSERT_EQ(f.count(), 4);
         ASSERT_EQ(ds.min(), 2);
     }
 }

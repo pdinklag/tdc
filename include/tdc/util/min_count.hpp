@@ -161,13 +161,19 @@ public:
 
     /// \brief Inserts a new item with count one.
     /// \param item the item
-    Entry& insert(item_t&& item) {
-        // find bucket
-        Bucket* b;
-        if(m_first && m_first->count() == 1) {
-            b = m_first.get();
-        } else {
-            b = create_bucket(nullptr, 1);
+    Entry& insert(item_t&& item, const index_t count = 1) {
+        // try and find bucket for count
+        // this is a naive linear search, but a typical use case is entering an item with a minimum count such that no long search,
+        // or any actual search for that matter, is needed
+        Bucket* b = m_first.get();
+        Bucket* prev = nullptr;
+        while(b && b->count() < count) {
+            prev = b;
+            b = m_first->m_next.get();
+        }
+
+        if(!b || b->count() > count) {
+            b = create_bucket(prev, count);
         }
 
         // insert item
