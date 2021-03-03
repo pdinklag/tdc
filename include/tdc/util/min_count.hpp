@@ -34,11 +34,15 @@ private:
             assert(!e->m_bucket);
             assert(!e->m_prev);
             assert(!e->m_next);
-            
+
             if(m_head) m_head->m_prev = e.get();
             e->m_next = std::move(m_head);
             e->m_bucket = this;
             m_head = std::move(e);
+            
+            assert(!empty());
+            assert(m_head->m_prev == nullptr);
+            assert(m_head->count() == m_count);
             return *m_head;
         }
         
@@ -48,11 +52,20 @@ private:
         
         std::unique_ptr<Entry> extract_head() {
             if(m_head) {
+                assert(!m_head->m_prev);
+                
                 m_head->m_bucket = nullptr;
                 
                 auto ret = std::move(m_head);
                 m_head = std::move(ret->m_next);
-                if(m_head) m_head->m_prev = nullptr;
+                if(m_head) {
+                    assert(m_head->m_prev == ret.get());
+                    m_head->m_prev = nullptr;
+                }
+                
+                assert(!ret->m_bucket);
+                assert(!ret->m_prev);
+                assert(!ret->m_next);
                 return ret;
             } else {
                 return std::unique_ptr<Entry>();
@@ -60,11 +73,13 @@ private:
         }
         
         std::unique_ptr<Entry> remove(Entry& e) {
+            assert(!empty());
             assert(e.m_bucket == this);
+ 
             if(&e == m_head.get()) {
                 // removing head
                 return extract_head();
-            } else {
+            } else {                
                 // removing from chain
                 assert(e.m_prev);
                 assert(e.m_prev->m_next.get() == &e);
@@ -72,8 +87,14 @@ private:
                 auto ret = std::move(e.m_prev->m_next);
                 if(ret->m_next) ret->m_next->m_prev = ret->m_prev;
                 ret->m_prev->m_next = std::move(ret->m_next);
+                assert(!ret->m_next);
                 ret->m_bucket = nullptr;
                 ret->m_prev = nullptr;
+                
+                assert(!empty());
+                assert(!ret->m_bucket);
+                assert(!ret->m_prev);
+                assert(!ret->m_next);
                 return ret;
             }
         }
@@ -109,27 +130,43 @@ private:
         
         // insert after previous if it exists, otherwise make it the first bucket
         if(after) {
+            assert(count > after->count());
+            if(after->m_next) after->m_next->m_prev = b;
             new_bucket->m_next = std::move(after->m_next);
             new_bucket->m_prev = after;
             after->m_next = std::move(new_bucket);
         } else {
+            if(m_first) {
+                assert(count < m_first->count());
+                m_first->m_prev = b;
+            }
+            new_bucket->m_next = std::move(m_first);
             m_first = std::move(new_bucket);
         }
-        
+
         return b;
     }
 
     Bucket* remove_bucket(Bucket& bucket) { // returns previous bucket, if any
+        assert(bucket.empty());
         if(&bucket == m_first.get()) {
             // removing first bucket
+            assert(!bucket.m_prev);
+            if(bucket.m_next) assert(bucket.m_next->m_prev == &bucket);
+            
             m_first = std::move(bucket.m_next);
+            if(m_first) m_first->m_prev = nullptr;
             return nullptr;
         } else {
             assert(bucket.m_prev);
+            assert(bucket.m_prev->m_next.get() == &bucket);
             Bucket* prev = bucket.m_prev;
             
             // removing bucket from chain
-            if(bucket.m_next) bucket.m_next->m_prev = prev;
+            if(bucket.m_next) {
+                assert(bucket.m_next->m_prev == &bucket);
+                bucket.m_next->m_prev = prev;
+            }
             prev->m_next = std::move(bucket.m_next);
             return prev;
         }
@@ -152,13 +189,14 @@ public:
             if(m_first->empty()) {
                 // make next bucket the new first
                 m_first = std::move(m_first->m_next);
+                if(m_first) m_first->m_prev = nullptr;
             }
             return std::pair(std::move(min), count);
         } else {
             return std::pair(std::unique_ptr<Entry>(), 0);
         }
     }
-
+    
     /// \brief Inserts a new item with count one.
     /// \param item the item
     Entry& insert(item_t&& item, const index_t count = 1) {
@@ -196,6 +234,7 @@ public:
             // remove empty bucket
             b = remove_bucket(*b);
         }
+        if(b) assert(!b->empty());
         
         // now, insert it into the next bucket or create it
         {
