@@ -6,6 +6,7 @@
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
+#include <tdc/comp/lz77/lzqgram_sketch.hpp>
 
 #include <tdc/uint/uint128.hpp>
 #include <tdc/uint/uint256.hpp>
@@ -60,8 +61,10 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("Noop()", [](){ return Noop<true>(); });
-    bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<80_Mi, uint64_t, char_t, true>(options.threshold); });
-    bench("LZQGramHash(16, 4_Mi)", [](){ return LZQGramHash<40_Mi, uint128_t, char_t, true>(options.threshold); });
+    // bench("Noop()", [](){ return Noop<true>(); });
+    // bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
+    // bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<8_Mi, uint64_t, char_t, true>(options.threshold); });
+    // bench("LZQGramSketch(8, 8_Mi)", [](){ return LZQGramSketch<8_Mi, uint64_t, char_t, true>(options.threshold); });
+    // bench("LZQGramHash(16, 4_Mi)", [](){ return LZQGramHash<4_Mi, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGramSketch(16, 4_Mi)", [](){ return LZQGramSketch<4_Mi, uint128_t, char_t, true>(options.threshold); });
 }
