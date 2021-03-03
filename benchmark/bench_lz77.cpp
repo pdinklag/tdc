@@ -61,10 +61,10 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    // bench("Noop()", [](){ return Noop<true>(); });
-    // bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    // bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<8_Mi, uint64_t, char_t, true>(options.threshold); });
-    // bench("LZQGramSketch(8, 8_Mi)", [](){ return LZQGramSketch<8_Mi, uint64_t, char_t, true>(options.threshold); });
-    // bench("LZQGramHash(16, 4_Mi)", [](){ return LZQGramHash<4_Mi, uint128_t, char_t, true>(options.threshold); });
+    bench("Noop()", [](){ return Noop<true>(); });
+    bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
+    bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<8_Mi, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGramSketch(8, 8_Mi)", [](){ return LZQGramSketch<8_Mi, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGramHash(16, 4_Mi)", [](){ return LZQGramHash<4_Mi, uint128_t, char_t, true>(options.threshold); });
     bench("LZQGramSketch(16, 4_Mi)", [](){ return LZQGramSketch<4_Mi, uint128_t, char_t, true>(options.threshold); });
 }

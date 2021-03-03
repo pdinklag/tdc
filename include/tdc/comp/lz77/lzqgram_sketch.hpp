@@ -48,19 +48,19 @@ private:
         index_t old_count;
         index_t new_count;
         
-        MinCount<FilterEntry*>::Entry* min_ds_entry;
+        MinCount<FilterEntry*>::Entry min_ds_entry;
         
         FilterEntry() : FilterEntry(0, 0, 0) {
         }
         
-        FilterEntry(packed_chars_t _pattern, index_t _seen_at, index_t _count) : pattern(_pattern), seen_at(_seen_at), old_count(_count), new_count(_count), min_ds_entry(nullptr) {
+        FilterEntry(packed_chars_t _pattern, index_t _seen_at, index_t _count) : pattern(_pattern), seen_at(_seen_at), old_count(_count), new_count(_count) {
         }
         
         FilterEntry(FilterEntry&&) = default;
         FilterEntry(const FilterEntry&) = default;
         FilterEntry& operator=(FilterEntry&&) = default;
         FilterEntry& operator=(const FilterEntry&) = default;
-    } __attribute__((__packed__));
+    };
 
     using filter_table_t = robin_hood::unordered_node_map<packed_chars_t, FilterEntry, ModuloHash>;
     
@@ -113,13 +113,13 @@ private:
                     if(e != m_filter_table.end()) {
                         auto& filter_entry = e->second;
                         assert(filter_entry.pattern == prefix);
-                        assert(filter_entry.min_ds_entry->item() == &filter_entry);
-                        assert(filter_entry.min_ds_entry->count() == filter_entry.new_count);
+                        assert(filter_entry.min_ds_entry.item() == &filter_entry);
+                        assert(filter_entry.min_ds_entry.count() == filter_entry.new_count);
                         
                         const auto src = filter_entry.seen_at;
                         filter_entry.seen_at = m_pos;
                         ++filter_entry.new_count;
-                        m_filter_min.increment(*filter_entry.min_ds_entry);
+                        m_filter_min.increment(filter_entry.min_ds_entry);
                         
                         // std::cout << "\t\toutput reference (" << std::dec << m_table[i][h].seen_at << "," << len << ")" << std::endl;
                         if(src == m_last_ref_src + m_last_ref_len) {
@@ -151,9 +151,9 @@ private:
                         auto result = m_filter_table.emplace(prefix, FilterEntry(prefix, m_pos, 1));
                         if(result.second) {
                             auto& table_entry = result.first->second;
-                            auto& min_entry = m_filter_min.insert(&table_entry);
+                            auto min_entry = m_filter_min.insert(&table_entry);
                             assert(min_entry.item() == &table_entry);
-                            table_entry.min_ds_entry = &min_entry;
+                            table_entry.min_ds_entry = min_entry;
                         } else {
                             std::abort();
                         }
