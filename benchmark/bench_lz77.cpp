@@ -62,8 +62,8 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("LZQGramHash(16, 56_Mi)", [](){ return LZQGramHash<56_Mi, uint128_t, char_t, true>(options.threshold); });
-    bench("LZQGramSketch(16, 1_Mi, 16_Ki x 4)", [](){ return LZQGramSketch<1_Mi, uint128_t, char_t, true>(16_Ki, 4, options.threshold); });
-    bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("Noop()", [](){ return Noop<true>(); });
+    // bench("LZQGramHash(16, 512_Ki)", [](){ return LZQGramHash<512_Ki, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGramSketch(16, 96_Ki, 16_Ki x 4)", [](){ return LZQGramSketch<96_Ki, uint128_t, char_t, true>(4_Ki, 4, options.threshold); });
+    // bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
+    // bench("Noop()", [](){ return Noop<true>(); });
 }

@@ -25,10 +25,7 @@ private:
     static constexpr size_t char_bits = std::numeric_limits<char_t>::digits;
     static constexpr uint64_t m_filter_prime = math::prime_predecessor(m_filter_size);
     
-    static char_t extract_front(packed_chars_t packed) {
-        constexpr size_t front_rsh = (pack_num - 1) * std::numeric_limits<char_t>::digits;
-        return (char_t)(packed >> front_rsh);
-    }
+    static constexpr size_t REF_INVALID = SIZE_MAX;
     
     struct FilterEntry {
         packed_chars_t last;
@@ -53,9 +50,8 @@ private:
     size_t m_pos;
     size_t m_next_factor;
     
-    size_t m_last_ref_src;
-    size_t m_last_ref_len;
-    size_t m_last_ref_src_end;
+    size_t m_cur_src;
+    size_t m_cur_len;
     
     size_t m_threshold;
 
@@ -66,72 +62,83 @@ private:
         m_filter = std::vector<FilterEntry>(m_filter_size, FilterEntry());
         m_buffer = 0;
         m_read = 0;
+        
+        m_cur_src = REF_INVALID;
+        m_cur_len = 0;
+    }
+    
+    char_t buffer_front() {
+        constexpr size_t front_rsh = (pack_num - 1) * char_bits;
+        return (char_t)(m_buffer >> front_rsh);
+    }
+    
+    void output_current_ref(std::ostream& out) {
+        if(m_cur_src != REF_INVALID) {
+            // std::cout << "\toutput reference (" << std::dec << m_cur_src << "," << m_cur_len << ")" << std::endl;
+            out << "(" << m_cur_src << "," << m_cur_len << ")";
+            if constexpr(m_track_stats) ++m_stats.num_refs;
+        }
     }
     
     void process(char_t c, std::ostream& out) {
-        // std::cout << "T[" << std::dec << m_pos << "] = " << c << " = 0x" << std::hex << size_t(c) << std::endl;
-        const char_t front = extract_front(m_buffer);
         m_buffer = (m_buffer << char_bits) | c;
         ++m_read;
         
         if(m_read >= pack_num) {
+            const char_t front = buffer_front();
+            
             // read buffer contents
-            // std::cout << "process buffer" << std::endl;
             auto prefix = m_buffer;
             size_t len = pack_num;
             for(size_t j = 0; j < pack_num - (m_threshold-1); j++) {
-                // std::cout << "\tprefix 0x" << std::hex << prefix << std::endl;
+                // std::cout << "prefix 0x" << std::hex << prefix << std::endl;
                 
                 // test if prefix has been seen before
-                size_t cur_h;
-                if(m_pos >= m_next_factor) {
-                    const auto h = hash(prefix);
-                    if(m_filter[h].last == prefix) {
-                        const auto src = m_filter[h].seen_at;
-                        m_filter[h].seen_at = m_pos;
-                        
-                        // std::cout << "\t\toutput reference (" << std::dec << m_table[i][h].seen_at << "," << len << ")" << std::endl;
-                        if(src == m_last_ref_src + m_last_ref_len) {
-                            // extend last reference
-                            m_last_ref_len += len;          
+                const auto h = hash(prefix);
+                if(m_filter[h].last == prefix) {
+                    const auto src = m_filter[h].seen_at;
+                    m_filter[h].seen_at = m_pos;
+                    
+                    if(m_pos >= m_next_factor) {
+                        if(src == m_cur_src + m_cur_len) {
+                            // extend current reference
+                            // std::cout << "\textend reference (" << std::dec << m_cur_src << "," << m_cur_len << ") to length " << (m_cur_len+len) << std::endl;
+                            
+                            m_cur_len += len;          
                             if constexpr(m_track_stats) {
                                 ++m_stats.num_extensions;
                                 m_stats.extension_sum += len;
                             }
                         } else {
-                            if(m_last_ref_src != SIZE_MAX) {
-                                out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
-                                if constexpr(m_track_stats) ++m_stats.num_refs;
-                            }
+                            // output current reference
+                            output_current_ref(out);
                             
-                            m_last_ref_src = src;
-                            m_last_ref_len = len;
+                            // start new reference
+                            m_cur_src = src;
+                            m_cur_len = len;
                         }
                         
                         m_next_factor = m_pos + len;
-                        
-                        break;
-                    } else {
-                        if(m_filter[h].last) ++m_stats.num_collisions;
-                        m_filter[h].last = prefix;
-                        m_filter[h].seen_at = m_pos;
                     }
+                } else {
+                    if(m_filter[h].last) ++m_stats.num_collisions;
+                    m_filter[h].last = prefix;
+                    m_filter[h].seen_at = m_pos;
                 }
                 
-                prefix >>= std::numeric_limits<char_t>::digits;
+                prefix >>= char_bits;
                 --len;
             }
             
             // advance buffer
             if(m_pos >= m_next_factor) {
+                // output current reference, if any, and invalidate
+                output_current_ref(out);
+                m_cur_src = REF_INVALID;
+                m_cur_len = 0;
+                
                 // output literal
                 // std::cout << "\toutput literal " << front << std::endl;
-                if(m_last_ref_src != SIZE_MAX) {
-                    if constexpr(m_track_stats) ++m_stats.num_refs;
-                    out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
-                }
-                m_last_ref_src = SIZE_MAX;
-                
                 out << front;
                 ++m_next_factor;
                 
@@ -148,7 +155,7 @@ public:
         : m_buffer(0),
           m_read(0),
           m_threshold(threshold),
-          m_last_ref_src(SIZE_MAX) {
+          m_cur_src(REF_INVALID) {
     }
 
     void compress(std::istream& in, std::ostream& out) {
@@ -171,10 +178,8 @@ public:
             process(0, out);
         }
         
-        if(m_last_ref_src != SIZE_MAX) {
-            out << "(" << m_last_ref_src << "," << m_last_ref_len << ")";
-            if constexpr(m_track_stats) ++m_stats.num_refs;
-        }
+        // output last reference, if any
+        output_current_ref(out);
         
         if constexpr(m_track_stats) m_stats.input_size = m_pos;
     }
