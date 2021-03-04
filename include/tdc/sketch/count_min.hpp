@@ -75,13 +75,40 @@ public:
     /// \param key the key in question
     /// \param c the number of times to count the key
     count_t process_and_count(const key_t& key, count_t c = count_t(1)) {
-        count_t min = std::numeric_limits<count_t>::max();
-        for(size_t i = 0; i < m_num_rows; i++) {
+        count_t min;
+        {
+            const auto h = hash(0, key);
+            m_data[0][h] += c;
+            min = m_data[0][h];
+        }
+        
+        for(size_t i = 1; i < m_num_rows; i++) {
             const auto h = hash(i, key);
             m_data[i][h] += c;
             min = std::min(min, m_data[i][h]);
         }
         return min;
+    }
+    
+    /// \brief Processes and counts multiple keys in a batch.
+    /// \param keys the keys
+    /// \param counts the associated counts
+    /// \param num_keys the number of keys
+    /// \param min the result array
+    void process_and_count(const key_t* keys, const count_t* counts, const size_t num_keys, count_t* min) {
+        for(size_t j = 0; j < num_keys; j++) {
+            const auto h = hash(0, keys[j]);
+            m_data[0][h] += counts[j];
+            min[j] = m_data[0][h];
+        }
+        
+        for(size_t i = 1; i < m_num_rows; i++) {
+            for(size_t j = 0; j < num_keys; j++) {
+                const auto h = hash(j, keys[j]);
+                m_data[j][h] += counts[j];
+                min[j] = m_data[j][h];
+            }
+        }
     }
 
     /// \brief Reports a count estimate for the given key.
