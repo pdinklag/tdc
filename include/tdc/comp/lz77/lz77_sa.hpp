@@ -47,7 +47,7 @@ public:
         for(size_t i = 0; i+1 < n;) {
             // get SA position for suffix i
             const size_t cur_pos = isa[i];
-            assert(cur_pos > 0); // isa[i] == 0 <=> T[i] = 0
+            // assert(cur_pos > 0); // isa[i] == 0 <=> T[i] = 0
 
             // compute naively PSV
             // search "upwards" in LCP array
