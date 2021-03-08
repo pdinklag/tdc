@@ -175,6 +175,10 @@ public:
         if(b == m_buckets.end() || b->count() > new_count) {
             b = m_buckets.emplace(b, Bucket(new_count));
             b->it(b);
+            if constexpr(m_delete_empty) {
+                // if this is now the only bucket, it's also the minimum
+                if(m_min == m_buckets.end()) m_min = b;
+            }
         }
         
         // insert item
