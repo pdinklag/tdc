@@ -6,35 +6,43 @@
 int main(int argc, char** argv) {
     // initialize
     tdc::MinCount<char> ds;
-    ASSERT_EQ(ds.min(), 0);
+    ASSERT_TRUE(ds.empty());
     
     // insert an item and extract it again
     {
         auto a = ds.insert('A');
+        ASSERT_FALSE(ds.empty());
         ASSERT_EQ(ds.min(), 1);
     
         auto min = ds.extract_min();
-        ASSERT_EQ(min.first, 'A');
-        ASSERT_EQ(min.second, 1);
+        ASSERT_EQ(min, 'A');
     }
-    ASSERT_EQ(ds.min(), 0);
+    ASSERT_TRUE(ds.empty());
     
     // insert an item and increment it
     {
         auto a = ds.insert('A');
+        ASSERT_FALSE(ds.empty());
+        
         ds.increment(a); // 2
         ASSERT_EQ(a.count(), 2);
+        ASSERT_FALSE(ds.empty());
+        ASSERT_EQ(ds.min(), 2);
+        
         ds.increment(a); // 3
         ASSERT_EQ(a.count(), 3);
+        ASSERT_FALSE(ds.empty());
+        ASSERT_EQ(ds.min(), 3);
+        
         ds.increment(a); // 4
         ASSERT_EQ(a.count(), 4);
+        ASSERT_FALSE(ds.empty());
         ASSERT_EQ(ds.min(), 4);
         
         auto min = ds.extract_min();
-        ASSERT_EQ(min.first, 'A');
-        ASSERT_EQ(min.second, 4);
+        ASSERT_EQ(min, 'A');
     }
-    ASSERT_EQ(ds.min(), 0);
+    ASSERT_TRUE(ds.empty());
     
     // insert multiple items and verify min
     {
@@ -84,8 +92,7 @@ int main(int argc, char** argv) {
             // there should be no bucket with 2 now
 
             auto min = ds.extract_min();
-            ASSERT_EQ(min.first, 'D');
-            ASSERT_EQ(min.second, 1);
+            ASSERT_EQ(min, 'D');
             
             ASSERT_EQ(ds.min(), 3);
         }
