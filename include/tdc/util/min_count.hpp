@@ -95,6 +95,9 @@ public:
     
     /// \brief Tests whether the data structure is empty.
     bool empty() const { return m_min == m_buckets.end(); }
+    
+    /// \brief Gets the number of buckets.
+    size_t num_buckets() const { return m_buckets.size(); }
 
     /// \brief Extracts the count of the entries with the minimum count.
     index_t min() const {
@@ -138,6 +141,12 @@ public:
             if(m_min == m_buckets.end() || count < m_min->count()) {
                 m_min = b;
             }
+        } else {
+            if constexpr(!m_delete_empty) {
+                if(m_min == m_buckets.end() || count < m_min->count()) {
+                    m_min = b;
+                }
+            }
         }
         
         // insert item
@@ -163,9 +172,8 @@ public:
                 if(b == m_min) ++m_min;
                 b = m_buckets.erase(b);
             } else {
-                if(b == m_min) {
-                    do { ++m_min; } while(m_min != m_buckets.end() && m_min->empty());
-                }
+                if(m_min == b) ++m_min;
+                ++b;
             }
         } else {
             ++b;
@@ -175,11 +183,10 @@ public:
         if(b == m_buckets.end() || b->count() > new_count) {
             b = m_buckets.emplace(b, Bucket(new_count));
             b->it(b);
-            if constexpr(m_delete_empty) {
-                // if this is now the only bucket, it's also the minimum
-                if(m_min == m_buckets.end()) m_min = b;
-            }
         }
+        
+        // if this is now the only bucket, it's also the minimum
+        if(m_min == m_buckets.end()) m_min = b;
         
         // insert item
         e = b->insert(std::move(item));
