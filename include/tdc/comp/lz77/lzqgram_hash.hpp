@@ -121,7 +121,13 @@ private:
                         m_next_factor = m_pos + len;
                     }
                 } else {
-                    if(m_filter[h].last) ++m_stats.num_collisions;
+                    if constexpr(m_track_stats) {
+                        if(m_filter[h].last) {
+                            ++m_stats.num_collisions;
+                        } else {
+                            ++m_stats.trie_size;
+                        }
+                    }
                     m_filter[h].last = prefix;
                     m_filter[h].seen_at = m_pos;
                 }
