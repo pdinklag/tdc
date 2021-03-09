@@ -115,6 +115,7 @@ public:
     }
 
     template<typename lzqgram_t>
+    requires (lzqgram_t::qgram_endian == std::endian::little)
     void process(lzqgram_t& c, std::ostream& out) {
         size_t lpf = 0;
         size_t src = 0;

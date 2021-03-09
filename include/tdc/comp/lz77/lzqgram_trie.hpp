@@ -36,7 +36,8 @@ public:
         
         auto* trie = &m_trie;
         for(size_t j = 0; j < lzqgram_t::q; j++) {
-            const size_t i = lzqgram_t::q - 1 - j; // little endian!
+            const size_t i = (lzqgram_t::qgram_endian == std::endian::little) ? lzqgram_t::q - 1 - j : j;
+            
             trie = trie->get_or_create_child(qgram[i]);
             if(trie->count()) {
                 ++len; // nb: this assumes that if a q-gram does not exist in the trie, neither does any (q+1)-gram extending it

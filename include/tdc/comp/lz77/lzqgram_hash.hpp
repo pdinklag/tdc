@@ -41,6 +41,7 @@ public:
     }
 
     template<typename lzqgram_t>
+    requires (lzqgram_t::qgram_endian == std::endian::little)
     void process(lzqgram_t& c, std::ostream& out) {
         auto prefix = c.qgram();
         size_t len = lzqgram_t::q;

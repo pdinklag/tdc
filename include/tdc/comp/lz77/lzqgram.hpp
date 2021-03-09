@@ -15,13 +15,14 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<typename processor_t, std::unsigned_integral qgram_t = uint64_t, std::unsigned_integral m_char_t = unsigned char, bool m_track_stats = false>  
+template<typename processor_t, std::unsigned_integral qgram_t = uint64_t, std::unsigned_integral m_char_t = unsigned char, std::endian m_qgram_endian = std::endian::little, bool m_track_stats = false>
 class LZQGram {
 public:
     using char_t = m_char_t;
     static constexpr size_t char_bits = std::numeric_limits<char_t>::digits;
     
     static constexpr size_t q = sizeof(qgram_t) / sizeof(char_t);
+    static constexpr std::endian qgram_endian = m_qgram_endian;
     static constexpr bool track_stats = m_track_stats;
 
 private:
@@ -67,9 +68,14 @@ private:
     }
 
     void process(char_t c, std::ostream& out) {
-        m_qgram = (m_qgram << char_bits) | c;
-        ++m_read;
+        if constexpr(m_qgram_endian == std::endian::little) {
+            m_qgram = (m_qgram << char_bits) | c;
+        } else {
+            static constexpr size_t lsh = char_bits * (q - 1);
+            m_qgram = (m_qgram >> char_bits) | ((qgram_t)c << lsh);
+        }
         
+        ++m_read;
         if(m_read >= q) {
             // process qgram
             m_processor.process(*this, out);
