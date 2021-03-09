@@ -6,6 +6,7 @@
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lzqgram.hpp>
+#include <tdc/comp/lz77/lzqgram_btree.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_sketch.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
@@ -67,11 +68,13 @@ int main(int argc, char** argv) {
     bench("Noop()", [](){ return Noop<true>(); });
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
     bench("LZQGram<8, Noop>", [](){ return LZQGram<qgram::NoopProcessor, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("LZQGram<8, BTree<64>", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("LZQGram<8, Hash<8_Mi>>", [](){ return LZQGram<qgram::HashProcessor<8_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
     bench("LZQGram<8, Trie<UL>>", [](){ return LZQGram<qgram::TrieProcessor<TrieList<char_t>>, uint64_t, char_t, std::endian::big, true>(options.threshold); });
     bench("LZQGram<8, Trie<HT>>", [](){ return LZQGram<qgram::TrieProcessor<TrieHash<char_t>>, uint64_t, char_t, std::endian::big, true>(options.threshold); });
-    bench("LZQGram<8, Hash<8_Mi>>", [](){ return LZQGram<qgram::HashProcessor<8_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
     bench("LZQGram<8, Sketch<6_Mi, 512_Ki x 4>>", [](){ return LZQGram<qgram::SketchProcessor<6_Mi, 512_Ki, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
     bench("LZQGram<16, Noop>", [](){ return LZQGram<qgram::NoopProcessor, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("LZQGram<16, BTree<64>", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
     bench("LZQGram<16, Trie<UL>>", [](){ return LZQGram<qgram::TrieProcessor<TrieList<char_t>>, uint128_t, char_t, std::endian::big, true>(options.threshold); });
     bench("LZQGram<16, Trie<HT>>", [](){ return LZQGram<qgram::TrieProcessor<TrieHash<char_t>>, uint128_t, char_t, std::endian::big, true>(options.threshold); });
     bench("LZQGram<16, Hash<6_Mi>>", [](){ return LZQGram<qgram::HashProcessor<6_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
