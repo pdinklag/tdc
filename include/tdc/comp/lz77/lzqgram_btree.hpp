@@ -28,7 +28,6 @@ private:
 
     struct BTreeEntry {
         qgram_t qgram;
-        char term = 0; // TODO DEBUG
         index_t last_seen_at;
         
         BTreeEntry() : qgram(0), last_seen_at(0) {
@@ -43,7 +42,7 @@ private:
         auto operator<=>(const BTreeEntry& e) const { return qgram <=> e.qgram; }
         bool operator==(const BTreeEntry& e) const { return qgram == e.qgram; }
         bool operator!=(const BTreeEntry& e) const { return qgram != e.qgram; }
-    };
+    } __attribute__((__packed__));
     
     pred::dynamic::BTree<BTreeEntry, B+1, pred::dynamic::SortedArrayNode<BTreeEntry, B, m_binary_search>> m_btree;
 
@@ -61,13 +60,15 @@ public:
         auto pred = m_btree.predecessor(BTreeEntry(qgram));
         // if(pred.exists) std::cout << "\tfound predecessor 0x" << std::hex << pred.key.qgram << std::endl;
         
+        bool exact_match = false;
         if(pred.exists && pred.key.qgram == qgram) {
             // std::cout << "\texact match!" << std::endl;
             lcp = lzqgram_t::q;
             src = pred.key.last_seen_at;
-            m_btree.remove(BTreeEntry(qgram)); // remove so it can be inserted with an updated position
+            exact_match = true;
         } else {
             // find successor
+            // TODO: this could be much faster using an iterator...
             auto succ = m_btree.successor(BTreeEntry(qgram));
             // if(succ.exists) std::cout << "\tfound successor 0x" << std::hex << pred.key.qgram << std::endl;
             
@@ -96,7 +97,7 @@ public:
         c.output_ref(out, src, lcp);
 
         // enter
-        m_btree.insert(BTreeEntry(qgram, c.pos()));
+        if(!exact_match) m_btree.insert(BTreeEntry(qgram, c.pos()));
     }
 };
 
