@@ -5,6 +5,7 @@
 
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
+#include <tdc/comp/lz77/lzqgram.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_sketch.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
@@ -65,12 +66,14 @@ int main(int argc, char** argv) {
     
     bench("Noop()", [](){ return Noop<true>(); });
     bench("LZ77SA()", [](){ return LZ77SA<true>(options.threshold); });
-    bench("LZQGramTrie(8, UL)", [](){ return LZQGramTrie<uint64_t, char_t, TrieList<char_t>, true>(options.threshold); });
-    bench("LZQGramTrie(8, HT)", [](){ return LZQGramTrie<uint64_t, char_t, TrieHash<char_t>, true>(options.threshold); });
-    bench("LZQGramHash(8, 8_Mi)", [](){ return LZQGramHash<8_Mi, uint64_t, char_t, true>(options.threshold); });
-    bench("LZQGramSketch(8, 6_Mi, 512_Ki x 4)", [](){ return LZQGramSketch<6_Mi, uint64_t, char_t, true>(512_Ki, 4, options.threshold); });
-    bench("LZQGramTrie(16, UL)", [](){ return LZQGramTrie<uint128_t, char_t, TrieList<char_t>, true>(options.threshold); });
-    bench("LZQGramTrie(16, HT)", [](){ return LZQGramTrie<uint128_t, char_t, TrieHash<char_t>, true>(options.threshold); });
-    bench("LZQGramHash(16, 6_Mi)", [](){ return LZQGramHash<6_Mi, uint128_t, char_t, true>(options.threshold); });
-    bench("LZQGramSketch(16, 1_Mi, 512_Ki x 4)", [](){ return LZQGramSketch<1_Mi, uint128_t, char_t, true>(512_Ki, 4, options.threshold); });
+    bench("LZQGram<8, Noop>", [](){ return LZQGram<qgram::NoopProcessor, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGram<8, Trie<UL>>", [](){ return LZQGram<qgram::TrieProcessor<TrieList<char_t>>, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGram<8, Trie<HT>>", [](){ return LZQGram<qgram::TrieProcessor<TrieHash<char_t>>, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGram<8, Hash<8_Mi>>", [](){ return LZQGram<qgram::HashProcessor<8_Mi, uint64_t>, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGram<8, Sketch<6_Mi, 512_Ki x 4>>", [](){ return LZQGram<qgram::SketchProcessor<6_Mi, 512_Ki, 4, uint64_t>, uint64_t, char_t, true>(options.threshold); });
+    bench("LZQGram<16, Noop>", [](){ return LZQGram<qgram::NoopProcessor, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGram<16, Trie<UL>>", [](){ return LZQGram<qgram::TrieProcessor<TrieList<char_t>>, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGram<16, Trie<HT>>", [](){ return LZQGram<qgram::TrieProcessor<TrieHash<char_t>>, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGram<16, Hash<6_Mi>>", [](){ return LZQGram<qgram::HashProcessor<6_Mi, uint128_t>, uint128_t, char_t, true>(options.threshold); });
+    bench("LZQGram<16, Sketch<1_Mi, 512_Ki x 4>>", [](){ return LZQGram<qgram::SketchProcessor<1_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, true>(options.threshold); });
 }

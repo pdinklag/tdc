@@ -13,19 +13,6 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<typename T, typename char_t>
-concept Trie = std::default_initializable<T> &&
-    requires(T trie, const char_t c) {
-        { trie.get_or_create_child(c) } -> std::same_as<T*>;
-    } &&
-    requires(T trie) {
-        { trie.count() } -> std::convertible_to<size_t>;
-        { trie.last_seen_at() } -> std::convertible_to<size_t>;
-    } &&
-    requires(T trie, const size_t count, const size_t last_seen_at) {
-        { trie.update(count, last_seen_at) };
-    };
-
 template<std::unsigned_integral char_t>
 class TrieHash {
 private:
