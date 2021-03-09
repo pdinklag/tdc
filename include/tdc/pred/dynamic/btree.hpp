@@ -456,14 +456,14 @@ public:
         delete m_root;
     }
 
-    /// \brief Finds the \em value of the predecessor of the specified key in the trie.
+    /// \brief Finds the \em value of the predecessor of the specified key in the tree.
     /// \param x the key in question
     KeyResult<key_t> predecessor(const key_t x) const {
         Node* node = m_root;
         PosResult r;
         
         bool exists = false;
-        key_t value = std::numeric_limits<key_t>::max();
+        key_t value;
         
         r = node->impl.predecessor(x);
         while(!node->is_leaf()) {
@@ -478,6 +478,36 @@ public:
             const size_t i = r.exists ? r.pos + 1 : 0;
             node = node->children[i];
             r = node->impl.predecessor(x);
+        }
+        
+        exists = exists || r.exists;
+        if(r.exists) value = node->impl[r.pos];
+        
+        return { exists, value };
+    }
+    
+    /// \brief Finds the \em value of the successor of the specified key in the tree.
+    /// \param x the key in question
+    KeyResult<key_t> successor(const key_t x) const {
+        Node* node = m_root;
+        PosResult r;
+        
+        bool exists = false;
+        key_t value;
+        
+        r = node->impl.successor(x);
+        while(!node->is_leaf()) {
+            exists = exists || r.exists;
+            if(r.exists) {
+                value = node->impl[r.pos];
+                if(value == x) {
+                    return { true, x };
+                }
+            }
+
+            const size_t i = r.exists ? r.pos : node->num_children - 1;
+            node = node->children[i];
+            r = node->impl.successor(x);
         }
         
         exists = exists || r.exists;

@@ -57,6 +57,22 @@ public:
             return { true, i-1 };
         }
     }
+    
+    /// \brief Finds the rank of the successor of the specified key in the node.
+    /// \param x the key in question
+    PosResult successor(const key_t x) const {
+        if constexpr(m_binary_search) {
+            return BinarySearch<key_t>::successor(m_keys, m_size, x);
+        } else {
+            if(tdc_unlikely(m_size == 0)) return { false, 0 };
+            if(tdc_unlikely(x <= m_keys[0])) return { true, 0 };
+            if(tdc_unlikely(x > m_keys[m_size-1])) return { false, 0 };
+            
+            size_t i = 1;
+            while(m_keys[i] <= x) ++i;
+            return { true, i };
+        }
+    }
 
     /// \brief Inserts the specified key.
     /// \param key the key to insert
