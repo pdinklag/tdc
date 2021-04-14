@@ -26,10 +26,18 @@ using char_t = unsigned char;
 struct {
     std::string filename;
     size_t threshold = 2;
+    
+    std::string ds;
+    
+    bool do_bench(const std::string& group) {
+        return ds.length() == 0 || ds == group;
+    }
 } options;
 
 template<typename ctor_t>
-void bench(std::string&& name, ctor_t ctor) {
+void bench(const std::string& group, std::string&& name, ctor_t ctor) {
+    if(!options.do_bench(group)) return;
+    
     std::ifstream input(options.filename);
     tdc::io::NullOStream devnull;
     
@@ -53,7 +61,7 @@ void bench(std::string&& name, ctor_t ctor) {
         phase.log("num_swaps", stats.num_swaps);
         phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
-        std::cout << "RESULT algo=" << name << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
+        std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
     }
 }
 
@@ -61,16 +69,17 @@ int main(int argc, char** argv) {
     tlx::CmdlineParser cp;
     cp.add_param_string("file", options.filename, "The input file.");
     cp.add_size_t('t', "threshold", options.threshold, "Minimum reference length.");
+    cp.add_string('a', "group", options.ds, "The algorithm group to benchmark.");
     if(!cp.process(argc, argv)) {
         return -1;
     }
     
-    bench("Noop", [](){ return Noop<true>(); });
-    bench("SA", [](){ return LZ77SA<true>(options.threshold); });
-    bench("BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("Hash(40_Mi),q=8", [](){ return LZQGram<qgram::HashProcessor<40_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("Sketch(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("BTree(64),q=16", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("Hash(28_Mi),q=16", [](){ return LZQGram<qgram::HashProcessor<24_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("Sketch(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("base", "Noop", [](){ return Noop<true>(); });
+    bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
+    bench("btree", "BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("hash", "Hash(40_Mi),q=8", [](){ return LZQGram<qgram::HashProcessor<40_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("sketch", "Sketch(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("btree", "BTree(64),q=16", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("hash", "Hash(28_Mi),q=16", [](){ return LZQGram<qgram::HashProcessor<24_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    bench("sketch", "Sketch(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
 }
