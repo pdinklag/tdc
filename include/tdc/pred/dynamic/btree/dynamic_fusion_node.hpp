@@ -29,6 +29,12 @@ using PosResult = ::tdc::pred::PosResult;
 /// \tparam the maximum number of keys
 template<std::totally_ordered key_t = uint64_t, size_t m_max_keys = 8, bool linear_rank = false>
 class DynamicFusionNode {
+public:
+    /// \brief Reports whether the keys in this data structure are in ascending order.
+    static constexpr bool is_ordered() {
+        return true;
+    }
+
 private:
     static constexpr size_t NUM_DEBUG_BITS = 24; // FIXME: Debug
 

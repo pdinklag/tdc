@@ -18,6 +18,12 @@ using PosResult = ::tdc::pred::PosResult;
 
 template<std::totally_ordered key_t, size_t m_capacity, bool m_binary_search = false>
 class SortedArrayNode {
+public:
+    /// \brief Reports whether the keys in this data structure are in ascending order.
+    static constexpr bool is_ordered() {
+        return true;
+    }
+
 private:
     static_assert(m_capacity < 65536);
     using _size_t = typename std::conditional<m_capacity < 256, uint8_t, uint16_t>::type;
