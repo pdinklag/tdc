@@ -1,3 +1,7 @@
+add_executable(test_btree_min test_btree_min.cpp)
+target_link_libraries(test_btree_min)
+add_test(btree_min test_btree_min)
+
 add_executable(test_min test_min.cpp)
 target_link_libraries(test_min)
 add_test(min test_min)
