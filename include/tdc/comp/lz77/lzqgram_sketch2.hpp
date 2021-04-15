@@ -8,6 +8,9 @@
 #include <stdexcept>
 
 #include <tdc/math/prime.hpp>
+#include <tdc/pred/dynamic/btree.hpp>
+#include <tdc/pred/dynamic/btree/btree_min_observer.hpp>
+#include <tdc/pred/dynamic/btree/sorted_array_node.hpp>
 #include <tdc/sketch/count_min.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/min_count.hpp>
@@ -21,9 +24,9 @@ namespace comp {
 namespace lz77 {
 namespace qgram {
 
-// sketch using MinDS, requires referential integrity
+// sketch using B-Tree as a minimum data structure, does not require referential integrity
 template<size_t m_filter_size, size_t m_sketch_cols, size_t m_sketch_rows, std::unsigned_integral qgram_t = uint64_t>
-class SketchProcessor {
+class SketchProcessor2 {
 private:
     static constexpr uint64_t m_filter_prime = math::prime_predecessor(m_filter_size);
 
@@ -40,9 +43,7 @@ private:
         
         index_t old_count;
         index_t new_count;
-        
-        MinCount<FilterEntry*>::Entry min_ds_entry;
-        
+
         FilterEntry() : FilterEntry(0, 0, 0) {
         }
         
@@ -54,10 +55,36 @@ private:
         FilterEntry& operator=(FilterEntry&&) = default;
         FilterEntry& operator=(const FilterEntry&) = default;
     };
+    
+    struct BTreeEntry {
+        index_t count;
+        qgram_t pattern;
+        
+        constexpr BTreeEntry() : pattern(0), count(0) {
+        }
+        
+        BTreeEntry(qgram_t _pattern, index_t _count) : pattern(_pattern), count(_count) {
+        }
+        
+        BTreeEntry(BTreeEntry&&) = default;
+        BTreeEntry(const BTreeEntry&) = default;
+        BTreeEntry& operator=(BTreeEntry&&) = default;
+        BTreeEntry& operator=(const BTreeEntry&) = default;
+        
+        auto operator<=>(const BTreeEntry& e) const = default;
+        bool operator==(const BTreeEntry& e) const = default;
+        bool operator!=(const BTreeEntry& e) const = default;
+    }  __attribute__((__packed__));
 
     robin_hood::unordered_node_map<qgram_t, FilterEntry, ModuloHash> m_filter_table;
     size_t m_filter_num;
-    MinCount<FilterEntry*> m_filter_min;
+    
+    using btree_t = pred::dynamic::BTree<BTreeEntry, 33, pred::dynamic::SortedArrayNode<BTreeEntry, 32>>;
+    btree_t m_btree;
+    pred::dynamic::BTreeMinObserver<btree_t> m_btree_min;
+    
+    //MinCount<FilterEntry*> m_filter_min;
+    
     sketch::CountMin<qgram_t> m_sketch;
 
     template<typename lzqgram_t>
@@ -72,17 +99,23 @@ private:
             
             // count in sketch
             count = m_sketch.process_and_count(pattern);
-            if(count > m_filter_min.min()) {
+            
+            assert(m_btree_min.has_min());
+            auto min = m_btree_min.min();
+            if(count > min.count) {
                 // sketched count now exceeds filter minimum - we need to swap
                 enter_into_filter = true;
                 if constexpr(lzqgram_t::track_stats) ++c.stats().num_swaps;
                 
                 // extract minimum from filter
-                FilterEntry* min = m_filter_min.extract_min();
-                assert(m_filter_table.find(min->pattern) != m_filter_table.end());
-                const auto delta = min->new_count - min->old_count;
-                m_filter_table.erase(min->pattern);
-                assert(m_filter_table.find(min->pattern) == m_filter_table.end());
+                m_btree.remove(min);
+                assert(m_filter_table.find(min.pattern) != m_filter_table.end());
+                auto min_filter = m_filter_table.find(min.pattern)->second;
+                
+                const auto delta = min_filter.new_count - min_filter.old_count;
+                m_filter_table.erase(min.pattern);
+                assert(m_filter_table.find(min.pattern) == m_filter_table.end());
+                assert(m_btree.size() == m_filter_table.size());
                 
                 // "put it into sketch"
                 if(delta > 0) {
@@ -100,19 +133,18 @@ private:
         if(enter_into_filter) {
             auto result = m_filter_table.emplace(pattern, FilterEntry(pattern, c.pos(), count));
             if(result.second) {
-                auto& filter_entry = result.first->second;
-                auto min_entry = m_filter_min.insert(&filter_entry, count);
-                assert(min_entry.item() == &filter_entry);
-                filter_entry.min_ds_entry = min_entry;
+                m_btree.insert(BTreeEntry(pattern, count));
+                assert(m_btree.size() == m_filter_table.size());
             } else {
                 std::cerr << "failed to insert pattern into filter" << std::endl;
                 std::abort();
             }
-        }
+        }        
     }
 
 public:
-    SketchProcessor() : m_filter_table(m_filter_size), m_filter_num(0), m_sketch(m_sketch_cols, m_sketch_rows) {
+    SketchProcessor2() : m_filter_table(m_filter_size), m_filter_num(0), m_btree_min(m_btree), m_sketch(m_sketch_cols, m_sketch_rows) {
+        m_btree.set_observer(&m_btree_min);
     }
 
     template<typename lzqgram_t>
@@ -139,8 +171,12 @@ public:
                     
                     // update filter
                     filter_entry.seen_at = c.pos();
+
+                    assert(m_btree.contains(BTreeEntry(prefix, filter_entry.new_count)));
+                    m_btree.remove(BTreeEntry(prefix, filter_entry.new_count));
                     ++filter_entry.new_count;
-                    m_filter_min.increment(filter_entry.min_ds_entry);
+                    m_btree.insert(BTreeEntry(prefix, filter_entry.new_count)); // TODO: increase key for B-Tree?
+                    assert(m_btree.size() == m_filter_table.size());
                 } else {
                     // prefix is not in filter, sketch it
                     sketch(c, prefix);

@@ -10,6 +10,7 @@
 
 #include <tdc/pred/result.hpp>
 #include <tdc/util/concepts.hpp>
+#include <tdc/util/likely.hpp>
 
 namespace tdc {
 namespace pred {

@@ -9,6 +9,7 @@
 #include <tdc/comp/lz77/lzqgram_btree.hpp>
 #include <tdc/comp/lz77/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_sketch.hpp>
+#include <tdc/comp/lz77/lzqgram_sketch2.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
 
 #include <tdc/uint/uint128.hpp>
@@ -26,6 +27,7 @@ using char_t = unsigned char;
 struct {
     std::string filename;
     size_t threshold = 2;
+    size_t q = 8;
     
     std::string ds;
     
@@ -70,16 +72,25 @@ int main(int argc, char** argv) {
     cp.add_param_string("file", options.filename, "The input file.");
     cp.add_size_t('t', "threshold", options.threshold, "Minimum reference length.");
     cp.add_string('a', "group", options.ds, "The algorithm group to benchmark.");
+    cp.add_size_t('q', "min-qgram", options.q, "The minimum q-gram length.");
     if(!cp.process(argc, argv)) {
         return -1;
     }
     
     bench("base", "Noop", [](){ return Noop<true>(); });
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
-    bench("btree", "BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("hash", "Hash(40_Mi),q=8", [](){ return LZQGram<qgram::HashProcessor<40_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("sketch", "Sketch(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("btree", "BTree(64),q=16", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("hash", "Hash(28_Mi),q=16", [](){ return LZQGram<qgram::HashProcessor<24_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-    bench("sketch", "Sketch(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    
+    if(options.q <= 8) {
+        bench("btree", "BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("hash", "Hash(40_Mi),q=8", [](){ return LZQGram<qgram::HashProcessor<40_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("sketch", "Sketch(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("sketch", "Sketch2(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor2<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
+    }
+    
+    if(options.q <= 16) {
+        bench("btree", "BTree(64),q=16", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("hash", "Hash(28_Mi),q=16", [](){ return LZQGram<qgram::HashProcessor<24_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("sketch", "Sketch(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+        bench("sketch", "Sketch2(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor2<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
+    }
 }
