@@ -24,6 +24,10 @@ struct KeyEntry {
     K key() const {
         return m_key;
     }
+    
+    operator K() const {
+        return m_key;
+    }
 };
 
 template<typename K, typename V>

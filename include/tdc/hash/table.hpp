@@ -31,7 +31,7 @@ public:
         
     private:
         const Table* m_set;
-        size_t     m_pos;
+        size_t       m_pos;
 
         inline Accessor(const Table& table, const size_t pos) : m_set(&table), m_pos(pos) {
         }
@@ -61,6 +61,10 @@ public:
             assert(exists());
             return m_set->m_entries[m_pos];
         }
+        
+        const E& operator*() const {
+            return key();
+        }
 
         /// \brief Comparison for standard library use pattern.
         inline bool operator==(const Accessor& other) {
@@ -82,6 +86,8 @@ private:
     size_t m_probe_max;
     double m_load_factor;
     double m_growth_factor;
+    
+    mutable size_t m_begin;
 
     std::vector<bool> m_used;
     std::vector<E>    m_entries;
@@ -137,6 +143,7 @@ private:
         
         m_used[h] = 1;
         m_entries[h] = entry;
+        m_begin = h;
         
         ++m_size;
     }
@@ -251,6 +258,18 @@ public:
                 }
             }
             return Accessor(); // key not found
+        }
+    }
+    
+    /// \brief Returns an arbitrary valid accessor, or \ref end if the table is empty.
+    ///
+    /// This is merely for standard library-style usage.
+    Accessor begin() const {
+        if(m_size == 0) {
+            return end();
+        } else {
+            while(!m_used[m_begin]) m_begin = (m_begin + 1) % m_cap;
+            return Accessor(*this, m_begin);
         }
     }
 

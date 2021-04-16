@@ -8,6 +8,10 @@
 
 #include <robin_hood.h>
 
+#include <tdc/hash/function.hpp>
+#include <tdc/hash/table.hpp>
+#include <tdc/hash/quadratic_probing.hpp>
+
 #include <tdc/util/index.hpp>
 
 namespace tdc {
@@ -37,13 +41,16 @@ public:
     };
 
 private:
+    static constexpr uint64_t m_prime = 1069446880303ULL;
+
     struct Bucket {
         index_t count;
-        robin_hood::unordered_set<key_t> keys;
+        //robin_hood::unordered_set<key_t> keys;
+        hash::Table<key_t> keys;
         Bucket* next;
         Bucket* prev;
         
-        Bucket(index_t _count) : count(_count), next(nullptr), prev(nullptr) {
+        Bucket(index_t _count) : count(_count), next(nullptr), prev(nullptr), keys(hash::Modulo(m_prime), 2, 0.75, 1.5) {
         }
         
         bool empty() const {
@@ -54,8 +61,26 @@ private:
     Bucket* m_min_bucket;
     robin_hood::unordered_map<size_t, Bucket*> m_buckets;
 
+    void assert_links(Bucket* b) {
+#ifndef NDEBUG
+        if(b) {
+            if(b->next) assert(b->next->prev == b);
+            if(b->prev) assert(b->prev->next == b);
+        }
+#endif
+    }
+
 public:
     MinCountMap() : m_min_bucket(nullptr) {
+    }
+    
+    ~MinCountMap() {
+        Bucket* b = m_min_bucket;
+        while(b) {
+            Bucket* next = b->next;
+            delete b;
+            b = next;
+        }
     }
 
     /// \brief Tests whether the data structure is empty.
@@ -69,10 +94,12 @@ public:
             Bucket* new_min = new Bucket(1);
             new_min->prev = nullptr;
             new_min->next = m_min_bucket;
+            if(m_min_bucket) m_min_bucket->prev = new_min;
             m_buckets.emplace(1, new_min);
             m_min_bucket = new_min;
         }
         
+        assert_links(m_min_bucket);
         m_min_bucket->keys.insert(key);
         return Entry(key, 1);
     }
@@ -103,6 +130,10 @@ public:
             if(next) next->prev = bucket;
         }
         
+        assert_links(bucket);
+        assert_links(bucket->prev);
+        assert_links(bucket->next);
+        
         bucket->keys.insert(e.key);
     }
     
@@ -116,14 +147,17 @@ public:
         auto it = m_buckets.find(e.count);
         if(it != m_buckets.end()) {
             Bucket* bucket = it->second;
+            assert_links(bucket);
             if(bucket->keys.erase(e.key)) {
                 Bucket* next = bucket->next;
                 if(!next || next->count > e.count) {
                     next = new Bucket(e.count + 1);
                     next->prev = bucket;
                     next->next = bucket->next;
+                    if(bucket->next) bucket->next->prev = next;
                     bucket->next = next;
                     m_buckets.emplace(e.count + 1, next);
+                    assert_links(next);
                 }
                 
                 next->keys.insert(e.key);
@@ -141,9 +175,19 @@ public:
                         m_min_bucket = bucket->next;
                     }
                     
-                    assert(m_min_bucket != bucket);
-                    if(bucket->next) assert(bucket->next->prev != bucket);
-                    if(bucket->prev) assert(bucket->prev->next != bucket);
+                    #ifndef NDEBUG
+                    {
+                        Bucket* bprev = bucket->prev;
+                        Bucket* bnext = bucket->next;
+                        
+                        bucket->prev = nullptr;
+                        bucket->next = nullptr;
+                        
+                        assert(m_min_bucket != bucket);
+                        assert_links(bprev);
+                        assert_links(bnext);
+                    }
+                    #endif
                     
                     m_buckets.erase(e.count);
                     delete bucket;
@@ -170,11 +214,17 @@ public:
             Bucket* old_min = m_min_bucket;
             
             if(old_min->next) {
-                old_min->next->prev = nullptr;
                 m_min_bucket = old_min->next;
+                m_min_bucket->prev = nullptr;
             } else {
                 m_min_bucket = nullptr;
             }
+            
+            #ifndef NDEBUG
+            old_min->next = nullptr;
+            assert_links(m_min_bucket);
+            if(m_min_bucket) assert_links(m_min_bucket->next);
+            #endif
             
             m_buckets.erase(any_min.count);
             delete old_min;
