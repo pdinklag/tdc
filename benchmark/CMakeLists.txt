@@ -23,6 +23,9 @@ add_executable(bench_lz77 bench_lz77.cpp)
 target_include_directories(bench_lz77 PUBLIC ${TDC_EXTLIB_BINARY_DIR}/libdivsufsort/include)
 target_link_libraries(bench_lz77 tlx divsufsort tdc-stat tdc-random)
 
+add_executable(bench_lz78 bench_lz78.cpp)
+target_link_libraries(bench_lz78 tlx tdc-stat)
+
 add_executable(bench_predecessor bench_predecessor.cpp)
 target_link_libraries(bench_predecessor tlx tdc-stat tdc-random tdc-pred tdc-vec)
 
