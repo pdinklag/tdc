@@ -3,7 +3,8 @@
 #include <iostream>
 #include <sstream>
 
-#include <tdc/comp/lz78/lz78_binary.hpp>
+#include <tdc/comp/lz78/binary_trie.hpp>
+#include <tdc/comp/lz78/lz78.hpp>
 #include <tdc/comp/lz78/stats.hpp>
 
 #include <tdc/io/null_ostream.hpp>
@@ -58,5 +59,5 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("base", "LZ78Binary", [](){ return LZ78Binary<true>(); });
+    bench("base", "LZ78Binary", [](){ return LZ78<BinaryTrie<char>, true>(); });
 }

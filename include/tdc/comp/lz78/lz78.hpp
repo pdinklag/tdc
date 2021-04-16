@@ -4,19 +4,18 @@
 
 #include "stats.hpp"
 
-#include <tdc/comp/lz78/binary_trie.hpp>
 #include <tdc/util/literals.hpp>
 
 namespace tdc {
 namespace comp {
 namespace lz78 {
 
-template<bool m_track_stats = false>
-class LZ78Binary {
+template<typename trie_t, bool m_track_stats = false>
+class LZ78 {
 private:
     Stats m_stats;
     
-    BinaryTrie<char> m_trie;
+    trie_t m_trie;
     index_t m_current;
 
     void process(char c, std::ostream& out) {
@@ -31,7 +30,7 @@ private:
     }
 
 public:
-    LZ78Binary() {
+    LZ78() {
         m_current = m_trie.root();
     }
     
