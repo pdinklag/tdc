@@ -60,4 +60,5 @@ int main(int argc, char** argv) {
     }
     
     bench("base", "LZ78Binary", [](){ return LZ78<BinaryTrie<char>, true>(); });
+    bench("base", "LZ78BinaryMTF", [](){ return LZ78<BinaryTrie<char, true>, true>(); });
 }
