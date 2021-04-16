@@ -268,6 +268,15 @@ void test_min_map() {
             ASSERT_EQ(ds.min().count, 3);
             ASSERT_EQ(ds.num_buckets(), 1); // just 3 (A, B, C)
         }
+        
+        // finally, insert items with starting count
+        auto e = ds.insert('E', 2);        
+        ASSERT_EQ(e.count, 2);
+        ASSERT_EQ(ds.min().count, 2);
+        
+        auto f = ds.insert('F', 4);  
+        ASSERT_EQ(f.count, 4);
+        ASSERT_EQ(ds.min().count, 2);
     }
 }
 

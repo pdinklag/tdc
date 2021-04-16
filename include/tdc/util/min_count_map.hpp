@@ -64,7 +64,7 @@ public:
     /// \brief Gets the number of buckets.
     size_t num_buckets() const { return m_buckets.size(); }
 
-    Entry insert(key_t key) {
+    Entry insert(const key_t key) {
         if(!m_min_bucket || m_min_bucket->count > 1) {
             Bucket* new_min = new Bucket(1);
             new_min->prev = nullptr;
@@ -75,6 +75,41 @@ public:
         
         m_min_bucket->keys.insert(key);
         return Entry(key, 1);
+    }
+    
+    void insert(Entry e) {
+        Bucket* bucket;
+        auto it = m_buckets.find(e.count);
+        if(it != m_buckets.end()) {
+            // a bucket with the given count already exists
+            bucket = it->second;
+        } else {
+            // find the bucket before which to enter the new bucket
+            Bucket* prev = nullptr;
+            Bucket* next = m_min_bucket;
+            while(next && next->count < e.count) {
+                prev = next;
+                next = next->next;
+            }
+            
+            bucket = new Bucket(e.count);
+            m_buckets.emplace(e.count, bucket);
+            
+            bucket->prev = prev;
+            if(prev) prev->next = bucket;
+            else m_min_bucket = bucket;
+            
+            bucket->next = next;
+            if(next) next->prev = bucket;
+        }
+        
+        bucket->keys.insert(e.key);
+    }
+    
+    Entry insert(const key_t key, const index_t count) {
+        auto e = Entry(key, count);
+        insert(e);
+        return e;
     }
     
     Entry increment(Entry e) {
@@ -118,6 +153,10 @@ public:
             }
         }
         return e;
+    }
+    
+    Entry increment(const key_t key, const index_t old_count) {
+        return increment(Entry(key, old_count));
     }
     
     Entry min() const {
