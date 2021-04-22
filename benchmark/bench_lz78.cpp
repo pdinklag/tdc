@@ -46,6 +46,8 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         auto guard = phase.suppress();
         phase.log("input_size", stats.input_size);
         phase.log("trie_size", stats.trie_size);
+        phase.log("num_refs", stats.trie_size);
+        phase.log("num_literals", 0); // for comparison to LZ77
         // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " " << phase.to_keyval() << std::endl;
     }
@@ -59,6 +61,6 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    bench("base", "LZ78Binary", [](){ return LZ78<BinaryTrie<char>, true>(); });
-    bench("base", "LZ78BinaryMTF", [](){ return LZ78<BinaryTrie<char, true>, true>(); });
+    bench("base", "LZ78(FIFO)", [](){ return LZ78<BinaryTrie<char>, true>(); });
+    bench("base", "LZ78(MTF)", [](){ return LZ78<BinaryTrie<char, true>, true>(); });
 }

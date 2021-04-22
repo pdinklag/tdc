@@ -45,17 +45,24 @@ public:
     index_t get_child(const index_t node, const char_t c) {
         const auto first_child = m_first_child[node];
         auto v = first_child;
-        auto prev_sibling = ROOT;
-        while(v != ROOT && m_char[v] != c) {
-            prev_sibling = v;
-            v = m_next_sibling[v];
-        }
-        
+
         if constexpr(m_mtf) {
+            // MTF
+            auto prev_sibling = ROOT;
+            while(v != ROOT && m_char[v] != c) {
+                prev_sibling = v;
+                v = m_next_sibling[v];
+            }
+            
             if(v && v != first_child) {
                 m_next_sibling[prev_sibling] = m_next_sibling[v];
                 m_next_sibling[v] = first_child;
                 m_first_child[node] = v;
+            }
+        } else {
+            // FIFO
+            while(v != ROOT && m_char[v] != c) {
+                v = m_next_sibling[v];
             }
         }
         
