@@ -387,8 +387,8 @@ private:
                 {
                     auto v = cursor.node;
                     while(v) {
-                        trie->min_pos(v) = std::min(trie->min_pos(v), start + pos);
-                        trie->max_pos(v) = std::max(trie->max_pos(v), start + pos);
+                        trie->min_pos(v) = std::min(trie->min_pos(v), (index_t)(start + pos));
+                        trie->max_pos(v) = std::max(trie->max_pos(v), (index_t)(start + pos));
                         v = trie->parent(v);
                     }
                 }
