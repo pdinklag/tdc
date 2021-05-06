@@ -321,7 +321,7 @@ private:
     }
     
     // buffers are expected to be of size at least n+1 (zero-terminator)!
-    static void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, const size_t start, char_t* label_buffer, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
+    void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, const size_t start, char_t* label_buffer, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
         // compute suffix and LCP array
         //divsuflcpsort((const sauchar_t*)buffer, sa, lcp, (saidx_t)(n+1)); // nb: BROKEN??
         divsufsort((const sauchar_t*)buffer, sa, (saidx_t)(n+1));
@@ -381,6 +381,7 @@ private:
         }
         
         // done
+        if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, trie->size());
         assert(trie->min_pos(ROOT) == start);
         assert(trie->max_pos(ROOT) <= start+w-1);
     }
