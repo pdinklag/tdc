@@ -28,8 +28,6 @@ public:
     void compress(std::istream& in, std::ostream& out) {
         // read input fully
         std::string text(std::istreambuf_iterator<char>(in), {});
-        text.push_back(0); // terminator
-        text.shrink_to_fit();
         
         // construct suffix and LCP array
         const size_t n = text.length();
