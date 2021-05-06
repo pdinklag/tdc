@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <limits>
 #include <sstream>
+#include <vector>
 
 #include <divsufsort.h>
 #include <robin_hood.h>
@@ -24,49 +25,141 @@ private:
     static constexpr bool verbose = false; // use for debugging
     using char_t = unsigned char;
     
-    // TODO: switch from pointer-based to array-based (first-child-next-sibling) representation
-    struct CompactTrie {
-        const char_t* label;
-        index_t llen;
-        CompactTrie* parent;
-        robin_hood::unordered_flat_map<char_t, CompactTrie*> children;
+    static constexpr index_t NONE = 0;
+    static constexpr index_t ROOT = 1;
+    
+    class CompactTrie {
+    private:
+        std::vector<index_t> m_parent;
+        std::vector<index_t> m_first_child;
+        std::vector<index_t> m_next_sibling;
         
-        // auxiliary information
-        index_t min_pos, max_pos;
+        std::vector<char_t>  m_char;        // first character on incoming edge
+        std::vector<const char_t*> m_label; // full edge label
+        std::vector<index_t> m_llen;        // label length
+        std::vector<index_t> m_min_pos;     // earliest occurrence
+        std::vector<index_t> m_max_pos;     // latest occurrence
         
-        CompactTrie() : label(nullptr), llen(0), parent(nullptr), min_pos(std::numeric_limits<index_t>::max()), max_pos(0) {
+    public:
+        CompactTrie(const size_t initial_capacity = 2) {
+            reserve(initial_capacity);
+            clear();
         }
         
-        ~CompactTrie() {
-            for(auto it : children) {
-                delete it.second;
+        CompactTrie(const CompactTrie&) = default;
+        CompactTrie(CompactTrie&&) = default;
+        CompactTrie& operator=(const CompactTrie&) = default;
+        CompactTrie& operator=(CompactTrie&&) = default;
+        
+        index_t emplace_back(const char_t c, const char_t* label, const index_t llen) {
+            auto idx = size();
+            m_parent.emplace_back(NONE);
+            m_first_child.emplace_back(NONE);
+            m_next_sibling.emplace_back(NONE);
+            
+            m_char.emplace_back(c);
+            m_label.emplace_back(label);
+            m_llen.emplace_back(llen);
+            m_min_pos.emplace_back(std::numeric_limits<index_t>::max());
+            m_max_pos.emplace_back(0);
+            return idx;
+        }
+        
+        void clear() {
+            m_parent.clear();
+            m_first_child.clear();
+            m_next_sibling.clear();
+            
+            m_char.clear();
+            m_label.clear();
+            m_llen.clear();
+            m_min_pos.clear();
+            m_max_pos.clear();
+            
+            emplace_back(0, nullptr, 0); // invalid node
+            emplace_back(0, nullptr, 0); // root
+        }
+        
+        void reserve(const size_t cap) {
+            m_parent.reserve(cap);
+            m_first_child.reserve(cap);
+            m_next_sibling.reserve(cap);
+            
+            m_char.reserve(cap);
+            m_label.reserve(cap);
+            m_llen.reserve(cap);
+            m_min_pos.reserve(cap);
+            m_max_pos.reserve(cap);
+        }
+        
+        index_t& parent(const index_t node)         { return m_parent[node]; }
+        index_t& first_child(const index_t node)    { return m_first_child[node]; }
+        index_t& next_sibling(const index_t node)   { return m_next_sibling[node]; }
+        char_t& in_char(const index_t node)         { return m_char[node]; }
+        const char_t*& label(const index_t node)    { return m_label[node]; }
+        index_t& llen(const index_t node)     { return m_llen[node]; }
+        index_t& min_pos(const index_t node)  { return m_min_pos[node]; }
+        index_t& max_pos(const index_t node)  { return m_max_pos[node]; }
+        
+        bool is_leaf(const index_t node) const { return m_first_child[node] == NONE; }
+        
+        index_t get_child(const index_t node, const char_t c) {
+            const auto first_child = m_first_child[node];
+            auto v = first_child;
+
+            auto prev_sibling = NONE;
+            while(v && m_char[v] != c) {
+                prev_sibling = v;
+                v = m_next_sibling[v];
             }
-        }
-        
-        bool is_leaf() const {
-            return children.size() == 0;
-        }
-        
-        void print(const char_t in = '\0', const size_t level = 0) const {
-            for(size_t i = 0; i < level; i++) std::cout << "    ";
-            std::cout << "'" << in << "' -> ";
-            std::cout << "(" << llen << ") \"";
-            for(size_t i = 0; i < llen; i++) std::cout << label[i];
-            std::cout << "\" [" << min_pos << "," << max_pos << "]";
-            if(is_leaf()) std::cout << " (LEAF)";
-            std::cout << std::endl;
-            for(auto it : children) {
-                it.second->print(it.first, level + 1);
+            
+            // MTF
+            if(v && v != first_child) {
+                m_next_sibling[prev_sibling] = m_next_sibling[v];
+                m_next_sibling[v] = first_child;
+                m_first_child[node] = v;
             }
+
+            return v;
+        }
+        
+        void insert_child(const index_t node, const index_t child) {
+            if(m_parent[child]) {
+                // remove child from current parent first
+                auto old_parent = m_parent[child];
+                auto v = m_first_child[old_parent];
+                if(v == child) {
+                    // child is parent's first child, simply exchange
+                    m_first_child[old_parent] = m_next_sibling[child];
+                } else {
+                    // search for previous sibling
+                    while(m_next_sibling[v] != child) {
+                        v = m_next_sibling[v];
+                        assert(v); // if we reach the end, the parent/child relationship was invalid
+                    }
+                    
+                    // unlink
+                    m_next_sibling[v] = m_next_sibling[child];
+                }
+            }
+            
+            m_next_sibling[child] = m_first_child[node];
+            m_first_child[node] = child;
+            m_parent[child] = node;
+        }
+
+        size_t size() const {
+            return m_parent.size();
         }
     };
     
     struct CompactTrieCursor {
-        CompactTrie* node;
+        CompactTrie* trie;
+        index_t node;
         index_t lpos;
         index_t depth;
         
-        CompactTrieCursor(CompactTrie& node_) : node(&node_), lpos(0), depth(0) {
+        CompactTrieCursor(CompactTrie& trie_, const index_t node_ = ROOT) : trie(&trie_), node(node_), lpos(0), depth(0) {
         }
         
         CompactTrieCursor(const CompactTrieCursor&) = default;
@@ -77,19 +170,28 @@ private:
         // get the last read character
         char_t character() const {
             assert(lpos > 0);
-            return node->label[lpos - 1];
+            return trie->label(node)[lpos - 1];
         }
         
         // test if we reached a leaf
         bool reached_leaf() const {
-            return lpos >= node->llen && node->is_leaf();
+            return lpos >= trie->llen(node) && trie->is_leaf(node);
+        }
+        
+        // min position of an occurence of prefix at cursor
+        index_t min_pos() const {
+            return trie->min_pos(node);
+        }
+        
+        // max position of an occurence of prefix at cursor
+        index_t max_pos() const {
+            return trie->max_pos(node);
         }
         
         // descend down with one character
         bool descend(const char_t c) {
-            assert(node);
-            if(lpos < node->llen) {
-                if(node->label[lpos] == c) {
+            if(lpos < trie->llen(node)) {
+                if(trie->label(node)[lpos] == c) {
                     // success
                     ++lpos;
                     ++depth;
@@ -100,12 +202,12 @@ private:
                 }
             } else {
                 // navigate to child
-                auto it = node->children.find(c);
-                if(it != node->children.end()) {
-                    assert(*it->second->label == c);
+                auto v = trie->get_child(node, c);
+                if(v) {
+                    assert(*trie->label(v) == c);
                     
                     // continue in child
-                    node = it->second;
+                    node = v;
                     lpos = 0;
                     return descend(c);
                 } else {
@@ -118,7 +220,6 @@ private:
         // ascend up the trie to depth exactly d
         void ascend(const index_t d) {
             while(depth > d) {
-                assert(node);
                 assert(depth >= lpos);
                 
                 const index_t distance = depth - d;
@@ -129,8 +230,8 @@ private:
                 } else {
                     // ascend to parent node
                     depth -= lpos;
-                    node = node->parent;
-                    lpos = node->llen;
+                    node = trie->parent(node);
+                    lpos = trie->llen(node);
                 }
             }
         }
@@ -150,44 +251,39 @@ private:
             }
             
             // split edge if necessary
-            if(lpos < node->llen) {
-                assert(lpos > 0 || !node->parent); // only in the root node can we ever insert anything at depth zero
+            if(lpos < trie->llen(node)) {
+                assert(lpos > 0 || !trie->parent(node)); // only in the root node can we ever insert anything at depth zero
                 
                 // split the current edge by creating a new inner node
-                CompactTrie* inner_node = new CompactTrie();
-                CompactTrie* parent = node->parent;
+                auto inner_node = trie->emplace_back(trie->in_char(node), trie->label(node), lpos);
                 
-                inner_node->parent = parent;
-                inner_node->label = node->label;
-                inner_node->llen = lpos;
-                
+                auto parent = trie->parent(node);
                 if(parent) {
-                    assert(parent->children.find(*inner_node->label)->second == node);
-                    parent->children[*inner_node->label] = inner_node;
+                    assert(trie->get_child(parent, trie->in_char(inner_node)) == node);
+                    trie->insert_child(parent, inner_node);
                 }
                 
-                node->label += lpos;
-                node->llen -= lpos;
-                inner_node->children.emplace(*node->label, node);
+                trie->label(node) += lpos;
+                trie->llen(node)  -= lpos;
+                assert(trie->llen(node) > 0);
+                trie->in_char(node) = *trie->label(node);
                 
-                inner_node->min_pos = node->min_pos;
-                inner_node->max_pos = node->max_pos;
+                trie->min_pos(inner_node) = trie->min_pos(node);
+                trie->max_pos(inner_node) = trie->max_pos(node);
                 
-                node->parent = inner_node;
+                trie->insert_child(inner_node, node);
+                
                 node = inner_node;
-                assert(lpos == node->llen);
+                assert(lpos == trie->llen(node));
             }
             
             // append a new child
-            assert(node->children.find(*s) == node->children.end());
+            assert(trie->get_child(node, *s) == NONE);
             
             {
-                CompactTrie* new_child = new CompactTrie();
-                new_child->parent = node;
-                new_child->label = s;
-                new_child->llen = len;
-                node->children.emplace(*s, new_child);
-                
+                auto new_child = trie->emplace_back(*s, s, len);
+                trie->insert_child(node, new_child);
+
                 node = new_child;
                 lpos = len;
                 depth += len;
@@ -243,9 +339,8 @@ private:
         label_buffer[n] = 0;
         
         // compute truncated suffix tree w/ min/max info
-        CompactTrie* root = new CompactTrie();
-        
-        CompactTrieCursor cursor(*root);
+        auto trie = std::make_unique<CompactTrie>(w);
+        CompactTrieCursor cursor(*trie);
 
         // first suffix begins with terminator, skip
         for(size_t i = 1; i < n + 1; i++) {
@@ -275,21 +370,21 @@ private:
                 
                 // propagate min and max position
                 {
-                    CompactTrie* v = cursor.node;
+                    auto v = cursor.node;
                     while(v) {
-                        v->min_pos = std::min(v->min_pos, start + pos);
-                        v->max_pos = std::max(v->max_pos, start + pos);
-                        v = v->parent;
+                        trie->min_pos(v) = std::min(trie->min_pos(v), start + pos);
+                        trie->max_pos(v) = std::max(trie->max_pos(v), start + pos);
+                        v = trie->parent(v);
                     }
                 }
             }
         }
         
         // done
-        assert(root->min_pos == start);
-        assert(root->max_pos <= start+w-1);
+        assert(trie->min_pos(ROOT) == start);
+        assert(trie->max_pos(ROOT) <= start+w-1);
         
-        return std::unique_ptr<CompactTrie>(root);
+        return trie;
     }
     
     index_t m_window, m_threshold;
@@ -394,14 +489,14 @@ public:
                     if(lsearch) {
                         auto lc = lv;
                         if(lc.descend(c)) {
-                            if(lc.node->max_pos + m_window >= i) {
+                            if(lc.max_pos() + m_window >= i) {
                                 // follow edge
-                                if constexpr(verbose) std::cout << "\t\tT: following edge with max(e)=" << (lc.node->max_pos) << " >= i-w" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT: following edge with max(e)=" << lc.max_pos() << " >= i-w" << std::endl;
                                 lv = lc;
                                 lsearch = !lv.reached_leaf();
                             } else {
                                 // can't follow edge
-                                if constexpr(verbose) std::cout << "\t\tT: not following edge with max(e)=" << (lc.node->max_pos) << " < i-w" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT: not following edge with max(e)=" << lc.max_pos() << " < i-w" << std::endl;
                                 lsearch = false;
                             }
                         } else {
@@ -415,14 +510,14 @@ public:
                     if(rsearch) {
                         auto rc = rv;
                         if(rc.descend(c)) {
-                            if(rc.node->min_pos < i) {
+                            if(rc.min_pos() < i) {
                                 // follow edge
-                                if constexpr(verbose) std::cout << "\t\tT': following edge with min(e)=" << (rc.node->min_pos) << " < i" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT': following edge with min(e)=" << rc.min_pos() << " < i" << std::endl;
                                 rv = rc;
                                 rsearch = !rv.reached_leaf();
                             } else {
                                 // can't follow edge
-                                if constexpr(verbose) std::cout << "\t\tT': not following edge with min(e)=" << (rc.node->min_pos) << ">= i" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT': not following edge with min(e)=" << rc.min_pos() << ">= i" << std::endl;
                                 rsearch = false;
                             }
                         } else {
@@ -445,7 +540,7 @@ public:
                     if(flen > 1) {
                         // print reference
                         if constexpr(m_track_stats) ++m_stats.num_refs;
-                        const auto fsrc = (lv.depth > rv.depth) ? lv.node->max_pos : rv.node->min_pos;
+                        const auto fsrc = (lv.depth > rv.depth) ? lv.max_pos() : rv.min_pos();
                         out << "(" << (fsrc) << "," << flen << ")";
                         if constexpr(verbose) std::cout << "-> (" << (fsrc) << "," << flen << ")" << std::endl;
                     } else {
