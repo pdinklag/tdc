@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include <divsufsort.h>
+#include "lcp.hpp"
 
 #include <tdc/util/literals.hpp>
 #include "stats.hpp"
@@ -27,18 +28,22 @@ public:
     void compress(std::istream& in, std::ostream& out) {
         // read input fully
         std::string text(std::istreambuf_iterator<char>(in), {});
+        text.push_back(0); // terminator
+        text.shrink_to_fit();
         
         // construct suffix and LCP array
         const size_t n = text.length();
         if constexpr(m_track_stats) m_stats.input_size = n;
         
         auto* sa = new saidx_t[n];
-        auto* lcp = new saidx_t[n];
+        auto result = divsufsort((const sauchar_t*)text.data(), sa, (saidx_t)n);
         
-        auto result = divsuflcpsort((const sauchar_t*)text.data(), sa, lcp, (saidx_t)n);
+        auto* lcp = new saidx_t[n];
+        auto* isa = new saidx_t[n];
+
+        compute_lcp(text.data(), n, sa, lcp, isa); // we're using ISA as a working array here, it won't actually contain the ISA after this
         
         // construct ISA
-        auto* isa = new saidx_t[n];
         for(size_t i = 0; i < n; i++) {
             isa[sa[i]] = i;
         }
