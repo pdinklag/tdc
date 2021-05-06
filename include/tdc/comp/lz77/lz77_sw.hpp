@@ -321,7 +321,7 @@ private:
     }
     
     // buffers are expected to be of size at least n+1 (zero-terminator)!
-    static std::unique_ptr<CompactTrie> compute_sw_trie(const char_t* buffer, const index_t n, const index_t w, const size_t start, char_t* label_buffer, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
+    static void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, const size_t start, char_t* label_buffer, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
         // compute suffix and LCP array
         //divsuflcpsort((const sauchar_t*)buffer, sa, lcp, (saidx_t)(n+1)); // nb: BROKEN??
         divsufsort((const sauchar_t*)buffer, sa, (saidx_t)(n+1));
@@ -339,7 +339,7 @@ private:
         label_buffer[n] = 0;
         
         // compute truncated suffix tree w/ min/max info
-        auto trie = std::make_unique<CompactTrie>(w);
+        trie->clear();
         CompactTrieCursor cursor(*trie);
 
         // first suffix begins with terminator, skip
@@ -383,8 +383,6 @@ private:
         // done
         assert(trie->min_pos(ROOT) == start);
         assert(trie->max_pos(ROOT) <= start+w-1);
-        
-        return trie;
     }
     
     index_t m_window, m_threshold;
@@ -396,7 +394,14 @@ public:
 
     void compress(std::istream& in, std::ostream& out) {
         index_t window_offset = 0;
-        std::unique_ptr<CompactTrie> left_trie, right_trie;
+        
+        CompactTrie sw_tries[2];
+        sw_tries[0].reserve(m_window);
+        sw_tries[1].reserve(m_window);
+        bool cur_right_trie = 0; // we swap this for every trie we build
+        
+        CompactTrie* left_trie;
+        CompactTrie* right_trie;
         
         const auto bufsize = 2 * m_window;
         char_t* buffer = new char_t[bufsize + 1];
@@ -419,12 +424,14 @@ public:
         
         // read initial 2w characters
         if(in) {
-            left_trie = std::make_unique<CompactTrie>(); // empty
+            left_trie = &sw_tries[0]; // empty
             in.read((char*)buffer, bufsize);
             const auto r = in.gcount();
             if(r > 0) {
                 buffer[r] = (char_t)0; // terminate
-                right_trie = compute_sw_trie(buffer, r, m_window, 0, trie_label_buffer[cur_trie_label_buffer], sa_buffer, lcp_buffer, work_buffer);
+                right_trie = &sw_tries[1];
+                cur_right_trie = 1;
+                compute_sw_trie(right_trie, buffer, r, m_window, 0, trie_label_buffer[cur_trie_label_buffer], sa_buffer, lcp_buffer, work_buffer);
                 if constexpr(verbose) right_trie->print();
                 n = r;
                 last_block_len = std::min((index_t)r, m_window);
@@ -439,14 +446,16 @@ public:
                 if constexpr(verbose) std::cout << "entering block " << b << std::endl;
                 
                 // right trie now becomes left trie
-                left_trie = std::move(right_trie);
+                left_trie = right_trie;
+                cur_right_trie = !cur_right_trie;
+                right_trie = &sw_tries[cur_right_trie];
                 
                 // copy last w characters to beginning of buffer
                 for(size_t i = 0; i < m_window; i++) {
                     buffer[i] = buffer[m_window + i];
                 }
                 
-                // read next w characters
+                // read next w characters and compute sliding window trie
                 {
                     char_t* rbuffer = buffer + last_block_len;
                     
@@ -461,7 +470,7 @@ public:
                      
                     if constexpr(verbose) std::cout << "(read " << r << " character(s) from stream: \"" << rbuffer << "\")" << std::endl;
                     cur_trie_label_buffer = !cur_trie_label_buffer; // swap trie label buffers
-                    right_trie = compute_sw_trie(buffer, last_block_len + r, m_window, b * m_window, trie_label_buffer[cur_trie_label_buffer], sa_buffer, lcp_buffer, work_buffer);
+                    compute_sw_trie(right_trie, buffer, last_block_len + r, m_window, b * m_window, trie_label_buffer[cur_trie_label_buffer], sa_buffer, lcp_buffer, work_buffer);
                     n += r;
                     last_block_len = r;
                     
