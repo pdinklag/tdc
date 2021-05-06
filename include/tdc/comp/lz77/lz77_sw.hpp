@@ -5,10 +5,10 @@
 #include <cstddef>
 #include <limits>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 
 #include <divsufsort.h>
-#include <robin_hood.h>
 
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
@@ -23,7 +23,9 @@ template<bool m_track_stats = false>
 class LZ77SlidingWindow {
 private:
     static constexpr bool verbose = false; // use for debugging
+    
     using char_t = unsigned char;
+    using window_index_t = uint32_t;
     
     static constexpr index_t NONE = 0;
     static constexpr index_t ROOT = 1;
@@ -37,8 +39,8 @@ private:
         std::vector<index_t> m_next_sibling;
         
         std::vector<char_t>  m_char;    // first character on incoming edge
-        std::vector<index_t> m_label;   // full edge label
-        std::vector<index_t> m_llen;    // label length
+        std::vector<window_index_t> m_label;   // full edge label
+        std::vector<window_index_t> m_llen;    // label length
         std::vector<index_t> m_min_pos; // earliest occurrence
         std::vector<index_t> m_max_pos; // latest occurrence
         
@@ -109,8 +111,8 @@ private:
         index_t& first_child(const index_t node)  { return m_first_child[node]; }
         index_t& next_sibling(const index_t node) { return m_next_sibling[node]; }
         char_t& in_char(const index_t node)       { return m_char[node]; }
-        index_t& label(const index_t node)        { return m_label[node]; }
-        index_t& llen(const index_t node)         { return m_llen[node]; }
+        window_index_t& label(const index_t node)        { return m_label[node]; }
+        window_index_t& llen(const index_t node)         { return m_llen[node]; }
         index_t& min_pos(const index_t node)      { return m_min_pos[node]; }
         index_t& max_pos(const index_t node)      { return m_max_pos[node]; }
         
@@ -404,6 +406,9 @@ private:
     
 public:
     LZ77SlidingWindow(const index_t window, const index_t threshold) : m_window(window), m_threshold(threshold) {
+        if(m_window > std::numeric_limits<window_index_t>::max()) {
+            throw std::runtime_error("maximum allowed window size exceeded");
+        }
     }
 
     void compress(std::istream& in, std::ostream& out) {
