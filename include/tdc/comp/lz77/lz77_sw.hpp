@@ -42,8 +42,8 @@ private:
         std::vector<char_t>  m_char;    // first character on incoming edge
         std::vector<window_index_t> m_label;   // full edge label
         std::vector<window_index_t> m_llen;    // label length
-        std::vector<index_t> m_min_pos; // earliest occurrence
-        std::vector<index_t> m_max_pos; // latest occurrence
+        std::vector<window_index_t> m_min_pos; // earliest occurrence
+        std::vector<window_index_t> m_max_pos; // latest occurrence
         
     public:
         CompactTrie(const size_t label_bufsize, const size_t initial_capacity) {
@@ -114,8 +114,8 @@ private:
         char_t& in_char(const index_t node)       { return m_char[node]; }
         window_index_t& label(const index_t node)        { return m_label[node]; }
         window_index_t& llen(const index_t node)         { return m_llen[node]; }
-        index_t& min_pos(const index_t node)      { return m_min_pos[node]; }
-        index_t& max_pos(const index_t node)      { return m_max_pos[node]; }
+        window_index_t& min_pos(const index_t node)      { return m_min_pos[node]; }
+        window_index_t& max_pos(const index_t node)      { return m_max_pos[node]; }
         
         const char_t* label_buffer(const size_t start = 0) { return m_label_buffer + start; }
         const char_t label_char(const index_t node, const size_t i = 0) { return *(label_buffer(m_label[node]) + i); }
@@ -197,12 +197,12 @@ private:
         }
         
         // min position of an occurence of prefix at cursor
-        index_t min_pos() const {
+        window_index_t min_pos() const {
             return trie->min_pos(node);
         }
         
         // max position of an occurence of prefix at cursor
-        index_t max_pos() const {
+        window_index_t max_pos() const {
             return trie->max_pos(node);
         }
         
@@ -310,7 +310,7 @@ private:
     };
     
     // buffers are expected to be of size at least n+1 (zero-terminator)!
-    void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, const size_t start, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
+    void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
         // compute suffix and LCP array
         //divsuflcpsort((const sauchar_t*)buffer, sa, lcp, (saidx_t)(n+1)); // nb: BROKEN??
         divsufsort((const sauchar_t*)buffer, sa, (saidx_t)(n+1));
@@ -359,8 +359,8 @@ private:
                 {
                     auto v = cursor.node;
                     while(v) {
-                        trie->min_pos(v) = std::min(trie->min_pos(v), (index_t)(start + pos));
-                        trie->max_pos(v) = std::max(trie->max_pos(v), (index_t)(start + pos));
+                        trie->min_pos(v) = std::min(trie->min_pos(v), (window_index_t)(pos));
+                        trie->max_pos(v) = std::max(trie->max_pos(v), (window_index_t)(pos));
                         v = trie->parent(v);
                     }
                 }
@@ -369,8 +369,8 @@ private:
         
         // done
         if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, trie->size());
-        assert(trie->min_pos(ROOT) == start);
-        assert(trie->max_pos(ROOT) <= start+w-1);
+        assert(trie->min_pos(ROOT) == 0);
+        assert(trie->max_pos(ROOT) <= w-1);
     }
     
     index_t m_window, m_threshold;
@@ -404,6 +404,8 @@ public:
         size_t n = 0; // not yet known
         size_t i = 0;
         size_t b = 0;
+        size_t window_start = 0;
+        size_t prev_window_start = 0;
         
         // read initial 2w characters
         if(in) {
@@ -414,8 +416,8 @@ public:
                 buffer[r] = (char_t)0; // terminate
                 right_trie = &sw_tries[1];
                 cur_right_trie = 1;
-                compute_sw_trie(right_trie, buffer, r, m_window, 0, sa_buffer, lcp_buffer, work_buffer);
-                if constexpr(verbose) right_trie->print();
+                compute_sw_trie(right_trie, buffer, r, m_window, sa_buffer, lcp_buffer, work_buffer);
+                // if constexpr(verbose) right_trie->print();
                 n = r;
                 last_block_len = std::min((index_t)r, m_window);
             }
@@ -426,6 +428,8 @@ public:
             if(i / m_window > b) {
                 // entering new block
                 b = i / m_window;
+                window_start = b * m_window;
+                prev_window_start = window_start - m_window;
                 if constexpr(verbose) std::cout << "entering block " << b << std::endl;
                 
                 // right trie now becomes left trie
@@ -452,12 +456,12 @@ public:
                     buffer[last_block_len + r] = (char_t)0; // terminate
                      
                     if constexpr(verbose) std::cout << "(read " << r << " character(s) from stream: \"" << rbuffer << "\")" << std::endl;
-                    compute_sw_trie(right_trie, buffer, last_block_len + r, m_window, b * m_window, sa_buffer, lcp_buffer, work_buffer);
+                    compute_sw_trie(right_trie, buffer, last_block_len + r, m_window, sa_buffer, lcp_buffer, work_buffer);
                     n += r;
                     last_block_len = r;
                     
-                    if constexpr(verbose) left_trie->print();
-                    if constexpr(verbose) right_trie->print();
+                    // if constexpr(verbose) left_trie->print();
+                    // if constexpr(verbose) right_trie->print();
                 }
             }
             
@@ -480,14 +484,14 @@ public:
                     if(lsearch) {
                         auto lc = lv;
                         if(lc.descend(c)) {
-                            if(lc.max_pos() + m_window >= i) {
+                            if(prev_window_start + lc.max_pos() + m_window >= i) {
                                 // follow edge
-                                if constexpr(verbose) std::cout << "\t\tT: following edge with max(e)=" << lc.max_pos() << " >= i-w" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT: following edge with max(e)=" << (prev_window_start + lc.max_pos()) << " >= i-w" << std::endl;
                                 lv = lc;
                                 lsearch = !lv.reached_leaf();
                             } else {
                                 // can't follow edge
-                                if constexpr(verbose) std::cout << "\t\tT: not following edge with max(e)=" << lc.max_pos() << " < i-w" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT: not following edge with max(e)=" << (prev_window_start + lc.max_pos()) << " < i-w" << std::endl;
                                 lsearch = false;
                             }
                         } else {
@@ -501,14 +505,14 @@ public:
                     if(rsearch) {
                         auto rc = rv;
                         if(rc.descend(c)) {
-                            if(rc.min_pos() < i) {
+                            if(window_start + rc.min_pos() < i) {
                                 // follow edge
-                                if constexpr(verbose) std::cout << "\t\tT': following edge with min(e)=" << rc.min_pos() << " < i" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT': following edge with min(e)=" << (window_start + rc.min_pos()) << " < i" << std::endl;
                                 rv = rc;
                                 rsearch = !rv.reached_leaf();
                             } else {
                                 // can't follow edge
-                                if constexpr(verbose) std::cout << "\t\tT': not following edge with min(e)=" << rc.min_pos() << ">= i" << std::endl;
+                                if constexpr(verbose) std::cout << "\t\tT': not following edge with min(e)=" << (window_start + rc.min_pos()) << ">= i" << std::endl;
                                 rsearch = false;
                             }
                         } else {
@@ -531,9 +535,9 @@ public:
                     if(flen > 1) {
                         // print reference
                         if constexpr(m_track_stats) ++m_stats.num_refs;
-                        const auto fsrc = (lv.depth > rv.depth) ? lv.max_pos() : rv.min_pos();
-                        out << "(" << (fsrc) << "," << flen << ")";
-                        if constexpr(verbose) std::cout << "-> (" << (fsrc) << "," << flen << ")" << std::endl;
+                        const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
+                        out << "(" << fsrc << "," << flen << ")";
+                        if constexpr(verbose) std::cout << "-> (" << fsrc << "," << flen << ")" << std::endl;
                     } else {
                         // don't bother printing a reference of length 1
                         if constexpr(m_track_stats) ++m_stats.num_literals;
