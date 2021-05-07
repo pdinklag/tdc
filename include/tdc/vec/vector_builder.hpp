@@ -31,7 +31,7 @@ public:
     /// \param capacity the vector's initial capacity
     VectorBuilder(const size_t capacity = 0) : m_size(0) {
         if(capacity > 0) {
-            m_vector.resize(capacity);
+            reserve(capacity);
         }
     }
 
@@ -47,6 +47,18 @@ public:
         std::swap(m_vector, other.m_vector);
         std::swap(m_size, other.m_size);
     }
+    
+    /// \brief Clears the vector, however, not freeing any memory.
+    void clear() {
+        m_size = 0;
+    }
+    
+    /// \brief Allocates space for the given number of elements.
+    void reserve(const size_t capacity) {
+        if(m_vector.size() < capacity) {
+            m_vector.resize(capacity);
+        }
+    }
 
     /// \brief Appends an item to the end of the vector.
     /// \tparam item_t the item type
@@ -60,6 +72,14 @@ public:
         }
 
         m_vector[m_size++] = item;
+    }
+    
+    /// \brief Appends an item to the end of the vector.
+    /// \tparam item_t the item type
+    /// \param item the item to append
+    template<typename item_t>
+    void emplace_back(item_t&& item) {
+        push_back(item);
     }
 
     /// \brief Removes and returns the last element from the vector.
