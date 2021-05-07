@@ -51,8 +51,8 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         Stats stats;
         {
             auto c = ctor();
-            c.compress(input, std::cout);
-            // c.compress(input, devnull);
+            // c.compress(input, std::cout);
+            c.compress(input, devnull);
             stats = c.stats();
         }
         
@@ -66,7 +66,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         // phase.log("extension_sum", stats.extension_sum);
         // phase.log("num_swaps", stats.num_swaps);
         phase.log("trie_size", stats.trie_size);
-        std::cout << std::endl;
+        // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
     }
 }
