@@ -63,6 +63,7 @@ private:
         
         index_t emplace_back(const char_t c, const index_t label, const index_t llen) {
             auto idx = size();
+            
             m_parent.emplace_back(NONE);
             m_first_child.emplace_back(NONE);
             m_next_sibling.emplace_back(NONE);
@@ -389,7 +390,7 @@ public:
         const auto bufsize = 2 * m_window;
         char_t* buffer = new char_t[bufsize + 1];
         
-        CompactTrie sw_tries[2] = { CompactTrie(bufsize + 1, m_window), CompactTrie(bufsize + 1, m_window) };
+        CompactTrie sw_tries[2] = { CompactTrie(bufsize + 1, 2 * m_window), CompactTrie(bufsize + 1, 2 * m_window) };
         CompactTrie* left_trie;
         CompactTrie* right_trie;
         bool cur_right_trie = 0; // we swap this for every trie we build
