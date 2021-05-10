@@ -374,6 +374,18 @@ private:
         assert(trie->max_pos(ROOT) <= w-1);
     }
     
+    void output_ref(std::ostream& out, const size_t src, const size_t len) {
+        out << "(" << src << "," << len << ")";
+        if constexpr(verbose) std::cout << "-> (" << src << "," << len << ")" << std::endl;
+        if constexpr(m_track_stats) ++m_stats.num_refs;
+    }
+    
+    void output_character(std::ostream& out, const char_t c) {
+        out << c;
+        if constexpr(verbose) std::cout << "-> " << c << std::endl;
+        if constexpr(m_track_stats) ++m_stats.num_literals;
+    }
+    
     index_t m_window;
     Stats m_stats;
     
@@ -497,9 +509,7 @@ public:
                         continue;
                     } else {
                         if constexpr(verbose) std::cout << "\tconcluding extended match" << std::endl;
-                        out << "(" << ext_src << "," << ext_len << ")";
-                        if constexpr(verbose) std::cout << "-> (" << ext_src << "," << ext_len << ")" << std::endl;
-                        if constexpr(m_track_stats) ++m_stats.num_refs;
+                        output_ref(out, ext_src, ext_len);
                         ext_match = false;
                     }
                 }
@@ -581,25 +591,15 @@ public:
                     const auto flen = std::max(lv.depth, rv.depth);
                     if(flen > 0) {
                         if(flen > 1) {
-                            // print reference
-                            if constexpr(m_track_stats) ++m_stats.num_refs;
                             const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
-                            out << "(" << fsrc << "," << flen << ")";
-                            if constexpr(verbose) std::cout << "-> (" << fsrc << "," << flen << ")" << std::endl;
+                            output_ref(out, fsrc, flen);
                         } else {
-                            // don't bother printing a reference of length 1
-                            if constexpr(m_track_stats) ++m_stats.num_literals;
-                            const char_t x = (lv.depth > 0) ? lv.character() : rv.character();
-                            out << x;
-                            if constexpr(verbose) std::cout << "-> " << x << std::endl;
+                            output_character(out, (lv.depth > 0) ? lv.character() : rv.character());
                         }
-                        
                         i += flen;
                     } else {
                         // print unmatched character
-                        if constexpr(m_track_stats) ++m_stats.num_literals;
-                        out << c;
-                        if constexpr(verbose) std::cout << "-> " << c << std::endl;
+                        output_character(out, c);
                         ++i;
                     }
                 }
@@ -608,9 +608,7 @@ public:
         
         if(ext_match) {
             // stream ended during extended match, print reference
-            out << "(" << ext_src << "," << ext_len << ")";
-            if constexpr(verbose) std::cout << "-> (" << ext_src << "," << ext_len << ")" << std::endl;
-            if constexpr(m_track_stats) ++m_stats.num_refs;
+            output_ref(out, ext_src, ext_len);
         }
         
         // clean up
