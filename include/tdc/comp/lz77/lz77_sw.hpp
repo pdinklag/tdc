@@ -20,11 +20,11 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<bool m_track_stats = false>
+template<bool m_allow_ext_match = false, bool m_track_stats = false>
 class LZ77SlidingWindow {
 private:
     static constexpr bool verbose = false; // use for debugging
-    
+
     using char_t = unsigned char;
     using window_index_t = uint32_t;
     
@@ -389,6 +389,7 @@ public:
         
         const auto bufsize = 2 * m_window;
         char_t* buffer = new char_t[bufsize + 1];
+        char_t* prev_buffer = m_allow_ext_match ? new char_t[m_window + 1] : nullptr;
         
         CompactTrie sw_tries[2] = { CompactTrie(bufsize + 1, 2 * m_window), CompactTrie(bufsize + 1, 2 * m_window) };
         CompactTrie* left_trie;
@@ -407,6 +408,10 @@ public:
         size_t b = 0;
         size_t window_start = 0;
         size_t prev_window_start = 0;
+        
+        bool   ext_match = false; // are we currently matching an extended pattern?
+        size_t ext_src = 0;        // the source position of the current extended match
+        size_t ext_len = 0;        // the current extended match length
         
         // read initial 2w characters
         if(in) {
@@ -429,14 +434,21 @@ public:
             if(i / m_window > b) {
                 // entering new block
                 b = i / m_window;
+                prev_window_start = window_start;
                 window_start = b * m_window;
-                prev_window_start = window_start - m_window;
                 if constexpr(verbose) std::cout << "entering block " << b << std::endl;
                 
                 // right trie now becomes left trie
                 left_trie = right_trie;
                 cur_right_trie = !cur_right_trie;
                 right_trie = &sw_tries[cur_right_trie];
+                
+                // if in extended match, copy first w characters to prev buffer
+                if(ext_match) {
+                    for(size_t i = 0; i < m_window; i++) {
+                        prev_buffer[i] = buffer[i];
+                    }
+                }
                 
                 // copy last w characters to beginning of buffer
                 for(size_t i = 0; i < m_window; i++) {
@@ -465,6 +477,33 @@ public:
                     // if constexpr(verbose) right_trie->print();
                 }
             }
+
+            // continue extended match
+            if constexpr(m_allow_ext_match) {
+                if(ext_match) {
+                    if constexpr(verbose) std::cout << "\tcontinuing extended match" << std::endl;
+                    
+                    const auto c = buffer[i - window_start];
+                    const size_t j = ext_src + ext_len;
+                    assert(j < i);
+                    assert(j >= prev_window_start);
+                    const auto x = (j >= window_start) ? buffer[j - window_start] : prev_buffer[j - prev_window_start];
+                    
+                    if constexpr(verbose) std::cout << "\tread \"" << c << "\", compare against \"" << x << "\"" << std::endl;
+                    if(c == x) {
+                        if constexpr(verbose) std::cout << "\tcontinuing extended match" << std::endl;
+                        ++ext_len;
+                        ++i;
+                        continue;
+                    } else {
+                        if constexpr(verbose) std::cout << "\tconcluding extended match" << std::endl;
+                        out << "(" << ext_src << "," << ext_len << ")";
+                        if constexpr(verbose) std::cout << "-> (" << ext_src << "," << ext_len << ")" << std::endl;
+                        if constexpr(m_track_stats) ++m_stats.num_refs;
+                        ext_match = false;
+                    }
+                }
+            }
             
             // perform match starting at position i
             {
@@ -478,7 +517,7 @@ public:
                 char_t c;
                 while(j < n && (lsearch || rsearch)) {
                     // get next character
-                    c = buffer[j - b * m_window];
+                    c = buffer[j - window_start];
                     if constexpr(verbose) std::cout << "\tread \"" << c << "\"" << std::endl;
                     
                     // search in left trie
@@ -527,35 +566,51 @@ public:
                     ++j;
                 }
                 
-                // TODO: if a leaf was reached, continue matching!
-                
-                // conclude match
                 if constexpr(verbose) std::cout << "search stopped at d(T)=" << lv.depth << " and d(T')=" << rv.depth << std::endl;
-                const auto flen = std::max(lv.depth, rv.depth);
-                if(flen > 0) {
-                    if(flen > 1) {
-                        // print reference
-                        if constexpr(m_track_stats) ++m_stats.num_refs;
-                        const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
-                        out << "(" << fsrc << "," << flen << ")";
-                        if constexpr(verbose) std::cout << "-> (" << fsrc << "," << flen << ")" << std::endl;
-                    } else {
-                        // don't bother printing a reference of length 1
-                        if constexpr(m_track_stats) ++m_stats.num_literals;
-                        const char_t x = (lv.depth > 0) ? lv.character() : rv.character();
-                        out << x;
-                        if constexpr(verbose) std::cout << "-> " << x << std::endl;
-                    }
+                
+                if(m_allow_ext_match && j < n && ((lv.reached_leaf() && lv.depth > 1) || (rv.reached_leaf() && rv.depth > 1))) {
+                    // we reached a leaf - initiate extended match
+                    ext_match = true;
+                    ext_src = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
+                    ext_len = std::max(lv.depth, rv.depth);
+                    if constexpr(verbose) std::cout << "reached a leaf - initiate extended match starting from " << ext_src << std::endl;
                     
-                    i += flen;
+                    i += ext_len;
                 } else {
-                    // print unmatched character
-                    if constexpr(m_track_stats) ++m_stats.num_literals;
-                    out << c;
-                    if constexpr(verbose) std::cout << "-> " << c << std::endl;
-                    ++i;
+                    // conclude match
+                    const auto flen = std::max(lv.depth, rv.depth);
+                    if(flen > 0) {
+                        if(flen > 1) {
+                            // print reference
+                            if constexpr(m_track_stats) ++m_stats.num_refs;
+                            const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
+                            out << "(" << fsrc << "," << flen << ")";
+                            if constexpr(verbose) std::cout << "-> (" << fsrc << "," << flen << ")" << std::endl;
+                        } else {
+                            // don't bother printing a reference of length 1
+                            if constexpr(m_track_stats) ++m_stats.num_literals;
+                            const char_t x = (lv.depth > 0) ? lv.character() : rv.character();
+                            out << x;
+                            if constexpr(verbose) std::cout << "-> " << x << std::endl;
+                        }
+                        
+                        i += flen;
+                    } else {
+                        // print unmatched character
+                        if constexpr(m_track_stats) ++m_stats.num_literals;
+                        out << c;
+                        if constexpr(verbose) std::cout << "-> " << c << std::endl;
+                        ++i;
+                    }
                 }
             }
+        }
+        
+        if(ext_match) {
+            // stream ended during extended match, print reference
+            out << "(" << ext_src << "," << ext_len << ")";
+            if constexpr(verbose) std::cout << "-> (" << ext_src << "," << ext_len << ")" << std::endl;
+            if constexpr(m_track_stats) ++m_stats.num_refs;
         }
         
         // clean up
@@ -563,6 +618,7 @@ public:
         delete[] lcp_buffer;
         delete[] work_buffer;
         delete[] buffer;
+        if constexpr(m_allow_ext_match) delete[] prev_buffer;
         
         // stats
         if constexpr(m_track_stats) m_stats.input_size = n;
