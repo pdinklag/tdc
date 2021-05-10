@@ -85,8 +85,8 @@ int main(int argc, char** argv) {
     bench("base", "Noop", [](){ return Noop<true>(); });
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
     
-    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, true>(options.window, options.threshold); });
-    bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window, options.threshold); });
+    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, true>(options.window); });
+    // bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window); });
     
     // if(options.q == 0 || options.q == 8) {
         // bench("btree", "BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });

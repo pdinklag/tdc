@@ -374,11 +374,11 @@ private:
         assert(trie->max_pos(ROOT) <= w-1);
     }
     
-    index_t m_window, m_threshold;
+    index_t m_window;
     Stats m_stats;
     
 public:
-    LZ77SlidingWindow(const index_t window, const index_t threshold) : m_window(window), m_threshold(threshold) {
+    LZ77SlidingWindow(const index_t window) : m_window(window) {
         if(m_window > std::numeric_limits<window_index_t>::max()) {
             throw std::runtime_error("maximum allowed window size exceeded");
         }
