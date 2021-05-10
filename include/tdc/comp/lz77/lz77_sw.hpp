@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <divsufsort.h>
-#include "lcp.hpp"
 
 #include <tdc/util/index.hpp>
+#include <tdc/util/lcp.hpp>
 #include <tdc/util/literals.hpp>
 
 #include "stats.hpp"
@@ -318,7 +318,7 @@ private:
         assert(sa[0] == n);
         assert(buffer[sa[0]] != buffer[sa[1]]); // must have unique terminator
         
-        compute_lcp(buffer, n+1, sa, lcp, work);
+        lcp_kasai(buffer, n+1, sa, lcp, work);
         assert(lcp[0] == 0);
         assert(lcp[1] == 0);
         

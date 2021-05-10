@@ -6,9 +6,10 @@
 #include <sstream>
 
 #include <divsufsort.h>
-#include "lcp.hpp"
 
+#include <tdc/util/lcp.hpp>
 #include <tdc/util/literals.hpp>
+
 #include "stats.hpp"
 
 namespace tdc {
@@ -39,7 +40,7 @@ public:
         auto* lcp = new saidx_t[n];
         auto* isa = new saidx_t[n];
 
-        compute_lcp(text.data(), n, sa, lcp, isa); // we're using ISA as a working array here, it won't actually contain the ISA after this
+        lcp_kasai(text.data(), n, sa, lcp, isa); // we're using ISA as a working array here, it won't actually contain the ISA after this
         
         // construct ISA
         for(size_t i = 0; i < n; i++) {
