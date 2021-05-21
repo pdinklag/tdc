@@ -85,7 +85,11 @@ int main(int argc, char** argv) {
     bench("base", "Noop", [](){ return Noop<true>(); });
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
     
-    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, true>(options.window); });
+    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, 0, 0, true>(options.window); });
+    bench("sliding", "SlidingLong(2,8)", [](){ return LZ77SlidingWindow<false, 2, 8, true>(options.window); });
+    bench("sliding", "SlidingLong(2,16)", [](){ return LZ77SlidingWindow<false, 2, 16, true>(options.window); });
+    bench("sliding", "SlidingLong(2,32)", [](){ return LZ77SlidingWindow<false, 2, 32, true>(options.window); });
+    bench("sliding", "SlidingLong(2,64)", [](){ return LZ77SlidingWindow<false, 2, 64, true>(options.window); });
     // bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window); });
     
     // if(options.q == 0 || options.q == 8) {

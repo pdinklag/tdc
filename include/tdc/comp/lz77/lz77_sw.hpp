@@ -11,6 +11,7 @@
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
 
+#include "long_term_trie.hpp"
 #include "sliding_window_trie.hpp"
 #include "stats.hpp"
 
@@ -18,9 +19,10 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<bool m_allow_ext_match = false, bool m_track_stats = false>
+template<bool m_allow_ext_match = false, size_t m_long_term_min = 0, size_t m_long_term_max = 0, bool m_track_stats = false>
 class LZ77SlidingWindow {
 private:
+    static constexpr bool m_long_term = (m_long_term_min > 0) && (m_long_term_max >= m_long_term_min);
     static constexpr bool verbose = false; // use for debugging
     
     using char_t = unsigned char;
@@ -57,6 +59,7 @@ public:
         SlidingWindowTrie sw_tries[2] = { SlidingWindowTrie(bufsize + 1, 2 * m_window), SlidingWindowTrie(bufsize + 1, 2 * m_window) };
         SlidingWindowTrie* left_trie;
         SlidingWindowTrie* right_trie;
+        LongTermTrie long_term_trie;
         bool cur_right_trie = 0; // we swap this for every trie we build
         
         saidx_t* sa_buffer = new saidx_t[bufsize + 1];
@@ -174,6 +177,9 @@ public:
                 bool lsearch = true;
                 auto rv = right_trie->cursor();
                 bool rsearch = true;
+                auto long_v = long_term_trie.cursor();
+                bool long_search = m_long_term;
+                index_t long_src = -1;
 
                 size_t j = i;
                 assert(j < n);
@@ -225,6 +231,20 @@ public:
                         }
                     }
                     
+                    // search in long term trie
+                    if constexpr(m_long_term) {
+                        if(long_search) {
+                            if(long_v.descend(c)) {
+                                long_src = long_v.last_seen_at();
+                                if constexpr(verbose) std::cout << "\t\tLong: followed edge with last(e)=" << long_src << std::endl;
+                                long_v.visit(i);
+                            } else {
+                                if constexpr(verbose) std::cout << "\t\tLong: no edge to follow" << std::endl;
+                                long_search = false;
+                            }
+                        }
+                    }
+                    
                     // match next character
                     ++j;
                 }
@@ -242,10 +262,32 @@ public:
                 } else {
                     // conclude match
                     const auto flen = std::max(lv.depth, rv.depth);
+                    
+                    if constexpr(m_long_term) {
+                        const auto long_len = long_v.depth;
+                        if(long_len > flen) {
+                            output_ref(out, long_src, long_len);
+                            i += long_len;
+                            continue;
+                        }
+                    }
+                    
                     if(flen > 0) {
                         if(flen > 1) {
                             const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
                             output_ref(out, fsrc, flen);
+                            
+                            if constexpr(m_long_term) {
+                                if(flen > m_long_term_min) {
+                                    // insert into long term trie!
+                                    long_v = long_term_trie.cursor();
+                                    if(lv.depth > rv.depth) {
+                                        long_v.insert_path(lv.trie->label_buffer(lv.max_pos()), std::min(lv.depth, (index_t)m_long_term_max), i);
+                                    } else {
+                                        long_v.insert_path(rv.trie->label_buffer(rv.min_pos()), std::min(rv.depth, (index_t)m_long_term_max), i);
+                                    }
+                                }
+                            }
                         } else {
                             output_character(out, (lv.depth > 0) ? lv.character() : rv.character());
                         }
