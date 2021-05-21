@@ -8,12 +8,10 @@
 #include <stdexcept>
 #include <vector>
 
-#include <divsufsort.h>
-
 #include <tdc/util/index.hpp>
-#include <tdc/util/lcp.hpp>
 #include <tdc/util/literals.hpp>
 
+#include "sliding_window_trie.hpp"
 #include "stats.hpp"
 
 namespace tdc {
@@ -24,355 +22,8 @@ template<bool m_allow_ext_match = false, bool m_track_stats = false>
 class LZ77SlidingWindow {
 private:
     static constexpr bool verbose = false; // use for debugging
-
+    
     using char_t = unsigned char;
-    using window_index_t = uint32_t;
-    
-    static constexpr index_t NONE = 0;
-    static constexpr index_t ROOT = 1;
-    
-    class CompactTrie {
-    private:
-        char_t* m_label_buffer;
-    
-        std::vector<index_t> m_parent;
-        std::vector<index_t> m_first_child;
-        std::vector<index_t> m_next_sibling;
-        
-        std::vector<char_t>  m_char;    // first character on incoming edge
-        std::vector<window_index_t> m_label;   // full edge label
-        std::vector<window_index_t> m_llen;    // label length
-        std::vector<window_index_t> m_min_pos; // earliest occurrence
-        std::vector<window_index_t> m_max_pos; // latest occurrence
-        
-    public:
-        CompactTrie(const size_t label_bufsize, const size_t initial_capacity) {
-            m_label_buffer = new char_t[label_bufsize];
-            reserve(initial_capacity);
-            clear();
-        }
-        
-        ~CompactTrie() {
-            delete[] m_label_buffer;
-        }
-        
-        CompactTrie(const CompactTrie&) = default;
-        CompactTrie(CompactTrie&&) = default;
-        CompactTrie& operator=(const CompactTrie&) = default;
-        CompactTrie& operator=(CompactTrie&&) = default;
-        
-        index_t emplace_back(const char_t c, const index_t label, const index_t llen) {
-            auto idx = size();
-            
-            m_parent.emplace_back(NONE);
-            m_first_child.emplace_back(NONE);
-            m_next_sibling.emplace_back(NONE);
-            
-            m_char.emplace_back(c);
-            m_label.emplace_back(label);
-            m_llen.emplace_back(llen);
-            m_min_pos.emplace_back(std::numeric_limits<index_t>::max());
-            m_max_pos.emplace_back(0);
-            return idx;
-        }
-        
-        void clear() {
-            m_parent.clear();
-            m_first_child.clear();
-            m_next_sibling.clear();
-            
-            m_char.clear();
-            m_label.clear();
-            m_llen.clear();
-            m_min_pos.clear();
-            m_max_pos.clear();
-            
-            emplace_back(0, -1, 0); // invalid node
-            emplace_back(0, -1, 0); // root
-        }
-        
-        void reserve(const size_t cap) {
-            m_parent.reserve(cap);
-            m_first_child.reserve(cap);
-            m_next_sibling.reserve(cap);
-            
-            m_char.reserve(cap);
-            m_label.reserve(cap);
-            m_llen.reserve(cap);
-            m_min_pos.reserve(cap);
-            m_max_pos.reserve(cap);
-        }
-        
-        void write_label_buffer(const char_t* src, const size_t len) {
-            for(size_t i = 0; i < len; i++) {
-                m_label_buffer[i] = src[i];
-            }
-        }
-        
-        index_t& parent(const index_t node)       { return m_parent[node]; }
-        index_t& first_child(const index_t node)  { return m_first_child[node]; }
-        index_t& next_sibling(const index_t node) { return m_next_sibling[node]; }
-        char_t& in_char(const index_t node)       { return m_char[node]; }
-        window_index_t& label(const index_t node)        { return m_label[node]; }
-        window_index_t& llen(const index_t node)         { return m_llen[node]; }
-        window_index_t& min_pos(const index_t node)      { return m_min_pos[node]; }
-        window_index_t& max_pos(const index_t node)      { return m_max_pos[node]; }
-        
-        const char_t* label_buffer(const size_t start = 0) { return m_label_buffer + start; }
-        const char_t label_char(const index_t node, const size_t i = 0) { return *(label_buffer(m_label[node]) + i); }
-        bool is_leaf(const index_t node) const { return m_first_child[node] == NONE; }
-        
-        index_t get_child(const index_t node, const char_t c) {
-            const auto first_child = m_first_child[node];
-            auto v = first_child;
-
-            auto prev_sibling = NONE;
-            while(v && m_char[v] != c) {
-                prev_sibling = v;
-                v = m_next_sibling[v];
-            }
-            
-            // MTF
-            if(v && v != first_child) {
-                m_next_sibling[prev_sibling] = m_next_sibling[v];
-                m_next_sibling[v] = first_child;
-                m_first_child[node] = v;
-            }
-
-            return v;
-        }
-        
-        void insert_child(const index_t node, const index_t child) {
-            if(m_parent[child]) {
-                // remove child from current parent first
-                auto old_parent = m_parent[child];
-                auto v = m_first_child[old_parent];
-                if(v == child) {
-                    // child is parent's first child, simply exchange
-                    m_first_child[old_parent] = m_next_sibling[child];
-                } else {
-                    // search for previous sibling
-                    while(m_next_sibling[v] != child) {
-                        v = m_next_sibling[v];
-                        assert(v); // if we reach the end, the parent/child relationship was invalid
-                    }
-                    
-                    // unlink
-                    m_next_sibling[v] = m_next_sibling[child];
-                }
-            }
-            
-            m_next_sibling[child] = m_first_child[node];
-            m_first_child[node] = child;
-            m_parent[child] = node;
-        }
-
-        size_t size() const {
-            return m_parent.size();
-        }
-    };
-    
-    struct CompactTrieCursor {
-        CompactTrie* trie;
-        index_t node;
-        index_t lpos;
-        index_t depth;
-        
-        CompactTrieCursor(CompactTrie& trie_, const index_t node_ = ROOT) : trie(&trie_), node(node_), lpos(0), depth(0) {
-        }
-        
-        CompactTrieCursor(const CompactTrieCursor&) = default;
-        CompactTrieCursor(CompactTrieCursor&&) = default;
-        CompactTrieCursor& operator=(const CompactTrieCursor&) = default;
-        CompactTrieCursor& operator=(CompactTrieCursor&&) = default;
-        
-        // get the last read character
-        char_t character() const {
-            assert(lpos > 0);
-            return trie->label_char(node, lpos - 1);
-        }
-        
-        // test if we reached a leaf
-        bool reached_leaf() const {
-            return lpos >= trie->llen(node) && trie->is_leaf(node);
-        }
-        
-        // min position of an occurence of prefix at cursor
-        window_index_t min_pos() const {
-            return trie->min_pos(node);
-        }
-        
-        // max position of an occurence of prefix at cursor
-        window_index_t max_pos() const {
-            return trie->max_pos(node);
-        }
-        
-        // descend down with one character
-        bool descend(const char_t c) {
-            if(lpos < trie->llen(node)) {
-                if(trie->label_char(node, lpos) == c) {
-                    // success
-                    ++lpos;
-                    ++depth;
-                    return true;
-                } else {
-                    // character does not match the next one on the label
-                    return false;
-                }
-            } else {
-                // navigate to child
-                auto v = trie->get_child(node, c);
-                if(v) {
-                    assert(trie->label_char(v) == c);
-                    
-                    // continue in child
-                    node = v;
-                    lpos = 0;
-                    return descend(c);
-                } else {
-                    // no such child
-                    return false;
-                }
-            }
-        }
-        
-        // ascend up the trie to depth exactly d
-        void ascend(const index_t d) {
-            while(depth > d) {
-                assert(depth >= lpos);
-                
-                const index_t distance = depth - d;
-                if(distance <= lpos - 1) {
-                    // desired depth is on the current edge
-                    lpos -= distance;
-                    depth -= distance;
-                } else {
-                    // ascend to parent node
-                    depth -= lpos;
-                    node = trie->parent(node);
-                    lpos = trie->llen(node);
-                }
-            }
-        }
-        
-        // insert a path at the current position in trie for the given string
-        void insert_path(index_t s, index_t len) {
-            assert(len > 0);
-            
-            // navigate according to string as far as possible
-            while(len && descend(*trie->label_buffer(s))) {
-                ++s;
-                --len;
-            }
-            
-            if(len == 0) {
-                return; // nothing to insert!
-            }
-            
-            // split edge if necessary
-            if(lpos < trie->llen(node)) {
-                assert(lpos > 0 || !trie->parent(node)); // only in the root node can we ever insert anything at depth zero
-                
-                // split the current edge by creating a new inner node
-                auto inner_node = trie->emplace_back(trie->in_char(node), trie->label(node), lpos);
-                
-                auto parent = trie->parent(node);
-                if(parent) {
-                    assert(trie->get_child(parent, trie->in_char(inner_node)) == node);
-                    trie->insert_child(parent, inner_node);
-                }
-                
-                trie->label(node) += lpos;
-                trie->llen(node)  -= lpos;
-                assert(trie->llen(node) > 0);
-                trie->in_char(node) = trie->label_char(node);
-                
-                trie->min_pos(inner_node) = trie->min_pos(node);
-                trie->max_pos(inner_node) = trie->max_pos(node);
-                
-                trie->insert_child(inner_node, node);
-                
-                node = inner_node;
-                assert(lpos == trie->llen(node));
-            }
-            
-            // append a new child
-            assert(trie->get_child(node, *trie->label_buffer(s)) == NONE);
-            
-            {
-                auto new_child = trie->emplace_back(*trie->label_buffer(s), s, len);
-                trie->insert_child(node, new_child);
-
-                node = new_child;
-                lpos = len;
-                depth += len;
-            }
-        }
-    };
-    
-    // buffers are expected to be of size at least n+1 (zero-terminator)!
-    void compute_sw_trie(CompactTrie* trie, const char_t* buffer, const index_t n, const index_t w, saidx_t* sa, saidx_t* lcp, saidx_t* work) {
-        // compute suffix and LCP array
-        //divsuflcpsort((const sauchar_t*)buffer, sa, lcp, (saidx_t)(n+1)); // nb: BROKEN??
-        divsufsort((const sauchar_t*)buffer, sa, (saidx_t)(n+1));
-        assert(sa[0] == n);
-        assert(buffer[sa[0]] != buffer[sa[1]]); // must have unique terminator
-        
-        lcp_kasai(buffer, n+1, sa, lcp, work);
-        assert(lcp[0] == 0);
-        assert(lcp[1] == 0);
-        
-        // init trie
-        trie->clear();
-        trie->write_label_buffer(buffer, n+1);
-        
-        // compute truncated suffix tree w/ min/max info
-        trie->clear();
-        CompactTrieCursor cursor(*trie);
-
-        // first suffix begins with terminator, skip
-        for(size_t i = 1; i < n + 1; i++) {
-            // ascend to depth lcp[i]
-            cursor.ascend(lcp[i]);
-            assert(cursor.depth <= lcp[i]);
-            // nb: Strictly speaking, in the classical suffix trie construction algorithm, it should be cursor.depth == lcp[i].
-            //     However, we are not entering ALL suffixes, but only those starting in the window.
-            //     Thus, we may have skipped some on the way.
-
-            // we are only interested in suffixes starting in [0,w-1]
-            const index_t pos = sa[i];
-            if(pos < w) {
-                const auto d = cursor.depth;
-                assert(d <= w);
-                
-                // it may happen that the LCP of two suffixes is already larger than the window
-                // in that case, there is nothing more to insert here
-                if(d < w) {
-                    // insert remainder of truncated suffix
-                    const index_t suffix = pos + d;
-                    const index_t suffix_len = std::min(n - (pos + d), w - d);
-                
-                    cursor.insert_path(suffix, suffix_len);
-                    assert(cursor.depth == std::min(n - pos, w));
-                }
-                
-                // propagate min and max position
-                {
-                    auto v = cursor.node;
-                    while(v) {
-                        trie->min_pos(v) = std::min(trie->min_pos(v), (window_index_t)(pos));
-                        trie->max_pos(v) = std::max(trie->max_pos(v), (window_index_t)(pos));
-                        v = trie->parent(v);
-                    }
-                }
-            }
-        }
-        
-        // done
-        if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, trie->size());
-        assert(trie->min_pos(ROOT) == 0);
-        assert(trie->max_pos(ROOT) <= w-1);
-    }
     
     void output_ref(std::ostream& out, const size_t src, const size_t len) {
         out << "(" << src << "," << len << ")";
@@ -403,9 +54,9 @@ public:
         char_t* buffer = new char_t[bufsize + 1];
         char_t* prev_buffer = m_allow_ext_match ? new char_t[m_window + 1] : nullptr;
         
-        CompactTrie sw_tries[2] = { CompactTrie(bufsize + 1, 2 * m_window), CompactTrie(bufsize + 1, 2 * m_window) };
-        CompactTrie* left_trie;
-        CompactTrie* right_trie;
+        SlidingWindowTrie sw_tries[2] = { SlidingWindowTrie(bufsize + 1, 2 * m_window), SlidingWindowTrie(bufsize + 1, 2 * m_window) };
+        SlidingWindowTrie* left_trie;
+        SlidingWindowTrie* right_trie;
         bool cur_right_trie = 0; // we swap this for every trie we build
         
         saidx_t* sa_buffer = new saidx_t[bufsize + 1];
@@ -434,7 +85,8 @@ public:
                 buffer[r] = (char_t)0; // terminate
                 right_trie = &sw_tries[1];
                 cur_right_trie = 1;
-                compute_sw_trie(right_trie, buffer, r, m_window, sa_buffer, lcp_buffer, work_buffer);
+                right_trie->build(buffer, r, m_window, sa_buffer, lcp_buffer, work_buffer);
+                if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, right_trie->size());
                 // if constexpr(verbose) right_trie->print();
                 n = r;
                 last_block_len = std::min((index_t)r, m_window);
@@ -481,7 +133,8 @@ public:
                     buffer[last_block_len + r] = (char_t)0; // terminate
                      
                     if constexpr(verbose) std::cout << "(read " << r << " character(s) from stream: \"" << rbuffer << "\")" << std::endl;
-                    compute_sw_trie(right_trie, buffer, last_block_len + r, m_window, sa_buffer, lcp_buffer, work_buffer);
+                    right_trie->build(buffer, last_block_len + r, m_window, sa_buffer, lcp_buffer, work_buffer);
+                    if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, right_trie->size());
                     n += r;
                     last_block_len = r;
                     
@@ -517,9 +170,9 @@ public:
             
             // perform match starting at position i
             {
-                CompactTrieCursor lv(*left_trie);
+                auto lv = left_trie->cursor();
                 bool lsearch = true;
-                CompactTrieCursor rv(*right_trie);
+                auto rv = right_trie->cursor();
                 bool rsearch = true;
 
                 size_t j = i;
