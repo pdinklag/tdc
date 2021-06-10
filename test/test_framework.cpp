@@ -114,12 +114,4 @@ int main(int argc, char** argv) {
 
     framework::Registry r;
     r.register_algorithms(Types());
-
-    /*
-
-
-
-    framework::Registry r;
-    r.register_algorithms(framework::crossproduct<LZ78, LZ78Codes, LZ78Tries>());
-    */
 }

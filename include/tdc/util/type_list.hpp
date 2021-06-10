@@ -32,7 +32,7 @@ struct OutOfBounds;
 template<typename Tl> struct _size;
 template<size_t I, typename Tl> struct _get{};
 template<typename T, typename Tl> struct _prepend;
-template<typename Tl1, typename Tl2> struct _concat;
+template<typename... Tls> struct _concat;
 template<size_t I, typename T> struct _set;
 template<typename Tl1, typename Tl2> struct _mix;
 template<typename... Tls> struct _multimix;
@@ -60,13 +60,11 @@ using get = typename _get<I, Tl>::type;
 template<typename T, typename Tl>
 using prepend = typename _prepend<T, Tl>::type_list;
 
-/// \brief Concatenates two lists.
+/// \brief Concatenates lists.
 ///
-/// \tparam Tl1  the first list
-/// \tparam Tll2 the second list
-template<typename Tl1, typename Tl2>
-using concat = typename _concat<Tl1, Tl2>::type_list;
-
+/// \tparam Tls the lists
+template<typename... Tls>
+using concat = typename _concat<Tls...>::type_list;
 
 /// \brief Produces a type list where the i-th type is the specified type
 ///        and all other types are None.
@@ -147,10 +145,20 @@ struct _prepend<T, list<Ts...>> {
     using type_list = list<T, Ts...>;
 };
 
-// concat - all cases
-template<typename... Ts1, typename... Ts2>
-struct _concat<list<Ts1...>, list<Ts2...>> {
-    using type_list = list<Ts1..., Ts2...>;
+// concat - base case
+template<>
+struct _concat<> {
+    using type_list = empty;
+};
+
+template<typename Tl1>
+struct _concat<Tl1> {
+    using type_list = Tl1;
+};
+
+template<typename... Ts1, typename... Ts2, typename... Tls>
+struct _concat<list<Ts1...>, list<Ts2...>, Tls...> {
+    using type_list = concat<list<Ts1..., Ts2...>, Tls...>;
 };
 
 // set - recursive case (I > 0):
