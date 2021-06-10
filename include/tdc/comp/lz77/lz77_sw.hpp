@@ -19,10 +19,10 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<bool m_allow_ext_match = false, size_t m_long_term_min = 0, size_t m_long_term_max = 0, bool m_track_stats = false>
+template<bool m_allow_ext_match = false, size_t m_long_term_q = 0, bool m_track_stats = false>
 class LZ77SlidingWindow {
 private:
-    static constexpr bool m_long_term = (m_long_term_min > 0) && (m_long_term_max >= m_long_term_min);
+    static constexpr bool m_long_term = m_long_term_q > 0;
     static constexpr bool verbose = false; // use for debugging
     
     using char_t = unsigned char;
@@ -250,6 +250,12 @@ public:
                 }
                 
                 if constexpr(verbose) std::cout << "search stopped at d(T)=" << lv.depth << " and d(T')=" << rv.depth << std::endl;
+
+                // insert q-gram into long-term trie
+                if constexpr(m_long_term) {
+                    auto root = long_term_trie.cursor();
+                    root.insert_path(buffer + i - window_start, m_long_term_q, i);
+                }
                 
                 if(m_allow_ext_match && j < n && ((lv.reached_leaf() && lv.depth > 1) || (rv.reached_leaf() && rv.depth > 1))) {
                     // we reached a leaf - initiate extended match
@@ -276,18 +282,6 @@ public:
                         if(flen > 1) {
                             const auto fsrc = (lv.depth > rv.depth) ? (prev_window_start + lv.max_pos()) : (window_start + rv.min_pos());
                             output_ref(out, fsrc, flen);
-                            
-                            if constexpr(m_long_term) {
-                                if(flen > m_long_term_min) {
-                                    // insert into long term trie!
-                                    long_v = long_term_trie.cursor();
-                                    if(lv.depth > rv.depth) {
-                                        long_v.insert_path(lv.trie->label_buffer(lv.max_pos()), std::min(lv.depth, (index_t)m_long_term_max), i);
-                                    } else {
-                                        long_v.insert_path(rv.trie->label_buffer(rv.min_pos()), std::min(rv.depth, (index_t)m_long_term_max), i);
-                                    }
-                                }
-                            }
                         } else {
                             output_character(out, (lv.depth > 0) ? lv.character() : rv.character());
                         }
