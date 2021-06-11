@@ -7,7 +7,9 @@
 #include <limits>
 #include <stdexcept>
 
+#include <tdc/io/buffered_reader.hpp>
 #include <tdc/util/index.hpp>
+#include <tdc/util/literals.hpp>
 
 #include "stats.hpp"
 
@@ -41,7 +43,6 @@ private:
     
     size_t m_threshold;
     
-    bool m_processor_needs_reset;
     processor_t m_processor;
     
     void output_current_ref(std::ostream& out) {
@@ -51,18 +52,7 @@ private:
             if constexpr(track_stats) ++m_stats.num_refs;
         }
     }
-
-    void reset() {
-        m_pos = 0;
-        m_next_factor = 0;
-        
-        m_qgram = 0;
-        m_read = 0;
-        
-        m_cur_src = REF_INVALID;
-        m_cur_len = 0;
-    }
-
+    
     void process(char_t c, std::ostream& out) {
         if constexpr(qgram_endian == std::endian::little) {
             m_qgram = (m_qgram << char_bits) | c;
@@ -140,19 +130,23 @@ public:
     }
 
     void compress(std::istream& in, std::ostream& out) {
-        reset();
+        // init
+        m_pos = 0;
+        m_next_factor = 0;
         
-        constexpr size_t bufsize = 1_Mi;
-        char_t* buffer = new char_t[bufsize];
-        bool b;
-        do {
-            b = (bool)in.read((char*)buffer, bufsize * sizeof(char_t));
-            const size_t num = in.gcount() / sizeof(char_t);
-            for(size_t i = 0; i < num; i++) {
-                process(buffer[i], out);
+        m_qgram = 0;
+        m_read = 0;
+        
+        m_cur_src = REF_INVALID;
+        m_cur_len = 0;
+
+        // read
+        {
+            io::BufferedReader<char_t> reader(in, 1_Mi);
+            while(reader) {
+                process(reader.read(), out);
             }
-        } while(b);
-        delete[] buffer;
+        }
         
         // process remainder
         for(size_t i = 0; i < q - 1; i++) {
