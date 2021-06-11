@@ -88,7 +88,7 @@ public:
             if(max_lcp >= m_threshold) {
                 const ssize_t max_pos = (max_lcp == psv_lcp) ? psv_pos : nsv_pos;
                 assert(max_pos < n);
-                assert(max_pos > 0);
+                assert(max_pos >= 0);
                 
                 // output reference
                 out << "(" << sa[max_pos] << "," << max_lcp << ")";
