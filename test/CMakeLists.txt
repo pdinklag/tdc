@@ -18,6 +18,11 @@ set_target_properties(test_framework PROPERTIES OUTPUT_NAME framework)
 target_link_libraries(test_framework)
 add_test(framework framework)
 
+add_executable(test_rolling_hash test_rolling_hash.cpp)
+set_target_properties(test_rolling_hash PROPERTIES OUTPUT_NAME rolling_hash)
+target_link_libraries(test_rolling_hash)
+add_test(rolling_hash rolling_hash)
+
 add_executable(test_vectors test_vectors.cpp)
 set_target_properties(test_vectors PROPERTIES OUTPUT_NAME vectors)
 target_link_libraries(test_vectors tdc-vec)

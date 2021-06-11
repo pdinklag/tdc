@@ -16,7 +16,7 @@ template<std::unsigned_integral char_t>
 class RollingKarpRabinFingerprint {
 private:
     static constexpr uint128_t m_base = uint128_t(1) << std::numeric_limits<char_t>::digits;
-    static constexpr uint128_t m_prime = 9223372036854775837ULL; // 2^63 + 29
+    static constexpr uint128_t m_prime = 18446744073709551253ULL;
 
     uint128_t m_f0;
     tlx::RingBuffer<char_t> m_window;
@@ -29,9 +29,9 @@ public:
     RollingKarpRabinFingerprint(size_t window, uint64_t offset = 0) : m_window(window), m_fp(offset) {
         // compute the factor pow(m_base, m_window) used to phase out the initial character of the window
         // TODO: there is probably a better algorithm for this?
-        m_f0 = m_base;
-        for(unsigned int i = 0; i < window - 1; i++) {
-            m_f0 *= m_base;
+        m_f0 = uint128_t(1);
+        for(size_t i = 0; i < window; i++) {
+            m_f0 = (m_f0 * m_base) % m_prime;
         }
     }
     
@@ -41,14 +41,14 @@ public:
     RollingKarpRabinFingerprint& operator=(RollingKarpRabinFingerprint&&) = default;
     
     char_t advance(const char_t c) {
-        const char_t first = m_window.front();
+        const char_t first = m_window.empty() ? char_t(0) : m_window.front();
         
         // advance fingerprint with new character
-        m_fp = ((m_fp * m_base) + c) % m_prime;
+        m_fp = (m_fp * m_base + uint128_t(c)) % m_prime;
         
         // phase out first character if buffer is full
         if(full()) {
-            const uint128_t first_influence = (first * m_f0) % m_prime;
+            const uint128_t first_influence = (uint128_t(first) * m_f0) % m_prime;
             if(first_influence < m_fp) {
                 m_fp -= first_influence;
             } else {
