@@ -7,11 +7,11 @@
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lz77_sw.hpp>
 #include <tdc/comp/lz77/lzqgram.hpp>
-#include <tdc/comp/lz77/lzqgram_btree.hpp>
-#include <tdc/comp/lz77/lzqgram_hash.hpp>
+//~ #include <tdc/comp/lz77/archive/lzqgram_btree.hpp>
+//~ #include <tdc/comp/lz77/archive/lzqgram_hash.hpp>
 #include <tdc/comp/lz77/lzqgram_sketch.hpp>
-#include <tdc/comp/lz77/lzqgram_sketch2.hpp>
-#include <tdc/comp/lz77/lzqgram_sketch3.hpp>
+//~ #include <tdc/comp/lz77/archive/lzqgram_sketch2.hpp>
+//~ #include <tdc/comp/lz77/archive/lzqgram_sketch3.hpp>
 #include <tdc/comp/lz77/lzqgram_trie.hpp>
 
 #include <tdc/uint/uint128.hpp>
@@ -31,6 +31,9 @@ struct {
     size_t threshold = 2;
     size_t q = 0;
     size_t window = 1_Ki;
+    size_t filter_size = 1_Ki;
+    size_t cm_width = 1_Ki;
+    size_t cm_height = 4;
     
     std::string ds;
     
@@ -58,13 +61,15 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         
         auto guard = phase.suppress();
         if(group == "sliding") phase.log("window", options.window);
+        if(group == "sketch") {
+            phase.log("filter", options.filter_size);
+            phase.log("cm_width", options.cm_width);
+            phase.log("cm_height", options.cm_height);
+            phase.log("num_swaps", stats.num_swaps);
+        }
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
         phase.log("num_refs", stats.num_refs);
-        // phase.log("num_collisions", stats.num_collisions);
-        // phase.log("num_extensions", stats.num_extensions);
-        // phase.log("extension_sum", stats.extension_sum);
-        // phase.log("num_swaps", stats.num_swaps);
         phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
@@ -78,35 +83,30 @@ int main(int argc, char** argv) {
     cp.add_string('a', "group", options.ds, "The algorithm group to benchmark.");
     cp.add_size_t('q', "min-qgram", options.q, "The minimum q-gram length.");
     cp.add_bytes('w', "window", options.window, "The window length for sliding window algorithms (default: 1024.");
+    cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
+    cp.add_bytes("cm-width", options.cm_width, "The width of the count-min sketch if used (default: 1024).");
+    cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
     if(!cp.process(argc, argv)) {
         return -1;
     }
     
-    bench("base", "Noop", [](){ return Noop<true>(); });
+    //~ bench("base", "Noop", [](){ return Noop<true>(); });
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
     
-    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, 0, 0, true>(options.window); });
-    bench("sliding", "SlidingLong(2,8)", [](){ return LZ77SlidingWindow<false, 2, 8, true>(options.window); });
-    bench("sliding", "SlidingLong(2,16)", [](){ return LZ77SlidingWindow<false, 2, 16, true>(options.window); });
-    bench("sliding", "SlidingLong(2,32)", [](){ return LZ77SlidingWindow<false, 2, 32, true>(options.window); });
-    bench("sliding", "SlidingLong(2,64)", [](){ return LZ77SlidingWindow<false, 2, 64, true>(options.window); });
-    // bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window); });
+    bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, 0, true>(options.window); });
+    //~ bench("sliding", "SlidingLong(2,8)", [](){ return LZ77SlidingWindow<false, 8, true>(options.window); });
+    //~ bench("sliding", "SlidingLong(2,16)", [](){ return LZ77SlidingWindow<false, 16, true>(options.window); });
+    //~ bench("sliding", "SlidingLong(2,32)", [](){ return LZ77SlidingWindow<false, 32, true>(options.window); });
+    //~ bench("sliding", "SlidingLong(2,64)", [](){ return LZ77SlidingWindow<false, 64, true>(options.window); });
+    //~ bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window); });
     
-    // if(options.q == 0 || options.q == 8) {
-        // bench("btree", "BTree(64),q=8", [](){ return LZQGram<qgram::BTreeProcessor<64, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("hash", "Hash(50_Mi),q=8", [](){ return LZQGram<qgram::HashProcessor<50_Mi, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch(f=32Mi,w=4Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor<32_Mi, 4_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch2(f=32Mi,w=2Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor2<32_Mi, 2_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch3(f=32Mi,w=4Mi,d=4),q=8", [](){ return LZQGram<qgram::SketchProcessor3<32_Mi, 4_Mi, 4, uint64_t>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("trie", "Trie(MTF),q=8", [](){ return LZQGram<qgram::TrieProcessor<char_t, true>, uint64_t, char_t, std::endian::little, true>(options.threshold); });
-    // }
+    if(options.q == 0 || options.q == 8) {
+        bench("qgram", "Trie(q=8)", [](){ return LZQGram<uint64_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
+        bench("sketch", "Sketch(q=8)", [](){ return LZQGram<uint64_t, qgram::SketchProcessor<uint64_t>>([](){ return qgram::SketchProcessor<uint64_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
+    }
     
-    // if(options.q == 0 || options.q == 16) {
-        // bench("btree", "BTree(64),q=16", [](){ return LZQGram<qgram::BTreeProcessor<64, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("hash", "Hash(32_Mi),q=16", [](){ return LZQGram<qgram::HashProcessor<32_Mi, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch(f=4Mi,w=1Mi,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor<4_Mi, 1_Mi, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch2(f=4Mi,w=512Ki,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor2<4_Mi, 512_Ki, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("sketch", "Sketch3(f=4Mi,w=1Mi,d=4),q=16", [](){ return LZQGram<qgram::SketchProcessor3<4_Mi, 1_Mi, 4, uint128_t>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-        // bench("trie", "Trie(MTF),q=16", [](){ return LZQGram<qgram::TrieProcessor<char_t, true>, uint128_t, char_t, std::endian::little, true>(options.threshold); });
-    // }
+    if(options.q == 0 || options.q == 16) {
+        bench("qgram", "Trie(q=16)", [](){ return LZQGram<uint128_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
+        bench("sketch", "Sketch(q=16)", [](){ return LZQGram<uint128_t, qgram::SketchProcessor<uint128_t>>([](){ return qgram::SketchProcessor<uint128_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
+    }
 }

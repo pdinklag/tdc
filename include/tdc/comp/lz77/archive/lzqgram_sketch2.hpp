@@ -7,6 +7,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include <tdc/hash/function.hpp>
 #include <tdc/math/prime.hpp>
 #include <tdc/pred/dynamic/btree.hpp>
 #include <tdc/pred/dynamic/btree/btree_min_observer.hpp>
@@ -17,6 +18,7 @@
 
 #include <robin_hood.h>
 
+#include "qgram_hash.hpp"
 #include "stats.hpp"
 
 namespace tdc {
@@ -25,18 +27,9 @@ namespace lz77 {
 namespace qgram {
 
 // sketch using B-Tree as a minimum data structure, does not require referential integrity
-template<size_t m_filter_size, size_t m_sketch_cols, size_t m_sketch_rows, std::unsigned_integral qgram_t = uint64_t>
+template<std::unsigned_integral qgram_t>
 class SketchProcessor2 {
 private:
-    static constexpr uint64_t m_filter_prime = math::prime_predecessor(m_filter_size);
-
-    class ModuloHash {
-    public:
-        size_t operator()(const qgram_t key) const {
-            return (size_t)(key % m_filter_prime);
-        }
-    };
-    
     struct FilterEntry {
         qgram_t pattern;
         index_t seen_at;
@@ -76,7 +69,8 @@ private:
         bool operator!=(const BTreeEntry& e) const = default;
     }  __attribute__((__packed__));
 
-    robin_hood::unordered_node_map<qgram_t, FilterEntry, ModuloHash> m_filter_table;
+    size_t m_filter_size;
+    robin_hood::unordered_node_map<qgram_t, FilterEntry, QGramHash<qgram_t>> m_filter_table;
     size_t m_filter_num;
     
     using btree_t = pred::dynamic::BTree<BTreeEntry, 33, pred::dynamic::SortedArrayNode<BTreeEntry, 32>>;
@@ -143,7 +137,13 @@ private:
     }
 
 public:
-    SketchProcessor2() : m_filter_table(m_filter_size), m_filter_num(0), m_btree_min(m_btree), m_sketch(m_sketch_cols, m_sketch_rows) {
+    SketchProcessor2(size_t filter_size, size_t sketch_cols, size_t sketch_rows)
+        : m_filter_size(filter_size),
+          m_filter_table(m_filter_size),
+          m_filter_num(0),
+          m_btree_min(m_btree),
+          m_sketch(sketch_cols, sketch_rows) {
+
         m_btree.set_observer(&m_btree_min);
     }
 

@@ -53,7 +53,7 @@ namespace hash {
     class Multiplicative {
     public:
         /// \brief The default prime used for multiplication.
-        static constexpr size_t KNUTH_PRIME = 2654435761ULL;
+        static constexpr uint64_t KNUTH_PRIME = 2654435761ULL;
         
     private:
         uint64_t m_operand;

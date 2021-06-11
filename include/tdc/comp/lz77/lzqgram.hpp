@@ -15,15 +15,15 @@ namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<typename processor_t, std::unsigned_integral qgram_t = uint64_t, std::unsigned_integral m_char_t = unsigned char, std::endian m_qgram_endian = std::endian::little, bool m_track_stats = false>
+template<std::unsigned_integral qgram_t, typename processor_t>
 class LZQGram {
 public:
-    using char_t = m_char_t;
+    using char_t = unsigned char;
     static constexpr size_t char_bits = std::numeric_limits<char_t>::digits;
     
     static constexpr size_t q = sizeof(qgram_t) / sizeof(char_t);
-    static constexpr std::endian qgram_endian = m_qgram_endian;
-    static constexpr bool track_stats = m_track_stats;
+    static constexpr std::endian qgram_endian = std::endian::little;
+    static constexpr bool track_stats = true;
 
 private:
     static constexpr size_t REF_INVALID = SIZE_MAX;
@@ -48,7 +48,7 @@ private:
         if(m_cur_src != REF_INVALID) {
             // std::cout << "\toutput reference (" << std::dec << m_cur_src << "," << m_cur_len << ")" << std::endl;
             out << "(" << m_cur_src << "," << m_cur_len << ")";
-            if constexpr(m_track_stats) ++m_stats.num_refs;
+            if constexpr(track_stats) ++m_stats.num_refs;
         }
     }
 
@@ -61,14 +61,10 @@ private:
         
         m_cur_src = REF_INVALID;
         m_cur_len = 0;
-        
-        if(m_processor_needs_reset) {
-            m_processor = processor_t();
-        }
     }
 
     void process(char_t c, std::ostream& out) {
-        if constexpr(m_qgram_endian == std::endian::little) {
+        if constexpr(qgram_endian == std::endian::little) {
             m_qgram = (m_qgram << char_bits) | c;
         } else {
             static constexpr size_t lsh = char_bits * (q - 1);
@@ -92,7 +88,7 @@ private:
                 out << buffer_front();
                 ++m_next_factor;
                 
-                if constexpr(m_track_stats) ++m_stats.num_literals;
+                if constexpr(track_stats) ++m_stats.num_literals;
             }
             
             // advance
@@ -101,14 +97,14 @@ private:
     }
 
 public:
-    LZQGram(size_t threshold = 2)
+    LZQGram(std::function<processor_t()> processor_ctor, size_t threshold = 2)
         : m_qgram(0),
           m_read(0),
           m_threshold(threshold),
           m_cur_src(REF_INVALID),
-          m_processor_needs_reset(false) {
+          m_processor(processor_ctor()) {
     }
-    
+
     size_t pos() const { return m_pos; }
     qgram_t qgram() const { return m_qgram; }
     qgram_t qgram_prefix(const size_t len) const { return m_qgram >> (q - len) * char_bits; }
@@ -126,7 +122,7 @@ public:
                 // std::cout << "\textend reference (" << std::dec << m_cur_src << "," << m_cur_len << ") to length " << (m_cur_len+len) << std::endl;
                 
                 m_cur_len += len;          
-                if constexpr(m_track_stats) {
+                if constexpr(track_stats) {
                     ++m_stats.num_extensions;
                     m_stats.extension_sum += len;
                 }
@@ -145,7 +141,6 @@ public:
 
     void compress(std::istream& in, std::ostream& out) {
         reset();
-        m_processor_needs_reset = true;
         
         constexpr size_t bufsize = 1_Mi;
         char_t* buffer = new char_t[bufsize];
@@ -167,7 +162,7 @@ public:
         // output last reference, if any
         output_current_ref(out);
         
-        if constexpr(m_track_stats) m_stats.input_size = m_pos;
+        if constexpr(track_stats) m_stats.input_size = m_pos;
     }
     
     const Stats& stats() const { return m_stats; }
