@@ -32,6 +32,8 @@ struct {
     size_t threshold = 2;
     size_t q = 0;
     size_t window = 1_Ki;
+    size_t tau_min = 5;
+    size_t tau_max = 5;
     size_t filter_size = 1_Ki;
     size_t cm_width = 1_Ki;
     size_t cm_height = 4;
@@ -61,7 +63,13 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         }
         
         auto guard = phase.suppress();
-        if(group == "sliding" || group == "fp") phase.log("window", options.window);
+        if(group == "sliding") {
+            phase.log("window", options.window);
+        }
+        if(group == "fp") {
+            phase.log("tau_min", options.tau_min);
+            phase.log("tau_max", options.tau_max);
+        }
         if(group == "sketch") {
             phase.log("filter", options.filter_size);
             phase.log("cm_width", options.cm_width);
@@ -73,6 +81,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
         phase.log("num_refs", stats.num_refs);
+        phase.log("num_factors", stats.num_literals + stats.num_refs);
         phase.log("trie_size", stats.trie_size);
         // std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
@@ -85,19 +94,23 @@ int main(int argc, char** argv) {
     cp.add_size_t('t', "threshold", options.threshold, "Minimum reference length (default: 2).");
     cp.add_string('a', "group", options.ds, "The algorithm group to benchmark.");
     cp.add_size_t('q', "min-qgram", options.q, "The minimum q-gram length.");
-    cp.add_bytes('w', "window", options.window, "The window length for sliding window algorithms (default: 1024.");
+    cp.add_bytes('w', "window", options.window, "The window length for sliding window algorithms (default: 1024).");
+    cp.add_bytes("tau-min", options.tau_min, "The minimum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
+    cp.add_bytes("tau-max", options.tau_max, "The maximum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
     cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
     cp.add_bytes("cm-width", options.cm_width, "The width of the count-min sketch if used (default: 1024).");
     cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
     if(!cp.process(argc, argv)) {
         return -1;
     }
+
+    options.tau_max = std::max(options.tau_min, options.tau_max);
     
     //~ bench("base", "Noop", [](){ return Noop<true>(); });
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
     
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, 0, true>(options.window); });
-    bench("fp", "FP", [](){ return LZFingerprinting(options.window); });
+    bench("fp", "FP", [](){ return LZFingerprinting(options.tau_min, options.tau_max); });
     //~ bench("sliding", "SlidingLong(2,8)", [](){ return LZ77SlidingWindow<false, 8, true>(options.window); });
     //~ bench("sliding", "SlidingLong(2,16)", [](){ return LZ77SlidingWindow<false, 16, true>(options.window); });
     //~ bench("sliding", "SlidingLong(2,32)", [](){ return LZ77SlidingWindow<false, 32, true>(options.window); });

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 #include <robin_hood.h>
 
@@ -25,50 +26,74 @@ public:
     using char_t = unsigned char;
     static constexpr bool track_stats = true;
 
-    using RollingFP = hash::RollingKarpRabinFingerprint<char_t>;
-
 private:
-    index_t m_pos;
-    index_t m_block_start;
-    index_t m_tau;
+    using RollingFP = hash::RollingKarpRabinFingerprint<char_t>;
+    using RefMap = robin_hood::unordered_map<uint64_t, index_t>;
 
+    index_t m_pos;
     index_t m_next_factor;
-    
-    RollingFP m_fp_block;
-    RollingFP m_fp_current;
-    robin_hood::unordered_map<uint64_t, index_t> m_ref;
-    
+
+    index_t m_num_layers;
+    index_t m_min_mask;
+
+    struct Layer {
+        index_t   tau_exp;
+        index_t   tau;
+        RollingFP rolling;
+        RefMap    refs;
+    };
+
+    std::vector<Layer> m_layers;
     Stats m_stats;
 
     inline void process(char_t c, std::ostream& out) {
-        if(m_pos && m_pos % m_tau == 0) {
-            // store fingerprint
-            m_ref[m_fp_block.fingerprint()] = m_block_start;
-            m_block_start = m_pos;
+        // update
+        if(m_pos > 0) {
+            for(size_t i = 0; i < m_num_layers; i++) {
+                auto& layer = m_layers[i];
+                if((m_pos & layer.tau) == 0) {
+                    // reached block boundary on layer i, store current fingerprint
+                    layer.refs[layer.rolling.fingerprint()] = (m_pos - 1) >> layer.tau_exp;
+                }
+
+                // update fingerprints
+                layer.rolling.advance(c);
+                // FIXME: currently each layer stores a window!
+            }
         }
 
-        // update fingerprints
-        m_fp_block.advance(c);
-        m_fp_current.advance(c);
+        // process layers greedily - longest tau first
+        if(m_pos >= m_next_factor) {
+            for(size_t i = 0; i < m_num_layers; i++) {
+                const auto& layer = m_layers[i];
 
-        // test if current was seen before
-        if(m_pos >= m_next_factor)
-        {
-            const auto fp = m_fp_current.fingerprint();
-            auto it = m_ref.find(fp);
-            if(it != m_ref.end()) {
-                if constexpr(track_stats) {
-                    ++m_stats.num_refs;
+                // test for each layer if current fingerprint was seen before (greedy, i.e., longest tau first)
+                const auto fp = layer.rolling.fingerprint();
+                auto it = layer.refs.find(fp);
+                if(it != layer.refs.end()) {
+                    // output reference
+                    if constexpr(track_stats) {
+                        ++m_stats.num_refs;
+                    }
+
+                    const size_t fsrc = it->second;
+                    const size_t flen = layer.tau;
+                    
+                    m_next_factor = m_pos + flen;
+                    out << "(" << fsrc << "," << flen << ")";
+                    //~ std::cout << "reference at pos=" << m_pos << " to src=" << fsrc << " and len=" << flen << ", fp=" << fp << std::endl;
+                    break; // don't consider shorter layers
                 }
-                m_next_factor = m_pos + m_tau;
-                out << "(" << it->second << "," << m_tau << ")";
-            } else {
-                if constexpr(track_stats) {
-                    ++m_stats.num_literals;
-                }
-                m_next_factor = m_pos + 1;
-                out << c;
             }
+        }
+
+        if(m_pos >= m_next_factor) {
+            // output literal
+            if constexpr(track_stats) {
+                ++m_stats.num_literals;
+            }
+            m_next_factor = m_pos + 1;
+            out << c;
         }
         
         // advance
@@ -76,16 +101,21 @@ private:
     }
 
 public:
-    inline LZFingerprinting(const index_t tau) : m_tau(tau) {
-        m_fp_block = RollingFP(m_tau);
-        m_fp_current = RollingFP(m_tau);
+    inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max) {
+        m_num_layers = (tau_exp_max >= tau_exp_min) ? tau_exp_max - tau_exp_min + 1 : 0;
+
+        index_t tau_exp = tau_exp_max;
+        for(size_t i = 0; i < m_num_layers; i++) {
+            const index_t tau = 1ULL << tau_exp;
+            m_layers.emplace_back(Layer{ tau_exp, tau, RollingFP(tau), RefMap() });
+            --tau_exp;
+        }
     }
 
     inline void compress(std::istream& in, std::ostream& out) {
         // init
         m_next_factor = 0;
         m_pos = 0;
-        m_block_start = 0;
 
         // read
         {
