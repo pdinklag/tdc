@@ -14,7 +14,7 @@ void test(const size_t w) {
 
     // insert w symbols
     for(size_t i = 0; i < w; i++) {
-        h.advance('a' + i);
+        h.advance('a' + i, 0);
     }
     
     // save fingerprint
@@ -23,13 +23,13 @@ void test(const size_t w) {
 
     // insert w/2 first symbols again
     for(size_t i = 0; i < w/2; i++) {
-        h.advance('a' + i);
+        h.advance('a' + i, 'a' + i);
     }
     ASSERT_NEQ(first, h.fingerprint());
 
     // insert next w/2 symbols again
     for(size_t i = 0; i < w/2; i++) {
-        h.advance('a' + w/2 + i);
+        h.advance('a' + w/2 + i, 'a' + w/2 + i);
     }
     std::cout << "\th1=" << h.fingerprint() << std::endl;
     ASSERT_EQ(first, h.fingerprint());
@@ -37,7 +37,7 @@ void test(const size_t w) {
     // insert symbols into a new instance
     RollingHash h2(w);
     for(size_t i = 0; i < w; i++) {
-        h2.advance('a' + i);
+        h2.advance('a' + i, 0);
     }
     std::cout << "\th2=" << h2.fingerprint() << std::endl;
     ASSERT_EQ(h.fingerprint(), h2.fingerprint());

@@ -5,8 +5,6 @@
 #include <limits>
 #include <stdexcept>
 
-#include <tlx/container/ring_buffer.hpp>
-
 #include <tdc/uint/uint128.hpp>
 
 namespace tdc {
@@ -18,15 +16,13 @@ private:
     static constexpr uint128_t m_base = uint128_t(1) << std::numeric_limits<char_t>::digits;
     static constexpr uint128_t m_prime = 18446744073709551253ULL;
 
-    uint128_t m_f0;
-    tlx::RingBuffer<char_t> m_window;
-    uint128_t m_fp;
+    uint128_t m_fp, m_f0;
 
 public:
-    RollingKarpRabinFingerprint() : m_window(0), m_fp(0), m_f0(0) {
+    RollingKarpRabinFingerprint() : m_fp(0), m_f0(0) {
     }
 
-    RollingKarpRabinFingerprint(size_t window, uint64_t offset = 0) : m_window(window), m_fp(offset) {
+    RollingKarpRabinFingerprint(size_t window, uint64_t offset = 0) : m_fp(offset) {
         // compute the factor pow(m_base, m_window) used to phase out the initial character of the window
         // TODO: there is probably a better algorithm for this?
         m_f0 = uint128_t(1);
@@ -40,41 +36,22 @@ public:
     RollingKarpRabinFingerprint& operator=(const RollingKarpRabinFingerprint&) = default;
     RollingKarpRabinFingerprint& operator=(RollingKarpRabinFingerprint&&) = default;
     
-    char_t advance(const char_t c) {
-        const char_t first = m_window.empty() ? char_t(0) : m_window.front();
+    void advance(const char_t in, const char_t out) {
+        // advance fingerprint with in character
+        m_fp = (m_fp * m_base + uint128_t(in)) % m_prime;
         
-        // advance fingerprint with new character
-        m_fp = (m_fp * m_base + uint128_t(c)) % m_prime;
-        
-        // phase out first character if buffer is full
-        if(full()) {
-            const uint128_t first_influence = (uint128_t(first) * m_f0) % m_prime;
-            if(first_influence < m_fp) {
-                m_fp -= first_influence;
+        // calculate away out character
+        if(out) {
+            const uint128_t out_influence = (uint128_t(out) * m_f0) % m_prime;
+            if(out_influence < m_fp) {
+                m_fp -= out_influence;
             } else {
-                m_fp = m_prime - (first_influence - m_fp);
+                m_fp = m_prime - (out_influence - m_fp);
             }
-            m_window.pop_front();
         }
-        
-        // append new character to buffer
-        m_window.push_back(c);
-        
-        // return first character
-        return first;
     }
     
-    bool full() const { return m_window.size() == m_window.max_size(); }
-    
-    const tlx::RingBuffer<char_t>& window() const { return m_window; }
     uint64_t fingerprint() const { return (uint64_t)m_fp; }
-    
-    std::string str() const {
-        std::string s;
-        s.reserve(m_window.size());
-        for(size_t i = 0; i < m_window.size(); i++) s.push_back((char)m_window[i]);
-        return s;
-    }
 };
 
 }} // namespace tdc::hash

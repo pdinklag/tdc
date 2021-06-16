@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <tlx/container/ring_buffer.hpp>
 #include <robin_hood.h>
 
 #include <tdc/io/buffered_reader.hpp>
@@ -29,6 +30,7 @@ public:
 private:
     using RollingFP = hash::RollingKarpRabinFingerprint<char_t>;
     using RefMap = robin_hood::unordered_map<uint64_t, index_t>;
+    using RingBuffer = tlx::RingBuffer<char_t>;
 
     index_t m_pos;
     index_t m_next_factor;
@@ -43,24 +45,37 @@ private:
         RefMap    refs;
     };
 
+    RingBuffer m_window;
     std::vector<Layer> m_layers;
     Stats m_stats;
 
-    inline void process(char_t c, std::ostream& out) {
+    inline void process(const char_t c, std::ostream& out) {
         // update
-        if(m_pos > 0) {
+        if(m_num_layers > 0) {
+            index_t mask = m_layers[0].tau - 1;
+            
+            const size_t w = m_window.size();
             for(size_t i = 0; i < m_num_layers; i++) {
                 auto& layer = m_layers[i];
-                if((m_pos & layer.tau) == 0) {
+                if(m_pos > 0 && (m_pos & mask) == 0) {
                     // reached block boundary on layer i, store current fingerprint
                     layer.refs[layer.rolling.fingerprint()] = (m_pos - 1) >> layer.tau_exp;
                 }
 
-                // update fingerprints
-                layer.rolling.advance(c);
-                // FIXME: currently each layer stores a window!
+                // advance rolling fingerprint
+                const char_t out_c = (w >= layer.tau) ? m_window[w - layer.tau] : 0;
+                layer.rolling.advance(c, out_c);
+
+                // roll mask
+                mask >>= 1ULL;
             }
         }
+
+        // advance window
+        if(m_window.size() == m_window.max_size()) {
+            m_window.pop_front();
+        }
+        m_window.push_back(c);
 
         // process layers greedily - longest tau first
         if(m_pos >= m_next_factor) {
@@ -101,7 +116,7 @@ private:
     }
 
 public:
-    inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max) {
+    inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max) : m_window(1ULL << tau_exp_max) {
         m_num_layers = (tau_exp_max >= tau_exp_min) ? tau_exp_max - tau_exp_min + 1 : 0;
 
         index_t tau_exp = tau_exp_max;
