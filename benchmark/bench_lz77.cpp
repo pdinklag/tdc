@@ -6,6 +6,7 @@
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lz77_sw.hpp>
+#include <tdc/comp/lz77/lzfp.hpp>
 #include <tdc/comp/lz77/lzqgram.hpp>
 //~ #include <tdc/comp/lz77/archive/lzqgram_btree.hpp>
 //~ #include <tdc/comp/lz77/archive/lzqgram_hash.hpp>
@@ -60,12 +61,14 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         }
         
         auto guard = phase.suppress();
-        if(group == "sliding") phase.log("window", options.window);
+        if(group == "sliding" || group == "fp") phase.log("window", options.window);
         if(group == "sketch") {
             phase.log("filter", options.filter_size);
             phase.log("cm_width", options.cm_width);
             phase.log("cm_height", options.cm_height);
             phase.log("num_swaps", stats.num_swaps);
+            phase.log("num_extensions", stats.num_extensions);
+            phase.log("extension_sum", stats.extension_sum);
         }
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
@@ -94,6 +97,7 @@ int main(int argc, char** argv) {
     bench("base", "SA", [](){ return LZ77SA<true>(options.threshold); });
     
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false, 0, true>(options.window); });
+    bench("fp", "FP", [](){ return LZFingerprinting(options.window); });
     //~ bench("sliding", "SlidingLong(2,8)", [](){ return LZ77SlidingWindow<false, 8, true>(options.window); });
     //~ bench("sliding", "SlidingLong(2,16)", [](){ return LZ77SlidingWindow<false, 16, true>(options.window); });
     //~ bench("sliding", "SlidingLong(2,32)", [](){ return LZ77SlidingWindow<false, 32, true>(options.window); });
