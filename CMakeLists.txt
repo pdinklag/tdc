@@ -40,7 +40,11 @@ else()
     message(FATAL_ERROR "Unsupported CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 endif()
 
-# index data type
+# data types
+set(CHAR_T "unsigned char" CACHE STRING "The type to use for char_t")
+message(STATUS "CHAR_T is ${CHAR_T}")
+add_definitions(-DCHAR_T=${CHAR_T})
+
 set(INDEX_T "uint64_t" CACHE STRING "The type to use for index_t")
 message(STATUS "INDEX_T is ${INDEX_T}")
 add_definitions(-DINDEX_T=${INDEX_T})

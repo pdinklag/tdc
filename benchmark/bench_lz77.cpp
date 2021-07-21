@@ -7,13 +7,7 @@
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lz77_sw.hpp>
 #include <tdc/comp/lz77/lzfp.hpp>
-#include <tdc/comp/lz77/lzqgram.hpp>
-//~ #include <tdc/comp/lz77/archive/lzqgram_btree.hpp>
-//~ #include <tdc/comp/lz77/archive/lzqgram_hash.hpp>
-#include <tdc/comp/lz77/lzqgram_sketch.hpp>
-//~ #include <tdc/comp/lz77/archive/lzqgram_sketch2.hpp>
-//~ #include <tdc/comp/lz77/archive/lzqgram_sketch3.hpp>
-#include <tdc/comp/lz77/lzqgram_trie.hpp>
+#include <tdc/comp/lz77/lzsketch.hpp>
 
 #include <tdc/uint/uint128.hpp>
 #include <tdc/uint/uint256.hpp>
@@ -37,6 +31,7 @@ struct {
     size_t filter_size = 1_Ki;
     size_t cm_width = 1_Ki;
     size_t cm_height = 4;
+    bool stdout = false;
     
     std::string ds;
     
@@ -57,8 +52,12 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         Stats stats;
         {
             auto c = ctor();
-            // c.compress(input, std::cout);
-            c.compress(input, devnull);
+
+            if(options.stdout) {
+                c.compress(input, std::cout);
+            } else {
+                c.compress(input, devnull);
+            }
             stats = c.stats();
         }
         
@@ -75,6 +74,8 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
             phase.log("cm_width", options.cm_width);
             phase.log("cm_height", options.cm_height);
             phase.log("num_swaps", stats.num_swaps);
+            phase.log("num_buckets", stats.num_buckets);
+            phase.log("num_contradictions", stats.num_contradictions);
             phase.log("num_extensions", stats.num_extensions);
             phase.log("extension_sum", stats.extension_sum);
         }
@@ -83,7 +84,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         phase.log("num_refs", stats.num_refs);
         phase.log("num_factors", stats.num_literals + stats.num_refs);
         phase.log("trie_size", stats.trie_size);
-        // std::cout << std::endl;
+        if(options.stdout) std::cout << std::endl;
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " threshold=" << options.threshold << " " << phase.to_keyval() << std::endl;
     }
 }
@@ -100,6 +101,7 @@ int main(int argc, char** argv) {
     cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
     cp.add_bytes("cm-width", options.cm_width, "The width of the count-min sketch if used (default: 1024).");
     cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
+    cp.add_flag("stdout", options.stdout, "Whether or not to compress to stdout (default: false).");
     if(!cp.process(argc, argv)) {
         return -1;
     }
@@ -118,12 +120,12 @@ int main(int argc, char** argv) {
     //~ bench("sliding", "Sliding*", [](){ return LZ77SlidingWindow<true, true>(options.window); });
     
     if(options.q == 0 || options.q == 8) {
-        bench("qgram", "Trie(q=8)", [](){ return LZQGram<uint64_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
-        bench("sketch", "Sketch(q=8)", [](){ return LZQGram<uint64_t, qgram::SketchProcessor<uint64_t>>([](){ return qgram::SketchProcessor<uint64_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
+        // bench("qgram", "Trie(q=8)", [](){ return LZQGram<uint64_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
+        bench("sketch", "Sketch(q=8)", [](){ return LZSketch<uint64_t>(options.filter_size, options.cm_width, options.cm_height); });
     }
     
     if(options.q == 0 || options.q == 16) {
-        bench("qgram", "Trie(q=16)", [](){ return LZQGram<uint128_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
-        bench("sketch", "Sketch(q=16)", [](){ return LZQGram<uint128_t, qgram::SketchProcessor<uint128_t>>([](){ return qgram::SketchProcessor<uint128_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
+        // bench("qgram", "Trie(q=16)", [](){ return LZQGram<uint128_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
+        // bench("sketch", "Sketch(q=16)", [](){ return LZQGram<uint128_t, qgram::SketchProcessor<uint128_t>>([](){ return qgram::SketchProcessor<uint128_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
     }
 }

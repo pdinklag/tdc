@@ -15,6 +15,8 @@ struct Stats {
     size_t num_swaps;
     size_t extension_sum;
     size_t trie_size;
+    size_t num_buckets;
+    size_t num_contradictions;
     
     Stats()
         : input_size(0),
@@ -24,7 +26,9 @@ struct Stats {
           num_extensions(0),
           num_swaps(0),
           extension_sum(0),
-          trie_size(0)
+          trie_size(0),
+          num_buckets(0),
+          num_contradictions(0)
     {}
 };
 
