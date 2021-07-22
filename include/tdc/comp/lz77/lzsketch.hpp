@@ -58,15 +58,23 @@ private:
             bool empty() const {
                 return leaves.empty() && inner.empty();
             }
+
+            size_t size() const {
+                return leaves.size() + inner.size();
+            }
         };
         
         std::list<Bucket> buckets_;
         using BucketRef = std::list<Bucket>::iterator;
         using MinEntry = std::list<index_t>::iterator;
 
-        BucketRef get_or_create_bucket(BucketRef from, const index_t count) {
+        BucketRef get_succ_bucket(BucketRef from, const index_t count) {
             // find successor
-            auto it = std::find_if(from, buckets_.end(), [&](const Bucket& bucket){ return bucket.count >= count; });
+            return std::find_if(from, buckets_.end(), [&](const Bucket& bucket){ return bucket.count >= count; });
+        }
+
+        BucketRef get_or_create_bucket(BucketRef from, const index_t count) {
+            auto it = get_succ_bucket(from, count);
             if(it == buckets_.end() || it->count != count) {
                 // create new bucket
                 it = buckets_.emplace(it, count);
@@ -277,12 +285,35 @@ private:
             return p;
         }
 
+private:
+        void increase_key(const index_t node) {
+        }
+
+public:
         void increment(const index_t node, const index_t pos) {
+            const auto count = count_[node];
+
+            // increment
+            ++count_[node];
+            prev_[node] = pos;
+            
             // increase key in minimum data structure
-            {
-                const auto count = count_[node];
+            {                
                 auto bucket = bucket_[node];
                 assert(bucket->count == count); // sanity
+
+                if(bucket->size() == 1) {
+                    /*
+                     * this is the only element in the current bucket
+                     * if the next bucket does not exist, we can simply increment the current bucket's count by 1, saving allocations
+                     */
+                    auto existing_next_bucket = get_succ_bucket(bucket, count + 1);
+                    if(existing_next_bucket == buckets_.end() || existing_next_bucket->count > count+1) {
+                        ++bucket->count;
+                        assert(has_min_leaf());
+                        return;
+                    }
+                }
 
                 auto next_bucket = get_or_create_bucket(bucket, count + 1);
                 bucket_[node] = next_bucket;
@@ -304,13 +335,9 @@ private:
                 if(bucket->empty()) {
                     buckets_.erase(bucket);
                 }
+
+                assert(has_min_leaf());
             }
-
-            // increment
-            ++count_[node];
-            prev_[node] = pos;
-
-            assert(has_min_leaf());
         }
     
         bool is_leaf(const index_t node) const {
