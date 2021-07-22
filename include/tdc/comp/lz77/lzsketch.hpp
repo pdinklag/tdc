@@ -102,7 +102,7 @@ private:
         }
 
     public:
-        TrieFilter(const size_t initial_capacity = 1) {
+        TrieFilter(const size_t initial_capacity) {
             parent_      .reserve(initial_capacity);
             in_          .reserve(initial_capacity);
             first_child_ .reserve(initial_capacity);
@@ -156,7 +156,7 @@ private:
                 auto bucket = get_or_create_bucket(buckets_.begin(), count);
                 bucket_[v] = bucket;
                 
-                bucket->leaves.push_front(v);
+                bucket->leaves.emplace_front(v);
                 min_entry_[v] = bucket->leaves.begin();
             }
 
@@ -169,7 +169,7 @@ private:
                 assert(*parent_min_entry == parent); // sanity
                 
                 parent_bucket->leaves.erase(parent_min_entry);
-                parent_bucket->inner.push_front(parent);
+                parent_bucket->inner.emplace_front(parent);
                 min_entry_[parent] = parent_bucket->inner.begin();
             }
             assert(has_min_leaf());
@@ -249,7 +249,7 @@ private:
                         assert(*parent_min_entry == parent); // sanity
                         
                         parent_bucket->inner.erase(parent_min_entry);
-                        parent_bucket->leaves.push_front(parent);
+                        parent_bucket->leaves.emplace_front(parent);
                         min_entry_[parent] = parent_bucket->leaves.begin();
                     }
                 }
@@ -292,11 +292,11 @@ private:
 
                 if(is_leaf(node)) {
                     bucket->leaves.erase(min_entry);
-                    next_bucket->leaves.push_front(node);
+                    next_bucket->leaves.emplace_front(node);
                     min_entry_[node] = next_bucket->leaves.begin();
                 } else { // inner node
                     bucket->inner.erase(min_entry),
-                    next_bucket->inner.push_front(node);
+                    next_bucket->inner.emplace_front(node);
                     min_entry_[node] = next_bucket->inner.begin();
                 }
 
@@ -574,7 +574,7 @@ private:
     }
 
 public:
-    LZSketch(size_t max_filter_size, size_t cm_width, size_t cm_height) : max_filter_size_(max_filter_size), sketch_(cm_width, cm_height) {
+    LZSketch(size_t max_filter_size, size_t cm_width, size_t cm_height) : max_filter_size_(max_filter_size), trie_(max_filter_size_ + 1), sketch_(cm_width, cm_height) {
     }
 
     void compress(std::istream& in, std::ostream& out) {
