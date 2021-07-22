@@ -49,18 +49,17 @@ private:
         // buckets of minimum data structure
         struct Bucket {
             index_t            count;
-            std::list<index_t> leaves;
-            std::list<index_t> inner;
+            std::list<index_t> nodes;
 
             Bucket(const index_t _count) : count(_count) {
             }
 
             bool empty() const {
-                return leaves.empty() && inner.empty();
+                return nodes.empty();
             }
 
             size_t size() const {
-                return leaves.size() + inner.size();
+                return nodes.size();
             }
         };
         
@@ -132,20 +131,6 @@ private:
             create_node();
         }
 
-        bool has_min_leaf() const {
-            #ifndef NDEBUG
-            if(!buckets_.empty()) {
-                const bool b = !buckets_.front().leaves.empty();
-                //~ if(!b) print_trie(ROOT);
-                return b;
-            } else {
-                return true;
-            }
-            #else
-            return true;
-            #endif
-        }
-
         size_t size() const {
             return parent_.size();
         }
@@ -187,23 +172,9 @@ private:
                 auto bucket = get_or_create_bucket(buckets_.begin(), count);
                 bucket_[v] = bucket;
                 
-                bucket->leaves.emplace_front(v);
-                min_entry_[v] = bucket->leaves.begin();
+                bucket->nodes.emplace_front(v);
+                min_entry_[v] = bucket->nodes.begin();
             }
-
-            // if parent was a leaf, move it from leaves list to inner node list in its bucket
-            if(parent_was_leaf && parent != ROOT) {
-                auto parent_bucket = bucket_[parent];
-                assert(parent_bucket->count == count_[parent]);  // sanity
-                
-                auto parent_min_entry = min_entry_[parent];
-                assert(*parent_min_entry == parent); // sanity
-                
-                parent_bucket->leaves.erase(parent_min_entry);
-                parent_bucket->inner.emplace_front(parent);
-                min_entry_[parent] = parent_bucket->inner.begin();
-            }
-            assert(has_min_leaf());
         }
 
         index_t create_child(const index_t parent, const char_t in, const index_t pos) {
@@ -243,12 +214,12 @@ private:
         index_t extract_min() {
             // select leaf to remove from minimum data structure
             auto bucket = buckets_.begin();
-            assert(!bucket->leaves.empty()); // there must be a leaf in the first bucket
-
-            const auto v = bucket->leaves.front();
+            const auto it = std::find_if(bucket->nodes.begin(), bucket->nodes.end(), [&](const auto& v){ return is_leaf(v); });
+            assert(it != bucket->nodes.end()); // must have a leaf
+            const auto v = *it;
             assert(count_[v] == bucket->count); // sanity
             assert(is_leaf(v)); // sanity
-            bucket->leaves.pop_front();
+            bucket->nodes.erase(it);
 
             // delete empty buckets
             if(bucket->empty()) {
@@ -271,21 +242,8 @@ private:
                     assert(!is_leaf(parent));
                 } else {
                     first_child_[parent] = next_sibling_[v];
-                    if(is_leaf(parent) && parent != ROOT) {
-                        // parent has become a leaf
-                        auto parent_bucket = bucket_[parent];
-                        assert(parent_bucket->count == count_[parent]); // sanity
-                        
-                        auto parent_min_entry = min_entry_[parent];
-                        assert(*parent_min_entry == parent); // sanity
-                        
-                        parent_bucket->inner.erase(parent_min_entry);
-                        parent_bucket->leaves.emplace_front(parent);
-                        min_entry_[parent] = parent_bucket->leaves.begin();
-                    }
                 }
             }
-            assert(has_min_leaf());
             return v;
         }
 
@@ -333,7 +291,6 @@ public:
                     auto existing_next_bucket = get_succ_bucket(bucket, count + 1);
                     if(existing_next_bucket == buckets_.end() || existing_next_bucket->count > count+1) {
                         ++bucket->count;
-                        assert(has_min_leaf());
                         return;
                     }
                 }
@@ -344,22 +301,14 @@ public:
                 auto min_entry = min_entry_[node];
                 assert(*min_entry == node); // sanity
 
-                if(is_leaf(node)) {
-                    bucket->leaves.erase(min_entry);
-                    next_bucket->leaves.emplace_front(node);
-                    min_entry_[node] = next_bucket->leaves.begin();
-                } else { // inner node
-                    bucket->inner.erase(min_entry),
-                    next_bucket->inner.emplace_front(node);
-                    min_entry_[node] = next_bucket->inner.begin();
-                }
+                bucket->nodes.erase(min_entry);
+                next_bucket->nodes.emplace_front(node);
+                min_entry_[node] = next_bucket->nodes.begin();
 
                 // delete empty buckets
                 if(bucket->empty()) {
                     buckets_.erase(bucket);
                 }
-
-                assert(has_min_leaf());
             }
         }
     
