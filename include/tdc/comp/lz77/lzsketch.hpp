@@ -29,7 +29,7 @@ class LZSketch {
 private:
     static constexpr bool verbose_ = false;
     static constexpr bool verify_ = false;
-    static constexpr bool expensive_stats_ = true;
+    static constexpr bool expensive_stats_ = false;
 
     static constexpr size_t threshold_ = 2;
     static constexpr size_t q_ = sizeof(QGram) / sizeof(char_t);
@@ -123,7 +123,7 @@ private:
             #ifndef NDEBUG
             if(!buckets_.empty()) {
                 const bool b = !buckets_.front().leaves.empty();
-                //~ if(!b) debug_print(ROOT);
+                //~ if(!b) print_trie(ROOT);
                 return b;
             } else {
                 return true;
@@ -321,8 +321,7 @@ private:
             return buckets_.size();
         }
 
-#ifndef NDEBUG
-        size_t debug_print(const index_t node, const size_t indent = 0) const {
+        void print_trie(const index_t node, const size_t indent = 0) const {
             for(size_t i = 0; i < indent; i++) std::cout << " ";
             std::cout << "(" << node << ") ";
             if(node != ROOT) {
@@ -336,12 +335,19 @@ private:
 
             auto v = first_child_[node];
             while(v != NONE) {
-                debug_print(v, indent + 4);
+                print_trie(v, indent + 4);
                 v = next_sibling_[v];
             }
-            return size();
         }
-#endif
+
+        void print_bucket_histogram() const {
+            size_t i = 0;
+            for(auto& bucket : buckets_) {
+                const auto leaves = bucket.leaves.size();
+                const auto inner = bucket.inner.size();
+                std::cout << "bucket #" << (++i) << ": count=" << bucket.count << ", leaves=" << leaves << ", inner=" << inner << " -> total=" << (leaves + inner) << std::endl;
+            }
+        }
 
         void verify(const index_t node) const {
             #ifndef NDEBUG
@@ -475,16 +481,19 @@ private:
                     ref_pos = trie_.prev(v);
                     ref_len = len;
                     trie_.increment(v, pos_);
+                    ++stats_.num_filter_increments;
                     trie_.verify(TrieFilter::ROOT);
                     if constexpr(verbose_) out << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << ref_pos << std::endl;
                 } else if(trie_.size() - 1 < max_filter_size_) {
                     // trie is not yet full - insert new node for prefix
                     v = trie_.create_child(node, c, pos_);
+                    ++stats_.num_filter_increments;
                     trie_.verify(TrieFilter::ROOT);
                     if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
                 } else {
                     // count prefix in sketch and get estimate
                     const auto est = sketch_.count_and_estimate(p, 1);
+                    ++stats_.num_sketch_counts;
                     if constexpr(verbose_) out << "\t\tcounting prefix in sketch: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
                     if(est > trie_.min_count() && est <= trie_.count(node)) {
                         // swap
@@ -525,12 +534,14 @@ private:
                 if constexpr(verbose_) out << "\tcounting non-frequent prefix in sketch: len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
                 if constexpr(expensive_stats_) {
                     const auto est = sketch_.count_and_estimate(p, 1);
+                    ++stats_.num_sketch_counts;
                     if(est > trie_.min_count()) {
                         if constexpr(verbose_) out << "\t\tprevented contradiction: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
                         ++stats_.num_contradictions;
                     }
                 } else {
                     sketch_.count(p, 1);
+                    ++stats_.num_sketch_counts;
                 }
             }
         }
@@ -609,7 +620,7 @@ public:
         }
 
         // stats
-        stats_.num_buckets = trie_.num_buckets();
+        //~ trie_.print_bucket_histogram();
     }
     
     const Stats& stats() const { return stats_; }

@@ -73,10 +73,11 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
             phase.log("filter", options.filter_size);
             phase.log("cm_width", options.cm_width);
             phase.log("cm_height", options.cm_height);
-            phase.log("num_swaps", stats.num_swaps);
-            phase.log("num_buckets", stats.num_buckets);
             phase.log("num_contradictions", stats.num_contradictions);
             phase.log("num_extensions", stats.num_extensions);
+            phase.log("num_sketch_counts", stats.num_sketch_counts);
+            phase.log("num_filter_increments", stats.num_filter_increments);
+            phase.log("num_swaps", stats.num_swaps);
             phase.log("extension_sum", stats.extension_sum);
         }
         phase.log("input_size", stats.input_size);
