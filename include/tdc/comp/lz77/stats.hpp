@@ -18,6 +18,8 @@ struct Stats {
     size_t num_sketch_counts;
     size_t num_swaps;
     size_t num_contradictions;
+    size_t max_insert_steps;
+    size_t avg_insert_steps;
     
     Stats()
         : input_size(0),
@@ -30,7 +32,9 @@ struct Stats {
           num_filter_increments(0),
           num_sketch_counts(0),
           num_swaps(0),
-          num_contradictions(0)
+          num_contradictions(0),
+          max_insert_steps(0),
+          avg_insert_steps(0)
     {}
 };
 

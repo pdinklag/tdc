@@ -95,6 +95,11 @@ private:
         std::vector<BucketRef> bucket_;
         std::vector<MinEntry> min_entry_;
 
+        // stats
+        size_t max_insert_steps_;
+        size_t total_insert_steps_;
+        size_t num_inserts_;
+
         index_t create_node() {
             const auto v = size();
             parent_.emplace_back(NONE);
@@ -110,7 +115,7 @@ private:
         }
 
     public:
-        TrieFilter(const size_t initial_capacity) {
+        TrieFilter(const size_t initial_capacity) : max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0) {
             parent_      .reserve(initial_capacity);
             in_          .reserve(initial_capacity);
             first_child_ .reserve(initial_capacity);
@@ -145,6 +150,11 @@ private:
             return parent_.size();
         }
 
+        void write_stats(Stats& stats) {
+            stats.max_insert_steps = max_insert_steps_;
+            stats.avg_insert_steps = num_inserts_ > 0 ? (size_t)((double)total_insert_steps_ / (double)num_inserts_) : 0;
+        }
+
         void insert(const index_t v, const index_t parent, const char_t in, const index_t pos, const index_t count, const index_t old_count) {
             parent_[v] = parent;
             in_[v] = in;
@@ -161,6 +171,19 @@ private:
 
             // insert into minimum data structure
             {
+                if constexpr(expensive_stats_) {
+                    size_t steps = 1;
+                    auto it = buckets_.begin();
+                    while(it != buckets_.end() && it->count < count) {
+                        ++it;
+                        ++steps;
+                    }
+
+                    ++num_inserts_;
+                    total_insert_steps_ += steps;
+                    max_insert_steps_ = std::max(max_insert_steps_, steps);
+                }
+                
                 auto bucket = get_or_create_bucket(buckets_.begin(), count);
                 bucket_[v] = bucket;
                 
@@ -647,6 +670,7 @@ public:
         }
 
         // stats
+        trie_.write_stats(stats_);
         //~ trie_.print_bucket_histogram();
     }
     
