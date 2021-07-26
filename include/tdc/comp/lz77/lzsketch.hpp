@@ -16,6 +16,7 @@
 #include <tdc/random/seed.hpp>
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
+#include <tdc/util/linked_list_pool.hpp>
 #include <tdc/util/literals.hpp>
 
 #include "stats.hpp"
@@ -48,10 +49,10 @@ private:
     private:
         // buckets of minimum data structure
         struct Bucket {
-            index_t            count;
-            std::list<index_t> nodes;
+            index_t                       count;
+            LinkedListPool<index_t>::List nodes;
 
-            Bucket(const index_t _count) : count(_count) {
+            Bucket(LinkedListPool<index_t>& pool, const index_t _count) : count(_count), nodes(pool.new_list()) {
             }
 
             bool empty() const {
@@ -62,10 +63,11 @@ private:
                 return nodes.size();
             }
         };
-        
+
+        LinkedListPool<index_t> bucket_pool_;
         std::list<Bucket> buckets_;
         using BucketRef = std::list<Bucket>::iterator;
-        using MinEntry = std::list<index_t>::iterator;
+        using MinEntry = LinkedListPool<index_t>::Iterator;
 
         BucketRef get_succ_bucket(BucketRef from, const index_t count) {
             // find successor
@@ -76,7 +78,7 @@ private:
             auto it = get_succ_bucket(from, count);
             if(it == buckets_.end() || it->count != count) {
                 // create new bucket
-                it = buckets_.emplace(it, count);
+                it = buckets_.emplace(it, bucket_pool_, count);
             }
             return it;
         }
@@ -109,12 +111,12 @@ private:
             count_.emplace_back(0);
             old_count_.emplace_back(0);
             bucket_.emplace_back(buckets_.end());
-            min_entry_.emplace_back(std::list<index_t>().end());
+            min_entry_.emplace_back();
             return v;
         }
 
     public:
-        TrieFilter(const size_t initial_capacity) : max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0) {
+        TrieFilter(const size_t initial_capacity) : bucket_pool_(4, initial_capacity), max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0) {
             parent_      .reserve(initial_capacity);
             in_          .reserve(initial_capacity);
             first_child_ .reserve(initial_capacity);
@@ -214,8 +216,9 @@ private:
         index_t extract_min() {
             // select leaf to remove from minimum data structure
             auto bucket = buckets_.begin();
-            const auto it = std::find_if(bucket->nodes.begin(), bucket->nodes.end(), [&](const auto& v){ return is_leaf(v); });
-            assert(it != bucket->nodes.end()); // must have a leaf
+            auto it = bucket->nodes.begin();
+            while(!is_leaf(*it)) ++it; // won't run out of bounds, bucket must have a leaf
+            
             const auto v = *it;
             assert(count_[v] == bucket->count); // sanity
             assert(is_leaf(v)); // sanity
