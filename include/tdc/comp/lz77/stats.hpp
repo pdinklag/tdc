@@ -20,6 +20,7 @@ struct Stats {
     size_t num_contradictions;
     size_t max_insert_steps;
     size_t avg_insert_steps;
+    size_t child_search_steps;
     
     Stats()
         : input_size(0),
@@ -34,7 +35,8 @@ struct Stats {
           num_swaps(0),
           num_contradictions(0),
           max_insert_steps(0),
-          avg_insert_steps(0)
+          avg_insert_steps(0),
+          child_search_steps(0)
     {}
 };
 

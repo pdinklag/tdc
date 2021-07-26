@@ -81,6 +81,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
             phase.log("num_swaps", stats.num_swaps);
             if(stats.max_insert_steps > 0) phase.log("max_insert_steps", stats.max_insert_steps);
             if(stats.avg_insert_steps > 0) phase.log("avg_insert_steps", stats.avg_insert_steps);
+            if(stats.child_search_steps > 0) phase.log("child_search_steps", stats.child_search_steps);
         }
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);

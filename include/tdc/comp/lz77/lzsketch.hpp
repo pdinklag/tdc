@@ -31,6 +31,7 @@ private:
     static constexpr bool verbose_ = false;
     static constexpr bool verify_ = false;
     static constexpr bool expensive_stats_ = false;
+    static constexpr bool extended_stats_ = false;
 
     static constexpr size_t threshold_ = 2;
     static constexpr size_t q_ = sizeof(QGram) / sizeof(char_t);
@@ -100,6 +101,7 @@ private:
         size_t max_insert_steps_;
         size_t total_insert_steps_;
         size_t num_inserts_;
+        size_t num_child_search_steps_;
 
         index_t create_node() {
             const auto v = size();
@@ -116,7 +118,7 @@ private:
         }
 
     public:
-        TrieFilter(const size_t initial_capacity) : bucket_pool_(4, initial_capacity), max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0) {
+        TrieFilter(const size_t initial_capacity) : bucket_pool_(4, initial_capacity), max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0), num_child_search_steps_(0) {
             parent_      .reserve(initial_capacity);
             in_          .reserve(initial_capacity);
             first_child_ .reserve(initial_capacity);
@@ -140,6 +142,7 @@ private:
         void write_stats(Stats& stats) {
             stats.max_insert_steps = max_insert_steps_;
             stats.avg_insert_steps = num_inserts_ > 0 ? (size_t)((double)total_insert_steps_ / (double)num_inserts_) : 0;
+            stats.child_search_steps = num_child_search_steps_;
         }
 
         void insert(const index_t v, const index_t parent, const char_t in, const index_t pos, const index_t count, const index_t old_count) {
@@ -193,6 +196,7 @@ private:
             while(v != NONE && in_[v] != c) {
                 prev_sibling = v;
                 v = next_sibling_[v];
+                if constexpr(expensive_stats_) ++num_child_search_steps_;
             }
 
             // move to front
@@ -269,10 +273,6 @@ private:
             return p;
         }
 
-private:
-        void increase_key(const index_t node) {
-        }
-
 public:
         void increment(const index_t node, const index_t pos) {
             const auto count = count_[node];
@@ -282,7 +282,7 @@ public:
             prev_[node] = pos;
             
             // increase key in minimum data structure
-            {                
+            {
                 auto bucket = bucket_[node];
                 assert(bucket->count == count); // sanity
 
@@ -319,16 +319,27 @@ public:
             return first_child_[node] == NONE;
         }
 
+        size_t num_children(const index_t node) const {
+            size_t num = 0;
+            auto v = first_child_[node];
+            while(v != NONE) {
+                v = next_sibling_[v];
+                ++num;
+            }
+            return num;
+        }
+
         size_t num_buckets() const {
             return buckets_.size();
         }
 
-        void print_trie(const index_t node, const size_t indent = 0) const {
+        void print_trie(const index_t node = ROOT, const size_t indent = 0) const {
             for(size_t i = 0; i < indent; i++) std::cout << " ";
             std::cout << "(" << node << ") ";
             if(node != ROOT) {
                 std::cout << "in=" << in_[node];
                 std::cout << ", pattern=0x" << std::hex << pattern(node) << std::dec;
+                std::cout << ", children=" << num_children(node);
                 std::cout << ", prev=" << prev_[node];
                 std::cout << ", count=" << count_[node];
                 std::cout << ", old_count=" << old_count_[node];
@@ -345,9 +356,7 @@ public:
         void print_bucket_histogram() const {
             size_t i = 0;
             for(auto& bucket : buckets_) {
-                const auto leaves = bucket.leaves.size();
-                const auto inner = bucket.inner.size();
-                std::cout << "bucket #" << (++i) << ": count=" << bucket.count << ", leaves=" << leaves << ", inner=" << inner << " -> total=" << (leaves + inner) << std::endl;
+                std::cout << "bucket #" << (++i) << ": count=" << bucket.count << ", nodes=" << bucket.size() << std::endl;
             }
         }
 
@@ -623,7 +632,11 @@ public:
 
         // stats
         trie_.write_stats(stats_);
-        //~ trie_.print_bucket_histogram();
+
+        if constexpr(extended_stats_) {
+            trie_.print_bucket_histogram();
+            trie_.print_trie();
+        }
     }
     
     const Stats& stats() const { return stats_; }
