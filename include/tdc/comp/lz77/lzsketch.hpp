@@ -31,7 +31,10 @@ private:
     static constexpr bool verbose_ = false;
     static constexpr bool verify_ = false;
     static constexpr bool expensive_stats_ = false;
-    static constexpr bool extended_stats_ = false;
+    static constexpr bool extended_stats_ = true;
+
+    static constexpr size_t child_array_max_depth_ = 2; // trie nodes with depth less than this threshold will use child arrays rather than FCNS
+    static constexpr size_t child_array_size_ = 1ULL << CHAR_BITS;
 
     static constexpr size_t threshold_ = 2;
     static constexpr size_t q_ = sizeof(QGram) / sizeof(char_t);
@@ -44,7 +47,10 @@ private:
 
     class TrieFilter {
     public:
-        static constexpr index_t NONE = INDEX_MAX;
+        static constexpr index_t CHILD_ARRAY_MASK = INDEX_MAX >> 1;
+        static constexpr index_t CHILD_ARRAY_FLAG = ~CHILD_ARRAY_MASK;
+    
+        static constexpr index_t NONE = INDEX_MAX >> 1; // nb: must not have CHILD_ARRAY_FLAG set!
         static constexpr index_t ROOT = 0;
     
     private:
@@ -87,8 +93,33 @@ private:
         // tree structure
         std::vector<char_t>  in_;
         std::vector<index_t> parent_;
-        std::vector<index_t> first_child_;
-        std::vector<index_t> next_sibling_;
+        std::vector<index_t> first_child_;  // when a child array is used (depth < threshold), this has the CHILD_ARRAY_FLAG set and the low bits points to the array
+        std::vector<index_t> next_sibling_; // when a child array is used (depth < threshold), this is the number of current children
+                                            // nb: because the parent also uses a child array, this can never be ambiguous with actual next siblings
+
+        std::vector<std::array<index_t, child_array_size_>> child_array_;
+        std::vector<index_t> free_child_arrays_;
+        
+        index_t new_child_array() {
+            index_t i;
+            if(free_child_arrays_.size()) {
+                i = free_child_arrays_.back();
+                free_child_arrays_.pop_back();
+            } else {
+                i = child_array_.size();
+                child_array_.emplace_back();
+            }
+
+            auto& array = child_array_[i];
+            for(size_t c = 0; c < child_array_size_; c++) {
+                array[c] = NONE;
+            }
+            return i;
+        }
+
+        void free_child_array(const index_t i) {
+            free_child_arrays_.emplace_back(i);
+        }
         
         std::vector<index_t> prev_;      // previous occurrence
         std::vector<index_t> count_;     // frequency
@@ -133,6 +164,12 @@ private:
 
             // insert root
             create_node();
+
+            // maybe give root a child array
+            if constexpr(child_array_max_depth_ > 0) {
+                first_child_[ROOT] = CHILD_ARRAY_FLAG | new_child_array();
+                next_sibling_[ROOT] = 0;
+            }
         }
 
         size_t size() const {
@@ -145,19 +182,29 @@ private:
             stats.child_search_steps = num_child_search_steps_;
         }
 
-        void insert(const index_t v, const index_t parent, const char_t in, const index_t pos, const index_t count, const index_t old_count) {
+        void insert(const index_t v, const size_t depth, const index_t parent, const char_t in, const index_t pos, const index_t count, const index_t old_count) {
             parent_[v] = parent;
             in_[v] = in;
-            first_child_[v] = NONE;
+
+            if(depth < child_array_max_depth_) {
+                first_child_[v] = CHILD_ARRAY_FLAG | new_child_array();
+                next_sibling_[v] = 0;
+            } else {
+                first_child_[v] = NONE;
+            }
             
             prev_[v] = pos;
             count_[v] = count;
             old_count_[v] = old_count;
 
-            // make it first child of parent
-            const bool parent_was_leaf = is_leaf(parent);
-            next_sibling_[v] = first_child_[parent];
-            first_child_[parent] = v;
+            // make it child of parent
+            if(has_child_array(parent)) {
+                child_array_[child_array(parent)][in] = v;
+                ++next_sibling_[parent];
+            } else {
+                next_sibling_[v] = first_child_[parent];
+                first_child_[parent] = v;
+            }
 
             // insert into minimum data structure
             {
@@ -182,30 +229,34 @@ private:
             }
         }
 
-        index_t create_child(const index_t parent, const char_t in, const index_t pos) {
+        index_t create_child(const size_t depth, const index_t parent, const char_t in, const index_t pos) {
             const auto v = create_node();
-            insert(v, parent, in, pos, 1, 0);
+            insert(v, depth, parent, in, pos, 1, 0);
             return v;
         }
 
         index_t get_child_mtf(const index_t node, const char_t c) {
-            const auto first_child = first_child_[node];
-            auto v = first_child;
+            if(has_child_array(node)) {
+                return child_array_[child_array(node)][c];
+            } else {
+                const auto first_child = first_child_[node];
+                auto v = first_child;
 
-            auto prev_sibling = NONE;
-            while(v != NONE && in_[v] != c) {
-                prev_sibling = v;
-                v = next_sibling_[v];
-                if constexpr(expensive_stats_) ++num_child_search_steps_;
-            }
+                auto prev_sibling = NONE;
+                while(v != NONE && in_[v] != c) {
+                    prev_sibling = v;
+                    v = next_sibling_[v];
+                    if constexpr(expensive_stats_) ++num_child_search_steps_;
+                }
 
-            // move to front
-            if(v != NONE && v != first_child) {
-                next_sibling_[prev_sibling] = next_sibling_[v];
-                next_sibling_[v] = first_child;
-                first_child_[node] = v;
+                // move to front
+                if(v != NONE && v != first_child) {
+                    next_sibling_[prev_sibling] = next_sibling_[v];
+                    next_sibling_[v] = first_child;
+                    first_child_[node] = v;
+                }
+                return v;
             }
-            return v;
         }
 
         index_t count(const index_t node) const {
@@ -215,6 +266,14 @@ private:
         index_t min_count() const {
             assert(!buckets_.empty());
             return buckets_.front().count;
+        }
+
+        bool has_child_array(const index_t node) const {
+            return first_child_[node] & CHILD_ARRAY_FLAG;
+        }
+
+        index_t child_array(const index_t node) const {
+            return first_child_[node] & CHILD_ARRAY_MASK;
         }
 
         index_t extract_min() {
@@ -233,9 +292,18 @@ private:
                 buckets_.erase(bucket);
             }
 
+            // maybe free child array
+            if(has_child_array(v)) {
+                free_child_array(child_array(v));
+            }
+
             // remove child from parent
             const auto parent = parent_[v];
-            {
+            if(has_child_array(parent)) {
+                child_array_[child_array(parent)][in_[v]] = NONE;
+                assert(next_sibling_[parent] > 0);
+                --next_sibling_[parent];
+            } else {
                 index_t prev_sibling = NONE;
                 auto x = first_child_[parent];
                 while(x != v) {
@@ -316,17 +384,21 @@ public:
         }
     
         bool is_leaf(const index_t node) const {
-            return first_child_[node] == NONE;
+            return has_child_array(node) ? next_sibling_[node] == 0 : first_child_[node] == NONE;
         }
 
         size_t num_children(const index_t node) const {
-            size_t num = 0;
-            auto v = first_child_[node];
-            while(v != NONE) {
-                v = next_sibling_[v];
-                ++num;
+            if(has_child_array(node)) {
+                return next_sibling_[node];
+            } else {
+                size_t num = 0;
+                auto v = first_child_[node];
+                while(v != NONE) {
+                    v = next_sibling_[v];
+                    ++num;
+                }
+                return num;
             }
-            return num;
         }
 
         size_t num_buckets() const {
@@ -346,10 +418,19 @@ public:
             }
             std::cout << std::endl;
 
-            auto v = first_child_[node];
-            while(v != NONE) {
-                print_trie(v, indent + 4);
-                v = next_sibling_[v];
+            if(has_child_array(node)) {
+                auto& children = child_array_[child_array(node)];
+                for(size_t i = 0; i < child_array_size_; i++) {
+                    if(children[i] != NONE) {
+                        print_trie(children[i], indent + 4);
+                    }
+                }
+            } else {
+                auto v = first_child_[node];
+                while(v != NONE) {
+                    print_trie(v, indent + 4);
+                    v = next_sibling_[v];
+                }
             }
         }
 
@@ -497,7 +578,7 @@ public:
                     if constexpr(verbose_) out << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << ref_pos << std::endl;
                 } else if(trie_.size() - 1 < max_filter_size_) {
                     // trie is not yet full - insert new node for prefix
-                    v = trie_.create_child(node, c, pos_);
+                    v = trie_.create_child(len, node, c, pos_);
                     ++stats_.num_filter_increments;
                     trie_.verify(TrieFilter::ROOT);
                     if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
@@ -514,7 +595,7 @@ public:
                         const auto pmin = trie_.pattern(v);
                         if constexpr(verbose_) out << "\t\tSWAP with pmin=0x" << std::hex << pmin << std::dec << ", delta=" << delta << std::endl;
                         sketch_.count(pmin, delta);
-                        trie_.insert(v, node, c, pos_, est, est);
+                        trie_.insert(v, len, node, c, pos_, est, est);
                         trie_.verify(TrieFilter::ROOT);
                         if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
                         ++stats_.num_swaps;
