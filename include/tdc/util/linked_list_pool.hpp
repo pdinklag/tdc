@@ -20,8 +20,12 @@ private:
     static constexpr index_t NONE = INDEX_MAX;
 
     // linked list management
-    std::vector<index_t> list_head_;
-    std::vector<index_t> list_size_;
+    struct ListEntry {
+        index_t head;
+        index_t size;
+    };
+    
+    std::vector<ListEntry> list_entry_;
     std::vector<index_t> list_free_;
 
     index_t free_list() {
@@ -30,23 +34,20 @@ private:
             // recycle
             list = list_free_.back();
             list_free_.pop_back();
-            
-            list_head_[list] = NONE;
-            list_size_[list] = 0;
+            list_entry_[list].head = NONE;
+            list_entry_[list].size = 0;
         } else {
             // allocate new
-            list = list_head_.size();
-            
-            list_head_.emplace_back(NONE);
-            list_size_.emplace_back(0);
+            list = list_entry_.size();
+            list_entry_.emplace_back(ListEntry{NONE, 0});
         }
         return list;
     }
 
     void release_list(const index_t list) {
-        auto item = list_head_[list];
+        auto item = list_entry_[list].head;
         while(item != NONE) {
-            auto next = item_next_[item];
+            auto next = item_entry_[item].next;
             release_item(item);
             item = next;
         }
@@ -54,26 +55,24 @@ private:
     }
 
     // items
-    std::vector<Item>    item_data_;
-    std::vector<index_t> item_prev_;
-    std::vector<index_t> item_next_;
-    std::vector<index_t> item_free_;
+    struct ItemEntry {
+        Item    data;
+        index_t prev;
+        index_t next;
+    };
+    
+    std::vector<ItemEntry> item_entry_;
+    std::vector<index_t>   item_free_;
 
     index_t free_item(Item&& data, const index_t& prev, const index_t& next) {
         index_t item;
         if(item_free_.size() > 0) {
             item = item_free_.back();
             item_free_.pop_back();
-            
-            item_data_[item] = std::move(data);
-            item_prev_[item] = prev;
-            item_next_[item] = next;
+            item_entry_[item] = ItemEntry{std::move(data), prev, next};
         } else {
-            item = item_data_.size();
-
-            item_data_.emplace_back(std::move(data));
-            item_prev_.emplace_back(prev);
-            item_next_.emplace_back(next);
+            item = item_entry_.size();
+            item_entry_.emplace_back(ItemEntry{std::move(data), prev, next});
         }
         return item;
     }
@@ -119,7 +118,7 @@ public:
         }
     
         size_t size() const {
-            return pool_->list_size_[list_];
+            return pool_->list_entry_[list_].size;
         }
 
         bool empty() const {
@@ -128,19 +127,19 @@ public:
 
         template<typename... Args>
         void emplace_front(Args&&... args) {
-            auto& head = pool_->list_head_[list_];
+            auto& head = pool_->list_entry_[list_].head;
             const index_t item = pool_->free_item(Item(args...), NONE, head);
 
             if(head != NONE) {
-                pool_->item_prev_[head] = item;
+                pool_->item_entry_[head].prev = item;
             }
             
             head = item;
-            ++pool_->list_size_[list_];
+            ++pool_->list_entry_[list_].size;
         }
 
         Iterator begin() {
-            return Iterator(*pool_, pool_->list_head_[list_]);
+            return Iterator(*pool_, pool_->list_entry_[list_].head);
         }
 
         Iterator end() {
@@ -150,35 +149,35 @@ public:
         void erase(const Iterator& it) {
             assert(size() > 0);
             const index_t item = it.item_;
-            const index_t prev = pool_->item_prev_[item];
-            const index_t next = pool_->item_next_[item];
+            const index_t prev = pool_->item_entry_[item].prev;
+            const index_t next = pool_->item_entry_[item].next;
 
             if(next != NONE) {
-                pool_->item_prev_[next] = prev;
+                pool_->item_entry_[next].prev = prev;
             }
             
             if(prev != NONE) {
-                pool_->item_next_[prev] = next;
+                pool_->item_entry_[prev].next = next;
             } else {
-                auto& head = pool_->list_head_[list_];
+                auto& head = pool_->list_entry_[list_].head;
                 assert(item == head);
                 head = next;
             }
-
+            
+            --pool_->list_entry_[list_].size;
             pool_->release_item(item);
-            --pool_->list_size_[list_];
         }
 
         void verify() {
         #ifndef NDEBUG
             size_t count = 0;
-            auto item = pool_->list_head_[list_];
+            auto item = pool_->list_entry_[list_].head;
             auto prev = NONE;
             while(item != NONE) {
                 ++count;
-                assert(pool_->item_prev_[item] == prev);
+                assert(pool_->item_entry_[item].prev == prev);
                 prev = item;
-                item = pool_->item_next_[item];
+                item = pool_->item_entry_[item].next;
             }
             assert(count == size());
         #endif
@@ -213,7 +212,7 @@ public:
         }
 
         Item& operator*() {
-            return pool_->item_data_[item_];
+            return pool_->item_entry_[item_].data;
         }
 
         Item* operator->() {
@@ -221,7 +220,7 @@ public:
         }
 
         const Item& operator*() const {
-            return pool_->item_data_[item_];
+            return pool_->item_entry_[item_].data;
         }
 
         const Item* operator->() const {
@@ -229,7 +228,7 @@ public:
         }
 
         Iterator& operator++() {
-            item_ = pool_->item_next_[item_];
+            item_ = pool_->item_entry_[item_].next;
             return *this;
         }
 
@@ -241,12 +240,8 @@ public:
     };
 
     LinkedListPool(size_t initial_list_capacity = 0, size_t initial_item_capacity = 0) {
-        list_head_.reserve(initial_list_capacity);
-        list_size_.reserve(initial_list_capacity);
-        
-        item_data_.reserve(initial_item_capacity);
-        item_next_.reserve(initial_item_capacity);
-        item_prev_.reserve(initial_item_capacity);
+        list_entry_.reserve(initial_list_capacity);
+        item_entry_.reserve(initial_item_capacity);
     }
 
     List new_list() {

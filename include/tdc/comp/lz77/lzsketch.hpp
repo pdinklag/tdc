@@ -30,7 +30,7 @@ class LZSketch {
 private:
     static constexpr bool verbose_ = false;
     static constexpr bool verify_ = false;
-    static constexpr bool expensive_stats_ = true;
+    static constexpr bool expensive_stats_ = false;
     static constexpr bool extended_stats_ = false;
 
     static constexpr size_t child_array_threshold_ = 24;     // trie nodes with this many children will be converted to child array representation
@@ -121,13 +121,16 @@ private:
         void free_child_array(const index_t i) {
             free_child_arrays_.emplace_back(i);
         }
-        
-        std::vector<index_t> prev_;      // previous occurrence
-        std::vector<index_t> count_;     // frequency
-        std::vector<index_t> old_count_; // frequency when entered into filter
 
-        std::vector<BucketRef> bucket_;
-        std::vector<MinEntry> min_entry_;
+        struct Occ {
+            index_t prev;
+            index_t count;
+            BucketRef bucket;
+            MinEntry  min_entry;
+        };
+        
+        std::vector<Occ> occ_;
+        std::vector<index_t> old_count_; // frequency when entered into filter
 
         // stats
         size_t max_insert_steps_;
@@ -142,11 +145,8 @@ private:
             num_children_.emplace_back(0);
             first_child_.emplace_back(NONE);
             next_sibling_.emplace_back(NONE);
-            prev_.emplace_back(0);
-            count_.emplace_back(0);
+            occ_.emplace_back(Occ{0, 0, buckets_.end()});
             old_count_.emplace_back(0);
-            bucket_.emplace_back(buckets_.end());
-            min_entry_.emplace_back();
             return v;
         }
 
@@ -158,12 +158,8 @@ private:
             first_child_ .reserve(initial_capacity);
             next_sibling_.reserve(initial_capacity);
             
-            prev_        .reserve(initial_capacity);
-            count_       .reserve(initial_capacity);
+            occ_         .reserve(initial_capacity);
             old_count_   .reserve(initial_capacity);
-
-            bucket_      .reserve(initial_capacity);
-            min_entry_   .reserve(initial_capacity);
 
             // insert root
             create_node();
@@ -223,8 +219,8 @@ private:
             in_[v] = in;
             first_child_[v] = NONE;
 
-            prev_[v] = pos;
-            count_[v] = count;
+            occ_[v].prev = pos;
+            occ_[v].count = count;
             old_count_[v] = old_count;
 
             // make it child of parent
@@ -258,10 +254,10 @@ private:
                 }
                 
                 auto bucket = get_or_create_bucket(buckets_.begin(), count);
-                bucket_[v] = bucket;
+                occ_[v].bucket = bucket;
                 
                 bucket->nodes.emplace_front(v);
-                min_entry_[v] = bucket->nodes.begin();
+                occ_[v].min_entry = bucket->nodes.begin();
             }
         }
 
@@ -296,7 +292,7 @@ private:
         }
 
         index_t count(const index_t node) const {
-            return count_[node];
+            return occ_[node].count;
         }
 
         index_t min_count() const {
@@ -364,11 +360,11 @@ private:
         }
 
         index_t prev(const index_t node) const {
-            return prev_[node];
+            return occ_[node].prev;
         }
 
         index_t count_delta(const index_t node) const {
-            return count_[node] - old_count_[node];
+            return occ_[node].count - old_count_[node];
         }
 
         QGram pattern(const index_t node) const {
@@ -384,15 +380,15 @@ private:
 
 public:
         void increment(const index_t node, const index_t pos) {
-            const auto count = count_[node];
+            const auto count = occ_[node].count;
 
             // increment
-            ++count_[node];
-            prev_[node] = pos;
+            ++occ_[node].count;
+            occ_[node].prev = pos;
             
             // increase key in minimum data structure
             {
-                auto bucket = bucket_[node];
+                auto bucket = occ_[node].bucket;
                 assert(bucket->count == count); // sanity
 
                 if(bucket->size() == 1) {
@@ -408,14 +404,14 @@ public:
                 }
 
                 auto next_bucket = get_or_create_bucket(bucket, count + 1);
-                bucket_[node] = next_bucket;
+                occ_[node].bucket = next_bucket;
                 
-                auto min_entry = min_entry_[node];
+                auto min_entry = occ_[node].min_entry;
                 assert(*min_entry == node); // sanity
 
                 bucket->nodes.erase(min_entry);
                 next_bucket->nodes.emplace_front(node);
-                min_entry_[node] = next_bucket->nodes.begin();
+                occ_[node].min_entry = next_bucket->nodes.begin();
 
                 // delete empty buckets
                 if(bucket->empty()) {
@@ -443,8 +439,8 @@ public:
                 std::cout << "in=" << in_[node];
                 std::cout << ", pattern=0x" << std::hex << pattern(node) << std::dec;
                 std::cout << ", children=" << num_children(node);
-                std::cout << ", prev=" << prev_[node];
-                std::cout << ", count=" << count_[node];
+                std::cout << ", prev=" << occ_[node].prev;
+                std::cout << ", count=" << occ_[node].count;
                 std::cout << ", old_count=" << old_count_[node];
             }
             std::cout << std::endl;
