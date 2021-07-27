@@ -84,7 +84,7 @@ private:
             }
         };
 
-        LinkedListPool<index_t> bucket_pool_;
+        LinkedListPool<index_t> node_pool_;
         std::list<Bucket> buckets_;
 
         using BucketRef = std::list<Bucket>::iterator;
@@ -98,7 +98,7 @@ private:
             auto it = get_succ_bucket(from, count);
             if(it == buckets_.end() || it->count != count) {
                 // create new bucket
-                it = buckets_.emplace(it, bucket_pool_, count);
+                it = buckets_.emplace(it, node_pool_, count);
             }
             return it;
         }
@@ -163,7 +163,7 @@ private:
         }
 
     public:
-        TrieFilter(const size_t initial_capacity) : bucket_pool_(4, initial_capacity), max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0), num_child_search_steps_(0) {
+        TrieFilter(const size_t initial_capacity) : node_pool_(4, initial_capacity), max_insert_steps_(0), total_insert_steps_(0), num_inserts_(0), num_child_search_steps_(0) {
             parent_      .reserve(initial_capacity);
             in_          .reserve(initial_capacity);
             num_children_.reserve(initial_capacity);
