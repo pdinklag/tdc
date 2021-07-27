@@ -194,7 +194,7 @@ public:
         Iterator& operator=(Iterator&&) = default;
 
         bool operator==(const Iterator& other) const {
-            return pool_ == other.pool_ && item_ == other.item_;
+            return item_ == other.item_;
         }
 
         bool operator!=(const Iterator& other) const {

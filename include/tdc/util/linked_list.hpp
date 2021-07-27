@@ -70,7 +70,7 @@ public:
         Iterator& operator=(Iterator&&) = default;
 
         bool operator==(const Iterator& other) const {
-            return list_ == other.list_ && item_ == other.item_;
+            return item_ == other.item_;
         }
 
         bool operator!=(const Iterator& other) const {
