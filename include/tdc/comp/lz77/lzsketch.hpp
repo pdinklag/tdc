@@ -506,19 +506,19 @@ public:
     class CountMinSketch {
     private:
         index_t                           width_, height_;
-        uint64_t                          hash_prime_;
+        index_t                           hash_prime_;
         std::vector<QGram>                hash_mul_;
         std::vector<std::vector<index_t>> count_;
 
-        uint64_t hash(const size_t j, const QGram& pattern) const {
-            const uint64_t h = (uint64_t)(pattern * hash_mul_[j]) % hash_prime_;
+        index_t hash(const size_t j, const QGram& pattern) const {
+            const index_t h = (index_t)(pattern * hash_mul_[j]) % hash_prime_;
             if constexpr(verbose_) std::cout << "\t\th_" << j << "(0x" << std::hex << pattern << ")=0x" << h << std::dec << " -> column=" << (h % width_) << std::endl;
             return h % width_;
         }
 
     public:
         CountMinSketch(size_t width, size_t height) : width_(width), height_(height) {
-            hash_prime_ = math::prime_successor(width_);
+            hash_prime_ = (index_t)math::prime_successor(width_);
             
             count_.reserve(height_);
             for(size_t j = 0; j < height_; j++) {
