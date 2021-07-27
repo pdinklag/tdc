@@ -557,6 +557,7 @@ public:
     QGram   qgram_;
 
     TrieFilter     trie_;
+    bool           trie_full_;
     CountMinSketch sketch_;
 
     // stats
@@ -566,6 +567,41 @@ public:
         // update current qgram (first character at lowest significant position)
         static constexpr size_t lsh = CHAR_BITS * (q_ - 1);
         qgram_ = (qgram_ >> CHAR_BITS) | ((QGram)c << lsh);
+    }
+
+    void filter_increment(std::ostream& out, const index_t v) {
+        trie_.increment(v, pos_);
+        ++stats_.num_filter_increments;
+        trie_.verify(TrieFilter::ROOT);
+        if constexpr(verbose_) out << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << trie_.prev(v) << std::endl;
+    }
+
+    index_t sketch_increment(std::ostream& out, const QGram p, const index_t parent, const char_t c) {
+        const auto est = sketch_.count_and_estimate(p, 1);
+        ++stats_.num_sketch_counts;
+        if constexpr(verbose_) out << "\t\tcounting prefix in sketch: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
+        if(est > trie_.min_count() && est <= trie_.count(parent)) {
+            // swap
+            const auto v = trie_.extract_min();
+            trie_.verify(TrieFilter::ROOT);
+            const auto delta = trie_.count_delta(v);
+            const auto pmin = trie_.pattern(v);
+            if constexpr(verbose_) out << "\t\tSWAP with pmin=0x" << std::hex << pmin << std::dec << ", delta=" << delta << std::endl;
+            sketch_.count(pmin, delta);
+            trie_.insert(v, parent, c, pos_, est, est);
+            trie_.verify(TrieFilter::ROOT);
+            if constexpr(verbose_) out << "\t\tinserting edge (" << parent << ") -> (" << v << ") with label " << c << std::endl;
+            ++stats_.num_swaps;
+            return v;
+        } else {
+            if constexpr(expensive_stats_) {
+                if(est > trie_.min_count()) {
+                    if constexpr(verbose_) out << "\t\taborting swap to avoid contradictions" << std::endl;
+                    ++stats_.num_contradictions;
+                }
+            }
+            return TrieFilter::NONE;
+        }
     }
 
     void process_qgram(std::ostream& out) {
@@ -599,42 +635,20 @@ public:
                     // prefix is contained in filter, increment
                     ref_pos = trie_.prev(v);
                     ref_len = len;
-                    trie_.increment(v, pos_);
-                    ++stats_.num_filter_increments;
-                    trie_.verify(TrieFilter::ROOT);
-                    if constexpr(verbose_) out << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << ref_pos << std::endl;
-                } else if(trie_.size() - 1 < max_filter_size_) {
+                    filter_increment(out, v);
+                } else if(!trie_full_) {
                     // trie is not yet full - insert new node for prefix
                     v = trie_.create_child(node, c, pos_);
+                    trie_full_ = trie_.size() - 1 == max_filter_size_;
+                    
                     ++stats_.num_filter_increments;
                     trie_.verify(TrieFilter::ROOT);
                     if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
                 } else {
-                    // count prefix in sketch and get estimate
-                    const auto est = sketch_.count_and_estimate(p, 1);
-                    ++stats_.num_sketch_counts;
-                    if constexpr(verbose_) out << "\t\tcounting prefix in sketch: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
-                    if(est > trie_.min_count() && est <= trie_.count(node)) {
-                        // swap
-                        v = trie_.extract_min();
-                        trie_.verify(TrieFilter::ROOT);
-                        const auto delta = trie_.count_delta(v);
-                        const auto pmin = trie_.pattern(v);
-                        if constexpr(verbose_) out << "\t\tSWAP with pmin=0x" << std::hex << pmin << std::dec << ", delta=" << delta << std::endl;
-                        sketch_.count(pmin, delta);
-                        trie_.insert(v, node, c, pos_, est, est);
-                        trie_.verify(TrieFilter::ROOT);
-                        if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
-                        ++stats_.num_swaps;
-                    } else {
-                        if constexpr(expensive_stats_) {
-                            if(est > trie_.min_count()) {
-                                if constexpr(verbose_) out << "\t\taborting swap to avoid contradictions" << std::endl;
-                                ++stats_.num_contradictions;
-                            }
-                        }
-                        
-                        // break out of the loop
+                    // prefix is infrequent, increment in sketch - may cause a swap!
+                    v = sketch_increment(out, p, node, c);
+                    if(v == TrieFilter::NONE) {
+                        // prefix is still infrequent (no swap occurred), break out of the loop
                         break;
                     }
                 }
@@ -693,7 +707,11 @@ public:
     }
 
 public:
-    LZSketch(size_t max_filter_size, size_t cm_width, size_t cm_height) : max_filter_size_(max_filter_size), trie_(max_filter_size_ + 1), sketch_(cm_width, cm_height) {
+    LZSketch(size_t max_filter_size, size_t cm_width, size_t cm_height)
+        : max_filter_size_(max_filter_size),
+          trie_(max_filter_size_ + 1),
+          trie_full_(false),
+          sketch_(cm_width, cm_height) {
     }
 
     void compress(std::istream& in, std::ostream& out) {

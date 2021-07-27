@@ -131,5 +131,6 @@ int main(int argc, char** argv) {
     if(options.q == 0 || options.q == 16) {
         // bench("qgram", "Trie(q=16)", [](){ return LZQGram<uint128_t, qgram::TrieProcessor<unsigned char, true>>([](){ return qgram::TrieProcessor<unsigned char, true>(); }, options.threshold); });
         // bench("sketch", "Sketch(q=16)", [](){ return LZQGram<uint128_t, qgram::SketchProcessor<uint128_t>>([](){ return qgram::SketchProcessor<uint128_t>(options.filter_size, options.cm_width, options.cm_height); }, options.threshold); });
+        bench("sketch", "Sketch(q=16)", [](){ return LZSketch<uint128_t>(options.filter_size, options.cm_width, options.cm_height); });
     }
 }
