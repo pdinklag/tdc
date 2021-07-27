@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <tdc/util/index.hpp>
+#include <tdc/util/likely.hpp>
 
 namespace tdc {
 
@@ -115,13 +116,13 @@ public:
 
         const index_t item = free_item(Item(args...), prev, next);
         
-        if(next != NONE) {
+        if(tdc_unlikely(next != NONE)) {
             entry_[next].prev = item;
         } else {
             tail_ = item;
         }
 
-        if(prev != NONE) {
+        if(tdc_likely(prev != NONE)) {
             entry_[prev].next = item;
         } else {
             assert(prev == head_);
