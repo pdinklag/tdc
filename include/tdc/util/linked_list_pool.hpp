@@ -20,12 +20,7 @@ private:
     static constexpr index_t NONE = INDEX_MAX;
 
     // linked list management
-    struct ListEntry {
-        index_t head;
-        index_t size;
-    };
-    
-    std::vector<ListEntry> list_entry_;
+    std::vector<index_t> list_head_;
     std::vector<index_t> list_free_;
 
     index_t free_list() {
@@ -34,18 +29,17 @@ private:
             // recycle
             list = list_free_.back();
             list_free_.pop_back();
-            list_entry_[list].head = NONE;
-            list_entry_[list].size = 0;
+            list_head_[list] = NONE;
         } else {
             // allocate new
-            list = list_entry_.size();
-            list_entry_.emplace_back(ListEntry{NONE, 0});
+            list = list_head_.size();
+            list_head_.emplace_back(NONE);
         }
         return list;
     }
 
     void release_list(const index_t list) {
-        auto item = list_entry_[list].head;
+        auto item = list_head_[list];
         while(item != NONE) {
             auto next = item_entry_[item].next;
             release_item(item);
@@ -116,18 +110,10 @@ public:
             other.pool_ = nullptr;
             other.list_ = NONE;
         }
-    
-        size_t size() const {
-            return pool_->list_entry_[list_].size;
-        }
-
-        bool empty() const {
-            return size() == 0;
-        }
 
         template<typename... Args>
         void emplace_front(Args&&... args) {
-            auto& head = pool_->list_entry_[list_].head;
+            auto& head = pool_->list_head_[list_];
             const index_t item = pool_->free_item(Item(args...), NONE, head);
 
             if(head != NONE) {
@@ -135,11 +121,10 @@ public:
             }
             
             head = item;
-            ++pool_->list_entry_[list_].size;
         }
 
         Iterator begin() {
-            return Iterator(*pool_, pool_->list_entry_[list_].head);
+            return Iterator(*pool_, pool_->list_head_[list_]);
         }
 
         Iterator end() {
@@ -159,19 +144,18 @@ public:
             if(prev != NONE) {
                 pool_->item_entry_[prev].next = next;
             } else {
-                auto& head = pool_->list_entry_[list_].head;
+                auto& head = pool_->list_head_[list_];
                 assert(item == head);
                 head = next;
             }
             
-            --pool_->list_entry_[list_].size;
             pool_->release_item(item);
         }
 
         void verify() {
         #ifndef NDEBUG
             size_t count = 0;
-            auto item = pool_->list_entry_[list_].head;
+            auto item = pool_->list_head_[list_];
             auto prev = NONE;
             while(item != NONE) {
                 ++count;
@@ -240,7 +224,7 @@ public:
     };
 
     LinkedListPool(size_t initial_list_capacity = 0, size_t initial_item_capacity = 0) {
-        list_entry_.reserve(initial_list_capacity);
+        list_head_.reserve(initial_list_capacity);
         item_entry_.reserve(initial_item_capacity);
     }
 

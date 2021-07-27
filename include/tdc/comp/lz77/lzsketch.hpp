@@ -55,27 +55,39 @@ private:
         static constexpr index_t ROOT = 0;
     
     private:
+        using MinEntry = LinkedListPool<index_t>::Iterator;
+    
         // buckets of minimum data structure
         struct Bucket {
             index_t                       count;
             LinkedListPool<index_t>::List nodes;
+            index_t                       size; // cached size
 
-            Bucket(LinkedListPool<index_t>& pool, const index_t _count) : count(_count), nodes(pool.new_list()) {
+            Bucket(LinkedListPool<index_t>& pool, const index_t _count) : count(_count), nodes(pool.new_list()), size(0) {
+            }
+
+            void erase(MinEntry e) {
+                nodes.erase(e);
+                --size;
+                assert(size == nodes.size());
+            }
+
+            MinEntry emplace_front(const index_t v) {
+                nodes.emplace_front(v);
+                ++size;
+                assert(size == nodes.size());
+                return nodes.begin();
             }
 
             bool empty() const {
-                return nodes.empty();
-            }
-
-            size_t size() const {
-                return nodes.size();
+                return size == 0;
             }
         };
 
         LinkedListPool<index_t> bucket_pool_;
         std::list<Bucket> buckets_;
+
         using BucketRef = std::list<Bucket>::iterator;
-        using MinEntry = LinkedListPool<index_t>::Iterator;
 
         BucketRef get_succ_bucket(BucketRef from, const index_t count) {
             // find successor
@@ -255,9 +267,7 @@ private:
                 
                 auto bucket = get_or_create_bucket(buckets_.begin(), count);
                 occ_[v].bucket = bucket;
-                
-                bucket->nodes.emplace_front(v);
-                occ_[v].min_entry = bucket->nodes.begin();
+                occ_[v].min_entry = bucket->emplace_front(v);
             }
         }
 
@@ -317,7 +327,7 @@ private:
             const auto v = *it;
             assert(count_[v] == bucket->count); // sanity
             assert(is_leaf(v)); // sanity
-            bucket->nodes.erase(it);
+            bucket->erase(it);
 
             // delete empty buckets
             if(bucket->empty()) {
@@ -391,7 +401,7 @@ public:
                 auto bucket = occ_[node].bucket;
                 assert(bucket->count == count); // sanity
 
-                if(bucket->size() == 1) {
+                if(bucket->size == 1) {
                     /*
                      * this is the only element in the current bucket
                      * if the next bucket does not exist, we can simply increment the current bucket's count by 1, saving allocations
@@ -409,9 +419,8 @@ public:
                 auto min_entry = occ_[node].min_entry;
                 assert(*min_entry == node); // sanity
 
-                bucket->nodes.erase(min_entry);
-                next_bucket->nodes.emplace_front(node);
-                occ_[node].min_entry = next_bucket->nodes.begin();
+                bucket->erase(min_entry);
+                occ_[node].min_entry = next_bucket->emplace_front(node);
 
                 // delete empty buckets
                 if(bucket->empty()) {
