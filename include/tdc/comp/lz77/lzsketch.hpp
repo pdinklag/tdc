@@ -473,7 +473,7 @@ public:
         void print_bucket_histogram() const {
             size_t i = 0;
             for(auto& bucket : buckets_) {
-                std::cout << "bucket #" << (++i) << ": count=" << bucket.count << ", nodes=" << bucket.size() << std::endl;
+                std::cout << "bucket #" << (++i) << ": count=" << bucket.count << ", nodes=" << bucket.size << std::endl;
             }
         }
 
