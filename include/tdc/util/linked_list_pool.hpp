@@ -92,7 +92,7 @@ public:
         }
 
         ~List() {
-            if(pool_) pool_->release_list(list_);
+            release();
         }
     
         List(const List&) = delete;
@@ -109,6 +109,8 @@ public:
             // prevent other from being released
             other.pool_ = nullptr;
             other.list_ = NONE;
+            
+            return *this;
         }
 
         template<typename... Args>
@@ -123,6 +125,14 @@ public:
             head = item;
         }
 
+        void release() {
+            if(pool_) pool_->release_list(list_);
+        }
+
+        bool empty() const {
+            return pool_->list_head_[list_] == NONE;
+        }
+
         Iterator begin() {
             return Iterator(*pool_, pool_->list_head_[list_]);
         }
@@ -132,7 +142,6 @@ public:
         }
 
         void erase(const Iterator& it) {
-            assert(size() > 0);
             const index_t item = it.item_;
             const index_t prev = pool_->item_entry_[item].prev;
             const index_t next = pool_->item_entry_[item].next;
@@ -154,16 +163,13 @@ public:
 
         void verify() {
         #ifndef NDEBUG
-            size_t count = 0;
             auto item = pool_->list_head_[list_];
             auto prev = NONE;
             while(item != NONE) {
-                ++count;
                 assert(pool_->item_entry_[item].prev == prev);
                 prev = item;
                 item = pool_->item_entry_[item].next;
             }
-            assert(count == size());
         #endif
         }
     };

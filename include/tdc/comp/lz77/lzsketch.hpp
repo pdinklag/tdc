@@ -16,6 +16,7 @@
 #include <tdc/random/seed.hpp>
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
+#include <tdc/util/linked_list.hpp>
 #include <tdc/util/linked_list_pool.hpp>
 #include <tdc/util/literals.hpp>
 
@@ -69,29 +70,35 @@ private:
             void erase(MinEntry e) {
                 nodes.erase(e);
                 --size;
-                assert(size == nodes.size());
             }
 
             MinEntry emplace_front(const index_t v) {
                 nodes.emplace_front(v);
                 ++size;
-                assert(size == nodes.size());
                 return nodes.begin();
             }
 
             bool empty() const {
                 return size == 0;
             }
+
+            void release() {
+                nodes.release();
+                nodes = decltype(nodes)();
+            }
         };
 
         LinkedListPool<index_t> node_pool_;
-        std::list<Bucket> buckets_;
+        LinkedList<Bucket> buckets_;
 
-        using BucketRef = std::list<Bucket>::iterator;
+        using BucketRef = LinkedList<Bucket>::Iterator;
 
         BucketRef get_succ_bucket(BucketRef from, const index_t count) {
             // find successor
-            return std::find_if(from, buckets_.end(), [&](const Bucket& bucket){ return bucket.count >= count; });
+            //return std::find_if(from, buckets_.end(), [&](const Bucket& bucket){ return bucket.count >= count; });
+            auto it = from;
+            while(it != buckets_.end() && it->count < count) ++it;
+            return it;
         }
 
         BucketRef get_or_create_bucket(BucketRef from, const index_t count) {
@@ -325,12 +332,13 @@ private:
             while(!is_leaf(*it)) ++it; // won't run out of bounds, bucket must have a leaf
             
             const auto v = *it;
-            assert(count_[v] == bucket->count); // sanity
+            assert(occ_[v].count == bucket->count); // sanity
             assert(is_leaf(v)); // sanity
             bucket->erase(it);
 
             // delete empty buckets
             if(bucket->empty()) {
+                bucket->release();
                 buckets_.erase(bucket);
             }
 
@@ -424,6 +432,7 @@ public:
 
                 // delete empty buckets
                 if(bucket->empty()) {
+                    bucket->release();
                     buckets_.erase(bucket);
                 }
             }
@@ -481,7 +490,7 @@ public:
             #ifndef NDEBUG
             if constexpr(verify_) {
                 if(parent_[node] != NONE && parent_[node] != ROOT) {
-                    assert(count_[parent_[node]] >= count_[node]);
+                    assert(occ_[parent_[node]].count >= occ_[node].count);
                 }
 
                 auto v = first_child_[node];
