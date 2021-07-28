@@ -633,10 +633,12 @@ public:
                 // advance in qgram
                 ++len;
                 inv_mask <<= CHAR_BITS;
-                const auto p = qgram_ & (~inv_mask);
                 const auto c = (char_t)remain;
                 remain >>= CHAR_BITS;
-                if constexpr(verbose_) out << "\tprocessing prefix of len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
+                if constexpr(verbose_) {
+                    const auto p = qgram_ & (~inv_mask);
+                    out << "\tprocessing prefix of len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
+                 }
                 
                 // try to advance in trie with current character of qgram
                 auto v = trie_.get_child_mtf(node, c);
@@ -655,6 +657,8 @@ public:
                     if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
                 } else {
                     // prefix is infrequent, increment in sketch - may cause a swap!
+                    const auto p = qgram_ & (~inv_mask);
+                    
                     v = sketch_increment(out, p, node, c);
                     if(v == TrieFilter::NONE) {
                         // prefix is still infrequent (no swap occurred), break out of the loop
