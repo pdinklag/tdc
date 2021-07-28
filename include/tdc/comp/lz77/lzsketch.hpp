@@ -92,24 +92,7 @@ private:
         LinkedList<Bucket> buckets_;
 
         using BucketRef = LinkedList<Bucket>::Iterator;
-
-        BucketRef get_succ_bucket(BucketRef from, const index_t count) {
-            // find successor
-            //return std::find_if(from, buckets_.end(), [&](const Bucket& bucket){ return bucket.count >= count; });
-            auto it = from;
-            while(it != buckets_.end() && it->count < count) ++it;
-            return it;
-        }
-
-        BucketRef get_or_create_bucket(BucketRef from, const index_t count) {
-            auto it = get_succ_bucket(from, count);
-            if(it == buckets_.end() || it->count != count) {
-                // create new bucket
-                it = buckets_.emplace(it, node_pool_, count);
-            }
-            return it;
-        }
-
+        
         // tree structure
         std::vector<char_t>  in_;
         std::vector<index_t> parent_;
@@ -271,8 +254,14 @@ private:
                     total_insert_steps_ += steps;
                     max_insert_steps_ = std::max(max_insert_steps_, steps);
                 }
-                
-                auto bucket = get_or_create_bucket(buckets_.begin(), count);
+
+                auto bucket = buckets_.begin();
+                while(bucket != buckets_.end() && bucket->count < count) ++bucket;
+                if(bucket == buckets_.end() || bucket->count != count) {
+                    // create new bucket
+                    bucket = buckets_.emplace(bucket, node_pool_, count);
+                }
+
                 occ_[v].bucket = bucket;
                 occ_[v].min_entry = bucket->emplace_front(v);
             }
@@ -409,19 +398,21 @@ public:
                 auto bucket = occ_[node].bucket;
                 assert(bucket->count == count); // sanity
 
-                if(bucket->size == 1) {
-                    /*
-                     * this is the only element in the current bucket
-                     * if the next bucket does not exist, we can simply increment the current bucket's count by 1, saving allocations
-                     */
-                    auto existing_next_bucket = get_succ_bucket(bucket, count + 1);
-                    if(existing_next_bucket == buckets_.end() || existing_next_bucket->count > count+1) {
+                auto next_bucket = bucket;
+                ++next_bucket;
+
+                if(next_bucket == buckets_.end() || next_bucket->count > count+1) {
+                    // the next bucket is for > count + 1, we need to create a bucket with exactly count + 1
+                    if(bucket->size == 1) {
+                        // the current bucket only contains a single element,
+                        // we can simply increment the bucket's count by 1
                         ++bucket->count;
                         return;
+                    } else {
+                        next_bucket = buckets_.emplace(next_bucket, node_pool_, count + 1);
                     }
                 }
 
-                auto next_bucket = get_or_create_bucket(bucket, count + 1);
                 occ_[node].bucket = next_bucket;
                 
                 auto min_entry = occ_[node].min_entry;
