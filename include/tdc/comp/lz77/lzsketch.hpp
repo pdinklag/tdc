@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <tdc/io/buffered_reader.hpp>
+#include <tdc/math/ilog2.hpp>
 #include <tdc/math/prime.hpp>
 #include <tdc/random/seed.hpp>
 #include <tdc/util/char.hpp>
@@ -40,6 +41,7 @@ private:
 
     static constexpr size_t threshold_ = 2;
     static constexpr size_t q_ = sizeof(QGram) / sizeof(char_t);
+    static constexpr size_t QGRAM_BITS = std::numeric_limits<QGram>::digits;
 
     struct FilterEntry {
         index_t prev;      // previous occurrence
@@ -498,11 +500,74 @@ public:
     private:
         index_t                           width_, height_;
         index_t                           hash_prime_;
+        
         std::vector<QGram>                hash_mul_;
         std::vector<std::vector<index_t>> count_;
 
+        class MulHash64 {
+        private:
+            static constexpr uint64_t  MERSENNE_SHIFT = 61;
+            static constexpr uint128_t MERSENNE_PRIME = (((uint128_t)1ULL) << MERSENNE_SHIFT) - 1;
+
+            static uint128_t mod_mersenne(const uint128_t x) {
+                const uint128_t v = x + 1;
+                const uint64_t z = ((x >> MERSENNE_SHIFT) + x) >> MERSENNE_SHIFT;
+                return (x + z) & MERSENNE_PRIME;
+            }
+
+        public:
+            uint128_t operator()(const uint64_t a, const uint64_t b) {
+                return mod_mersenne((uint128_t)a * (uint128_t)b);
+            }
+        };
+
+        struct MulHash128 {
+        private:
+            static constexpr uint64_t  MERSENNE_SHIFT = 127;
+            static constexpr uint128_t MERSENNE_PRIME = (((uint128_t)1ULL) << MERSENNE_SHIFT) - 1;
+
+            static uint128_t mod_mersenne(const uint128_t x) {
+                const uint128_t z = (x + 1) >> MERSENNE_SHIFT;
+                return (x + z) & MERSENNE_PRIME;
+            }
+
+        public:
+            uint128_t operator()(const uint128_t a, const uint128_t b) {
+                const uint128_t al = (uint64_t)a;
+                const uint128_t ah = a >> 64;
+                const uint128_t bl = (uint64_t)b;
+                const uint128_t bh = b >> 64;
+
+                const uint128_t h =  ah * bh;
+                const uint128_t m1 = ah * bl;
+                const uint128_t m2 = bh * al;
+                const uint128_t l =  al * bl;
+
+                const uint128_t carry = ((uint128_t)(uint64_t)m1 +
+                                        (uint128_t)(uint64_t)m2 +
+                                        (l >> 64)) >> 64;
+
+                const uint128_t h128 = h + (m1 >> 64) + (m2 >> 64) + carry;
+                const uint128_t l128 = l + (m1 << 64) + (m2 << 64);
+
+                const uint128_t sum = ((h128 << 1) | (l128 >> 127)) + (l128 & MERSENNE_PRIME);
+                return mod_mersenne(sum);
+            }
+        };
+
         index_t hash(const size_t j, const QGram& pattern) const {
-            const index_t h = (index_t)(pattern * hash_mul_[j]) % hash_prime_;
+            static_assert(QGRAM_BITS <= 128);
+
+            index_t h;
+            if constexpr(QGRAM_BITS <= 64) {
+                // 64-bit
+                MulHash64 mh;
+                h = (index_t)mh(pattern, hash_mul_[j]);
+            } else if constexpr(QGRAM_BITS <= 128) {
+                // 128-bit
+                MulHash128 mh;
+                h = (index_t)mh(pattern, hash_mul_[j]);
+            }
             if constexpr(verbose_) std::cout << "\t\th_" << j << "(0x" << std::hex << pattern << ")=0x" << h << std::dec << " -> column=" << (h % width_) << std::endl;
             return h % width_;
         }
