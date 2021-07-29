@@ -12,8 +12,8 @@
 #include <vector>
 
 #include <tdc/io/buffered_reader.hpp>
+#include <tdc/math/bit_mask.hpp>
 #include <tdc/math/ilog2.hpp>
-#include <tdc/math/prime.hpp>
 #include <tdc/random/seed.hpp>
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
@@ -30,7 +30,7 @@ namespace lz77 {
 template<typename QGram>
 class LZSketch {
 private:
-    static constexpr bool verbose_ = true;
+    static constexpr bool verbose_ = false;
     static constexpr bool verify_ = false;
     static constexpr bool expensive_stats_ = false;
     static constexpr bool extended_stats_ = false;
@@ -498,7 +498,8 @@ public:
 
     class CountMinSketch {
     private:
-        index_t                           width_, height_;
+        index_t                           width_mask_;
+        index_t                           height_;
         
         std::vector<QGram>                hash_mul_;
         std::vector<std::vector<index_t>> count_;
@@ -515,15 +516,18 @@ public:
                 h = (h + z) & MERSENNE19;
             }
             
-            if constexpr(verbose_) std::cout << "\t\th_" << j << "(0x" << std::hex << pattern << ")=0x" << h << std::dec << " -> column=" << (h % width_) << std::endl;
-            return h % width_;
+            if constexpr(verbose_) std::cout << "\t\th_" << j << "(0x" << std::hex << pattern << ")=0x" << h << std::dec << " -> column=" << (h & width_mask_) << std::endl;
+            return h & width_mask_;
         }
 
     public:
-        CountMinSketch(size_t width, size_t height) : width_(width), height_(height) {
+        CountMinSketch(const size_t width, const size_t height) : height_(height) {
+            const auto wbits = math::ilog2_ceil(width - 1);
+            width_mask_ = math::bit_mask<index_t>(wbits);
+            
             count_.reserve(height_);
             for(size_t j = 0; j < height_; j++) {
-                count_.emplace_back(width, index_t(0));
+                count_.emplace_back(1ULL << wbits, index_t(0));
             }
             
             hash_mul_.reserve(height);
