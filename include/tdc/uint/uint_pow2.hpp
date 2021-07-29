@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tdc/uint/print_uint.hpp>
+#include <tdc/uint/uint_half.hpp>
 
 #include <tdc/intrisics/lzcnt.hpp>
 #include <tdc/intrisics/popcnt.hpp>
@@ -500,5 +501,8 @@ public:
     }
     /// \endcond
 } __attribute__((__packed__));
+
+template<size_t exp>
+struct uint_half<uint_pow2_t<exp>> { using type = uint_pow2_t<exp>::half_t; };
 
 } // namespace tdc

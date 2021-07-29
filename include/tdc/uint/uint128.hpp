@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tdc/uint/uint_half.hpp>
 #include <tdc/uint/uint_pow2.hpp>
 
 #ifdef __SIZEOF_INT128__
@@ -77,3 +78,7 @@ using uint128_t = tdc::uint128_t;
 
 /// \brief The maximum value for 128-bit integers.
 #define UINT128_MAX std::numeric_limits<uint128_t>::max()
+
+namespace tdc {
+    template<> struct uint_half<uint128_t> { using type = uint64_t; };
+}

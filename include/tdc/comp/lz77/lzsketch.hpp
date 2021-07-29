@@ -15,6 +15,7 @@
 #include <tdc/math/bit_mask.hpp>
 #include <tdc/math/ilog2.hpp>
 #include <tdc/random/seed.hpp>
+#include <tdc/uint/uint_half.hpp>
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/linked_list.hpp>
@@ -498,15 +499,17 @@ public:
 
     class CountMinSketch {
     private:
+        using HalfQGram = uint_half_t<QGram>;
+    
         index_t                           width_mask_;
         index_t                           height_;
         
-        std::vector<QGram>                hash_mul_;
+        std::vector<HalfQGram>            hash_mul_;
         std::vector<std::vector<index_t>> count_;
 
         index_t hash(const size_t j, const QGram& pattern) const {
             constexpr size_t QGRAM_HALF_BITS = QGRAM_BITS / 2;
-            index_t h = (pattern * hash_mul_[j]) ^ ((pattern >> QGRAM_HALF_BITS) * hash_mul_[j]);
+            index_t h = ((HalfQGram)pattern * hash_mul_[j]) ^ ((HalfQGram)(pattern >> QGRAM_HALF_BITS) * hash_mul_[j]);
 
             // modulo 2^19 - 1 (Mersenne prime)
             {
@@ -536,13 +539,13 @@ public:
                 /*
                  * generate random multipliers such that all nibbles are non-zero
                  */
-                static constexpr size_t num_nibbles = (std::numeric_limits<QGram>::digits / 4);
+                static constexpr size_t num_nibbles = (std::numeric_limits<HalfQGram>::digits / 4);
                 
                 std::default_random_engine gen(random::DEFAULT_SEED);
-                std::uniform_int_distribution<QGram> random_nibble(0x1, 0xF); // random
+                std::uniform_int_distribution<HalfQGram> random_nibble(0x1, 0xF); // random
                 
                 for(size_t j = 0; j < height_; j++) {
-                    QGram mul = 0;
+                    HalfQGram mul = 0;
                     for(size_t i = 0; i < num_nibbles; i++) {
                         mul = (mul << 4) | random_nibble(gen);
                     }
