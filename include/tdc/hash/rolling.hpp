@@ -3,6 +3,7 @@
 #include <bit>
 #include <concepts>
 #include <limits>
+#include <random>
 #include <stdexcept>
 
 #include <tdc/uint/uint128.hpp>
@@ -10,25 +11,53 @@
 namespace tdc {
 namespace hash {
 
-template<std::unsigned_integral char_t>
 class RollingKarpRabinFingerprint {
 private:
-    static constexpr uint128_t m_base = uint128_t(1) << std::numeric_limits<char_t>::digits;
-    static constexpr uint128_t m_prime = 18446744073709551253ULL;
+    static constexpr uint64_t MERSENNE61 = (((uint64_t)1ULL) << 61) - 1;
+    static constexpr uint64_t MERSENNE61_SHIFT = 61;
+    static constexpr uint128_t MERSENNE61_SQUARE = (uint128_t)MERSENNE61 * MERSENNE61;
 
-    uint128_t m_fp, m_f0;
-
-public:
-    RollingKarpRabinFingerprint() : m_fp(0), m_f0(0) {
+    inline static uint128_t mult(uint64_t const a, uint64_t const b) {
+        return ((uint128_t)a) * b;
     }
 
-    RollingKarpRabinFingerprint(size_t window, uint64_t offset = 0) : m_fp(offset) {
-        // compute the factor pow(m_base, m_window) used to phase out the initial character of the window
-        // TODO: there is probably a better algorithm for this?
-        m_f0 = uint128_t(1);
-        for(size_t i = 0; i < window; i++) {
-            m_f0 = (m_f0 * m_base) % m_prime;
+    inline static uint64_t modulo(const uint128_t value) {
+        // this assumes value < (2^61)^2 = 2^122
+        const uint128_t v = value + 1;
+        const uint64_t z = ((v >> MERSENNE61_SHIFT) + v) >> MERSENNE61_SHIFT;
+        return (value + z) & MERSENNE61;
+    }
+
+    inline static uint64_t random_base() {
+        constexpr static uint64_t max = MERSENNE61 - 2;
+        static std::random_device seed;
+        static std::mt19937_64 g(seed());
+        static std::uniform_int_distribution<uint64_t> d(0, max);
+        return 1 + d(g); // avoid returning 0
+    }
+
+    inline static uint128_t square(const uint64_t a) {
+        return ((uint128_t)a) * a;
+    }
+
+    inline static uint64_t power(uint64_t base, uint64_t exponent) {
+        uint64_t result = 1;
+        while(exponent > 0) {
+            if(exponent & 1ULL) result = modulo(mult(base, result));
+            base = modulo(square(base));
+            exponent >>= 1;
         }
+        return result;
+    }
+
+    uint64_t const base_;
+    uint64_t const max_exponent_exclusive_; // base ^ window_size
+
+public:
+    RollingKarpRabinFingerprint(const uint64_t window, const uint64_t base) : base_(modulo(base)), max_exponent_exclusive_(power(base_, window)) {
+    }
+
+    RollingKarpRabinFingerprint(const uint64_t window) : RollingKarpRabinFingerprint(window, random_base()) {
     }
     
     RollingKarpRabinFingerprint(const RollingKarpRabinFingerprint&) = default;
@@ -36,22 +65,11 @@ public:
     RollingKarpRabinFingerprint& operator=(const RollingKarpRabinFingerprint&) = default;
     RollingKarpRabinFingerprint& operator=(RollingKarpRabinFingerprint&&) = default;
     
-    void advance(const char_t in, const char_t out) {
-        // advance fingerprint with in character
-        m_fp = (m_fp * m_base + uint128_t(in)) % m_prime;
-        
-        // calculate away out character
-        if(out) {
-            const uint128_t out_influence = (uint128_t(out) * m_f0) % m_prime;
-            if(out_influence < m_fp) {
-                m_fp -= out_influence;
-            } else {
-                m_fp = m_prime - (out_influence - m_fp);
-            }
-        }
+    inline uint64_t roll(const uint64_t fp, const uint64_t pop_left, const uint64_t push_right) {
+        const uint128_t shifted_fingerprint = mult(base_, fp);
+        const uint128_t pop = MERSENNE61_SQUARE - mult(max_exponent_exclusive_, pop_left);
+        return modulo(shifted_fingerprint + pop + push_right);
     }
-    
-    uint64_t fingerprint() const { return (uint64_t)m_fp; }
 };
 
 }} // namespace tdc::hash

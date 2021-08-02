@@ -25,7 +25,7 @@ namespace lz77 {
 
 class LZFingerprinting {
 private:
-    using RollingFP = hash::RollingKarpRabinFingerprint<char_t>;
+    using RollingFP = hash::RollingKarpRabinFingerprint;
     using RefMap = robin_hood::unordered_map<uint64_t, index_t>;
     using RingBuffer = tlx::RingBuffer<char_t>;
 
@@ -40,7 +40,8 @@ private:
     struct Layer {
         index_t   tau_exp;
         index_t   tau;
-        RollingFP rolling;
+        RollingFP roller;
+        uint64_t  fp;
         RefMap    refs;
     };
 
@@ -57,12 +58,12 @@ private:
                 auto& layer = m_layers[i];
                 if(m_pos > 0 && (m_pos & mask) == 0) {
                     // reached block boundary on layer i, store current fingerprint
-                    layer.refs[layer.rolling.fingerprint()] = (m_pos - 1) >> layer.tau_exp;
+                    layer.refs[layer.fp] = (m_pos - 1) >> layer.tau_exp;
                 }
 
                 // advance rolling fingerprint
                 const char_t out_c = (w >= layer.tau) ? m_window[w - layer.tau] : 0;
-                layer.rolling.advance(c, out_c);
+                layer.fp = layer.roller.roll(layer.fp, out_c, c);
 
                 // roll mask
                 mask >>= 1ULL;
@@ -81,8 +82,7 @@ private:
                 const auto& layer = m_layers[i];
 
                 // test for each layer if current fingerprint was seen before (greedy, i.e., longest tau first)
-                const auto fp = layer.rolling.fingerprint();
-                auto it = layer.refs.find(fp);
+                auto it = layer.refs.find(layer.fp);
                 if(it != layer.refs.end()) {
                     // output reference
                     const size_t fsrc = it->second;
@@ -116,7 +116,7 @@ public:
         index_t tau_exp = tau_exp_max;
         for(size_t i = 0; i < m_num_layers; i++) {
             const index_t tau = 1ULL << tau_exp;
-            m_layers.emplace_back(Layer{ tau_exp, tau, RollingFP(tau), RefMap() });
+            m_layers.emplace_back(Layer{ tau_exp, tau, RollingFP(tau), 0, RefMap() });
             --tau_exp;
         }
     }
