@@ -48,10 +48,6 @@ if(LEDA_FOUND AND STREE_FOUND)
     target_link_libraries(bench_predecessor_dynamic ${LEDA_LIBRARIES})
 endif()
 target_include_directories(bench_predecessor_dynamic PUBLIC ${TDC_EXTLIB_SOURCE_DIR}/integer-structures)
-    
-add_executable(bench_sketch bench_sketch.cpp)
-set_target_properties(bench_sketch PROPERTIES OUTPUT_NAME sketch)
-target_link_libraries(bench_sketch tlx tdc-random tdc-stat)
 
 add_executable(bench_sorted_sequence bench_sorted_sequence.cpp)
 set_target_properties(bench_sorted_sequence PROPERTIES OUTPUT_NAME sorted-sequence)
