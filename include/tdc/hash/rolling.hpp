@@ -13,6 +13,8 @@ namespace hash {
 
 class RollingKarpRabinFingerprint {
 private:
+    // implementation by Jonas Ellert, stripped down to what we need here
+
     static constexpr uint64_t MERSENNE61 = (((uint64_t)1ULL) << 61) - 1;
     static constexpr uint64_t MERSENNE61_SHIFT = 61;
     static constexpr uint128_t MERSENNE61_SQUARE = (uint128_t)MERSENNE61 * MERSENNE61;
