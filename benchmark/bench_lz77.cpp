@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
     options.tau_max = std::max(options.tau_min, options.tau_max);
     
-    bench("base", "Noop", [](){ return Noop(); });
+    //~ bench("base", "Noop", [](){ return Noop(); });
     bench("base", "SA", [](){ return LZ77SA(); });
     
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false>(options.window); });
