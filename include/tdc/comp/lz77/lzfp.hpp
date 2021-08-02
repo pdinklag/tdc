@@ -13,24 +13,23 @@
 
 #include <tdc/io/buffered_reader.hpp>
 #include <tdc/hash/rolling.hpp>
+#include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "stats.hpp"
+#include "factor_buffer.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
 class LZFingerprinting {
-public:
-    using char_t = unsigned char;
-    static constexpr bool track_stats = true;
-
 private:
     using RollingFP = hash::RollingKarpRabinFingerprint<char_t>;
     using RefMap = robin_hood::unordered_map<uint64_t, index_t>;
     using RingBuffer = tlx::RingBuffer<char_t>;
+
+    index_t m_tau_min, m_tau_max;
 
     index_t m_pos;
     index_t m_next_factor;
@@ -47,9 +46,8 @@ private:
 
     RingBuffer m_window;
     std::vector<Layer> m_layers;
-    Stats m_stats;
 
-    inline void process(const char_t c, std::ostream& out) {
+    inline void process(const char_t c, FactorBuffer& out) {
         // update
         if(m_num_layers > 0) {
             index_t mask = m_layers[0].tau - 1;
@@ -87,15 +85,11 @@ private:
                 auto it = layer.refs.find(fp);
                 if(it != layer.refs.end()) {
                     // output reference
-                    if constexpr(track_stats) {
-                        ++m_stats.num_refs;
-                    }
-
                     const size_t fsrc = it->second;
                     const size_t flen = layer.tau;
                     
                     m_next_factor = m_pos + flen;
-                    out << "(" << fsrc << "," << flen << ")";
+                    out.emplace_back(fsrc, flen);
                     //~ std::cout << "reference at pos=" << m_pos << " to src=" << fsrc << " and len=" << flen << ", fp=" << fp << std::endl;
                     break; // don't consider shorter layers
                 }
@@ -104,11 +98,8 @@ private:
 
         if(m_pos >= m_next_factor) {
             // output literal
-            if constexpr(track_stats) {
-                ++m_stats.num_literals;
-            }
             m_next_factor = m_pos + 1;
-            out << c;
+            out.emplace_back(c);
         }
         
         // advance
@@ -116,7 +107,10 @@ private:
     }
 
 public:
-    inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max) : m_window(1ULL << tau_exp_max) {
+    inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max)
+        : m_tau_min(1ULL << tau_exp_min),
+          m_tau_max(1ULL << tau_exp_max),
+          m_window(1ULL << tau_exp_max) {
         m_num_layers = (tau_exp_max >= tau_exp_min) ? tau_exp_max - tau_exp_min + 1 : 0;
 
         index_t tau_exp = tau_exp_max;
@@ -127,7 +121,7 @@ public:
         }
     }
 
-    inline void compress(std::istream& in, std::ostream& out) {
+    inline void compress(std::istream& in, FactorBuffer& out) {
         // init
         m_next_factor = 0;
         m_pos = 0;
@@ -139,11 +133,13 @@ public:
                 process(reader.read(), out);
             }
         }
-
-        if constexpr(track_stats) m_stats.input_size = m_pos;
     }
     
-    inline const Stats& stats() const { return m_stats; }
+    template<typename StatLogger>
+    void log_stats(StatLogger& logger) {
+        logger.log("tau_min", m_tau_min);
+        logger.log("tau_max", m_tau_max);
+    }
 };
 
 }}} // namespace tdc::comp::lz77

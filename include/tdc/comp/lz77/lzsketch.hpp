@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <bit>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstdint>
 #include <iostream>
@@ -22,7 +23,7 @@
 #include <tdc/util/linked_list_pool.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "stats.hpp"
+#include "factor_buffer.hpp"
 
 namespace tdc {
 namespace comp {
@@ -175,12 +176,6 @@ private:
 
         size_t size() const {
             return parent_.size();
-        }
-
-        void write_stats(Stats& stats) {
-            stats.max_insert_steps = max_insert_steps_;
-            stats.avg_insert_steps = num_inserts_ > 0 ? (size_t)((double)total_insert_steps_ / (double)num_inserts_) : 0;
-            stats.child_search_steps = num_child_search_steps_;
         }
 
         void convert_to_child_array(const index_t v) {
@@ -495,12 +490,21 @@ public:
             }
             #endif
         }
+
+        template<typename StatLogger>
+        void log_stats(StatLogger& logger) {
+            if constexpr(expensive_stats_) {
+                logger.log("max_insert_steps", max_insert_steps_);
+                logger.log("avg_insert_steps", num_inserts_ > 0 ? std::lround((double)total_insert_steps_ / (double)num_inserts_) : 0);
+                logger.log("num_child_search_steps", num_child_search_steps_);
+            }
+        }
     };
 
     class CountMinSketch {
     private:
         using HalfQGram = uint_half_t<QGram>;
-    
+
         index_t                           width_mask_;
         index_t                           height_;
         
@@ -571,6 +575,12 @@ public:
             }
             return est;
         }
+
+        template<typename StatLogger>
+        void log_stats(StatLogger& logger) {
+            logger.log("sketch_width", width_mask_ + 1);
+            logger.log("sketch_height", height_);
+        }
     };
 
     // settings
@@ -587,7 +597,10 @@ public:
     CountMinSketch sketch_;
 
     // stats
-    Stats stats_;
+    size_t num_sketch_counts_;
+    size_t num_filter_increments_;
+    size_t num_swaps_;
+    size_t num_contradictions_; // expensive
 
     void update_qgram(const char_t c) {
         // update current qgram (first character at lowest significant position)
@@ -595,44 +608,44 @@ public:
         qgram_ = (qgram_ >> CHAR_BITS) | ((QGram)c << lsh);
     }
 
-    void filter_increment(std::ostream& out, const index_t v) {
+    void filter_increment(const index_t v) {
         trie_.increment(v, pos_);
-        ++stats_.num_filter_increments;
+        ++num_filter_increments_;
         trie_.verify(TrieFilter::ROOT);
-        if constexpr(verbose_) out << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << trie_.prev(v) << std::endl;
+        if constexpr(verbose_) std::cout << "\t\tincrementing (" << v << ") to " << trie_.count(v) << ", prev=" << trie_.prev(v) << std::endl;
     }
 
-    index_t sketch_increment(std::ostream& out, const QGram p, const index_t parent, const char_t c) {
+    index_t sketch_increment(const QGram p, const index_t parent, const char_t c) {
         const auto est = sketch_.count_and_estimate(p, 1);
-        ++stats_.num_sketch_counts;
-        if constexpr(verbose_) out << "\t\tcounting prefix in sketch: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
+        ++num_sketch_counts_;
+        if constexpr(verbose_) std::cout << "\t\tcounting prefix in sketch: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
         if(est > trie_.min_count() && est <= trie_.count(parent)) {
             // swap
             const auto v = trie_.extract_min();
             trie_.verify(TrieFilter::ROOT);
             const auto delta = trie_.count_delta(v);
             const auto pmin = trie_.pattern(v);
-            if constexpr(verbose_) out << "\t\tSWAP with pmin=0x" << std::hex << pmin << std::dec << ", delta=" << delta << std::endl;
+            if constexpr(verbose_) std::cout << "\t\tSWAP with pmin=0x" << std::hex << pmin << std::dec << ", delta=" << delta << std::endl;
             sketch_.count(pmin, delta);
             trie_.insert(v, parent, c, pos_, est, est);
             trie_.verify(TrieFilter::ROOT);
-            if constexpr(verbose_) out << "\t\tinserting edge (" << parent << ") -> (" << v << ") with label " << c << std::endl;
-            ++stats_.num_swaps;
+            if constexpr(verbose_) std::cout << "\t\tinserting edge (" << parent << ") -> (" << v << ") with label " << c << std::endl;
+            ++num_swaps_;
             return v;
         } else {
             if constexpr(expensive_stats_) {
                 if(est > trie_.min_count()) {
-                    if constexpr(verbose_) out << "\t\taborting swap to avoid contradictions" << std::endl;
-                    ++stats_.num_contradictions;
+                    if constexpr(verbose_) std::cout << "\t\taborting swap to avoid contradictions" << std::endl;
+                    ++num_contradictions_;
                 }
             }
             return TrieFilter::NONE;
         }
     }
 
-    void process_qgram(std::ostream& out) {
+    void process_qgram(FactorBuffer& out) {
         // Algorithm 1 and 2, optimized for use of a trie
-        if constexpr(verbose_) out << "i=" << pos_ << ", qgram=0x" << std::hex << qgram_ << std::dec << std::endl;
+        if constexpr(verbose_) std::cout << "i=" << pos_ << ", qgram=0x" << std::hex << qgram_ << std::dec << std::endl;
           
         index_t ref_pos = 0;
         index_t ref_len = 0;
@@ -654,7 +667,7 @@ public:
                 remain >>= CHAR_BITS;
                 if constexpr(verbose_) {
                     const auto p = qgram_ & (~inv_mask);
-                    out << "\tprocessing prefix of len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
+                    std::cout << "\tprocessing prefix of len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
                  }
                 
                 // try to advance in trie with current character of qgram
@@ -663,20 +676,20 @@ public:
                     // prefix is contained in filter, increment
                     ref_pos = trie_.prev(v);
                     ref_len = len;
-                    filter_increment(out, v);
+                    filter_increment(v);
                 } else if(!trie_full_) {
                     // trie is not yet full - insert new node for prefix
                     v = trie_.create_child(node, c, pos_);
                     trie_full_ = trie_.size() - 1 == max_filter_size_;
                     
-                    ++stats_.num_filter_increments;
+                    ++num_filter_increments_;
                     trie_.verify(TrieFilter::ROOT);
-                    if constexpr(verbose_) out << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
+                    if constexpr(verbose_) std::cout << "\t\tinserting edge (" << node << ") -> (" << v << ") with label " << c << std::endl;
                 } else {
                     // prefix is infrequent, increment in sketch - may cause a swap!
                     const auto p = qgram_ & (~inv_mask);
                     
-                    v = sketch_increment(out, p, node, c);
+                    v = sketch_increment(p, node, c);
                     if(v == TrieFilter::NONE) {
                         // prefix is still infrequent (no swap occurred), break out of the loop
                         break;
@@ -694,17 +707,17 @@ public:
                 const auto p = qgram_ & (~inv_mask);
 
                 // count prefix in sketch
-                if constexpr(verbose_) out << "\tcounting non-frequent prefix in sketch: len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
+                if constexpr(verbose_) std::cout << "\tcounting non-frequent prefix in sketch: len=" << len << ": p=0x" << std::hex << p << std::dec << std::endl;
                 if constexpr(expensive_stats_) {
                     const auto est = sketch_.count_and_estimate(p, 1);
-                    ++stats_.num_sketch_counts;
+                    ++num_sketch_counts_;
                     if(est > trie_.min_count()) {
-                        if constexpr(verbose_) out << "\t\tprevented contradiction: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
-                        ++stats_.num_contradictions;
+                        if constexpr(verbose_) std::cout << "\t\tprevented contradiction: est=" << est << ", trie.min_count=" << trie_.min_count() << std::endl;
+                        ++num_contradictions_;
                     }
                 } else {
                     sketch_.count(p, 1);
-                    ++stats_.num_sketch_counts;
+                    ++num_sketch_counts_;
                 }
             }
         }
@@ -719,20 +732,16 @@ public:
         ++pos_;
     }
 
-    void output_ref(std::ostream& out, const size_t src, const size_t len) {
-        ++stats_.num_refs;
-        
+    void output_ref(FactorBuffer& out, const size_t src, const size_t len) {
         // TODO: extensions
-        if constexpr(verbose_) out << "-> REFERENCE: (" << src << "," << len << ")" << std::endl;
-        else out << "(" << src << "," << len << ")";
+        if constexpr(verbose_) std::cout << "-> REFERENCE: (" << src << "," << len << ")" << std::endl;
+        out.emplace_back(src, len);
         next_factor_ += len;
     }
 
-    void output_literal(std::ostream& out, const char_t c) {
-        ++stats_.num_literals;
-        
-        if constexpr(verbose_) out << "-> LITERAL: " << c << std::endl;
-        else out << c;
+    void output_literal(FactorBuffer& out, const char_t c) {
+        if constexpr(verbose_) std::cout << "-> LITERAL: " << c << std::endl;
+        out.emplace_back(c);
         ++next_factor_;
     }
 
@@ -741,10 +750,12 @@ public:
         : max_filter_size_(max_filter_size),
           trie_(max_filter_size_ + 1),
           trie_full_(false),
-          sketch_(cm_width, cm_height) {
+          sketch_(cm_width, cm_height),
+          num_sketch_counts_(0), num_filter_increments_(0), num_swaps_(0), num_contradictions_(0)
+    {
     }
 
-    void compress(std::istream& in, std::ostream& out) {
+    void compress(std::istream& in, FactorBuffer& out) {
         // init
         size_t read  = 0;
         pos_         = 0;
@@ -769,7 +780,6 @@ public:
                 process_qgram(out);
             }
         }
-        stats_.input_size = read;
 
         /*
         // process the final qgrams (hash computations may cause collisions!)
@@ -787,16 +797,26 @@ public:
         }
 
         // stats
-        trie_.write_stats(stats_);
-
         if constexpr(extended_stats_) {
             trie_.print_bucket_histogram();
             trie_.print_trie();
         }
     }
-    
-    const Stats& stats() const { return stats_; }
-    Stats& stats() { return stats_; }
+
+    template<typename StatLogger>
+    void log_stats(StatLogger& logger) {
+        trie_.log_stats(logger);
+        sketch_.log_stats(logger);
+        
+        logger.log("max_filter_size", max_filter_size_);
+        logger.log("num_sketch_counts", num_sketch_counts_);
+        logger.log("num_filter_increments", num_filter_increments_);
+        logger.log("num_swaps", num_swaps_);
+        
+        if constexpr(expensive_stats_) {
+            logger.log("num_contradictions", num_contradictions_);
+        }
+    }
 };
 
 }}}

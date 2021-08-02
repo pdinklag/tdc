@@ -8,39 +8,35 @@
 #include <stdexcept>
 #include <vector>
 
+#include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
 
 #include "long_term_trie.hpp"
 #include "sliding_window_trie.hpp"
-#include "stats.hpp"
+#include "factor_buffer.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<bool m_allow_ext_match = false, size_t m_long_term_q = 0, bool m_track_stats = false>
+template<bool m_allow_ext_match = false, size_t m_long_term_q = 0>
 class LZ77SlidingWindow {
 private:
     static constexpr bool m_long_term = m_long_term_q > 0;
     static constexpr bool verbose = false; // use for debugging
     
-    using char_t = unsigned char;
-    
-    void output_ref(std::ostream& out, const size_t src, const size_t len) {
-        out << "(" << src << "," << len << ")";
+    void output_ref(FactorBuffer& out, const size_t src, const size_t len) {
+        out.emplace_back(src, len);
         if constexpr(verbose) std::cout << "-> (" << src << "," << len << ")" << std::endl;
-        if constexpr(m_track_stats) ++m_stats.num_refs;
     }
     
-    void output_character(std::ostream& out, const char_t c) {
-        out << c;
+    void output_character(FactorBuffer& out, const char_t c) {
+        out.emplace_back(c);
         if constexpr(verbose) std::cout << "-> " << c << std::endl;
-        if constexpr(m_track_stats) ++m_stats.num_literals;
     }
     
     index_t m_window;
-    Stats m_stats;
     
 public:
     LZ77SlidingWindow(const index_t window) : m_window(window) {
@@ -49,7 +45,7 @@ public:
         }
     }
 
-    void compress(std::istream& in, std::ostream& out) {
+    void compress(std::istream& in, FactorBuffer& out) {
         index_t window_offset = 0;
         
         const auto bufsize = 2 * m_window;
@@ -89,7 +85,6 @@ public:
                 right_trie = &sw_tries[1];
                 cur_right_trie = 1;
                 right_trie->build(buffer, r, m_window, sa_buffer, lcp_buffer, work_buffer);
-                if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, right_trie->size());
                 // if constexpr(verbose) right_trie->print();
                 n = r;
                 last_block_len = std::min((index_t)r, m_window);
@@ -137,7 +132,6 @@ public:
                      
                     if constexpr(verbose) std::cout << "(read " << r << " character(s) from stream: \"" << rbuffer << "\")" << std::endl;
                     right_trie->build(buffer, last_block_len + r, m_window, sa_buffer, lcp_buffer, work_buffer);
-                    if constexpr(m_track_stats) m_stats.trie_size = std::max(m_stats.trie_size, right_trie->size());
                     n += r;
                     last_block_len = r;
                     
@@ -306,12 +300,12 @@ public:
         delete[] work_buffer;
         delete[] buffer;
         if constexpr(m_allow_ext_match) delete[] prev_buffer;
-        
-        // stats
-        if constexpr(m_track_stats) m_stats.input_size = n;
     }
 
-    const Stats& stats() const { return m_stats; }
+    template<typename StatLogger>
+    void log_stats(StatLogger& logger) {
+        logger.log("window", m_window);
+    }
 };
 
 }}} // namespace tdc::comp::lz77

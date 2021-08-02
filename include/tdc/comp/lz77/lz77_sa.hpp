@@ -10,29 +10,26 @@
 #include <tdc/util/lcp.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "stats.hpp"
+#include "factor_buffer.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
-template<bool m_track_stats = false>
 class LZ77SA {
 private:
-    Stats m_stats;
     size_t m_threshold;
 
 public:
-    LZ77SA(size_t threshold) : m_threshold(threshold) {
+    LZ77SA(size_t threshold = 2) : m_threshold(threshold) {
     }
     
-    void compress(std::istream& in, std::ostream& out) {
+    void compress(std::istream& in, FactorBuffer& out) {
         // read input fully
         std::string text(std::istreambuf_iterator<char>(in), {});
         
         // construct suffix and LCP array
         const size_t n = text.length();
-        if constexpr(m_track_stats) m_stats.input_size = n;
         
         auto* sa = new saidx_t[n];
         auto result = divsufsort((const sauchar_t*)text.data(), sa, (saidx_t)n);
@@ -91,15 +88,11 @@ public:
                 assert(max_pos >= 0);
                 
                 // output reference
-                out << "(" << sa[max_pos] << "," << max_lcp << ")";
-                if constexpr(m_track_stats) ++m_stats.num_refs;
-
+                out.emplace_back(max_pos, max_lcp);
                 i += max_lcp; //advance
             } else {
                 // output literal
-                out << text[i];
-                if constexpr(m_track_stats) ++m_stats.num_literals;
-                
+                out.emplace_back(text[i]);
                 ++i; //advance
             }
         }
@@ -110,7 +103,9 @@ public:
         delete[] sa;
     }
     
-    const Stats& stats() const { return m_stats; }
+    template<typename StatLogger>
+    void log_stats(StatLogger& logger) {
+    }
 };
 
 }}} // namespace tdc::comp::lz77
