@@ -6,7 +6,7 @@ void basic_test(tdc::LinkedListPool<int>& pool) {
     auto list = pool.new_list();
     
     // sanity
-    ASSERT_EQ(list.size(), 0);
+    //~ ASSERT_EQ(list.size(), 0);
     ASSERT_TRUE(list.empty());
 
     // insert
@@ -15,7 +15,7 @@ void basic_test(tdc::LinkedListPool<int>& pool) {
         list.verify();
 
         ASSERT_FALSE(list.empty());
-        ASSERT_EQ(list.size(), (size_t)(i+1));
+        //~ ASSERT_EQ(list.size(), (size_t)(i+1));
         ASSERT_EQ(*list.begin(), i);
     }
 
@@ -42,7 +42,7 @@ void basic_test(tdc::LinkedListPool<int>& pool) {
             list.erase(it);
             list.verify();
             
-            ASSERT_EQ(list.size(), i);
+            //~ ASSERT_EQ(list.size(), i);
             --i;
         }            
         ASSERT_EQ(i, -1);
@@ -77,7 +77,7 @@ void ref_test(tdc::LinkedListPool<int>& pool) {
     for(int i = 0; i < 10; i++) {
         list.erase(refs[i]);
         list.verify();
-        ASSERT_EQ(list.size(), 9-i);
+        //~ ASSERT_EQ(list.size(), 9-i);
     }
 
     ASSERT_TRUE(list.empty());
