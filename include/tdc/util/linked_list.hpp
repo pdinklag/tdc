@@ -125,7 +125,6 @@ public:
         if(tdc_likely(prev != NONE)) {
             entry_[prev].next = item;
         } else {
-            assert(prev == head_);
             head_ = item;
         }
         verify();
