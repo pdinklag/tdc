@@ -23,8 +23,6 @@
 #include <tdc/util/linked_list_pool.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "factor_buffer.hpp"
-
 namespace tdc {
 namespace comp {
 namespace lz77 {
@@ -643,7 +641,8 @@ public:
         }
     }
 
-    void process_qgram(FactorBuffer& out) {
+    template<typename FactorOutput>
+    void process_qgram(FactorOutput& out) {
         // Algorithm 1 and 2, optimized for use of a trie
         if constexpr(verbose_) std::cout << "i=" << pos_ << ", qgram=0x" << std::hex << qgram_ << std::dec << std::endl;
           
@@ -732,14 +731,16 @@ public:
         ++pos_;
     }
 
-    void output_ref(FactorBuffer& out, const size_t src, const size_t len) {
+    template<typename FactorOutput>
+    void output_ref(FactorOutput& out, const size_t src, const size_t len) {
         // TODO: extensions
         if constexpr(verbose_) std::cout << "-> REFERENCE: (" << src << "," << len << ")" << std::endl;
         out.emplace_back(src, len);
         next_factor_ += len;
     }
 
-    void output_literal(FactorBuffer& out, const char_t c) {
+    template<typename FactorOutput>
+    void output_literal(FactorOutput& out, const char_t c) {
         if constexpr(verbose_) std::cout << "-> LITERAL: " << c << std::endl;
         out.emplace_back(c);
         ++next_factor_;
@@ -755,7 +756,8 @@ public:
     {
     }
 
-    void compress(std::istream& in, FactorBuffer& out) {
+    template<typename FactorOutput>
+    void compress(std::istream& in, FactorOutput& out) {
         // init
         size_t read  = 0;
         pos_         = 0;

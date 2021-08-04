@@ -2,21 +2,18 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
 #include <vector>
 
-#include "factor.hpp"
+#include "factor_stats_output.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
-class FactorBuffer {
-private:
-    std::vector<Factor> factors_;
-
+class FactorBuffer : public FactorStatsOutput {
 public:
-    static FactorBuffer merge(const FactorBuffer& a, const FactorBuffer& b) {
+    template<typename FactorOutput>
+    static void merge(const FactorBuffer& a, const FactorBuffer& b, FactorOutput& out) {
         auto a_next = a.factors_.begin();
         auto a_end  = a.factors_.end();
         auto b_next = b.factors_.begin();
@@ -30,7 +27,6 @@ public:
         
         size_t i = 0;
         
-        FactorBuffer out;
         while(a_cur.is_valid() && b_cur.is_valid()) {
             // invariant: a_pos == b_pos == i
             assert(a_pos == i);
@@ -96,38 +92,14 @@ public:
             out.emplace_back(b_cur);
             b_cur = *b_next++;
         }
-        
-        return out;
     }
 
+private:
+    std::vector<Factor> factors_;
+    bool track_stats_;
 
-    struct Stats {
-        size_t input_size;
-        
-        size_t num_refs;
-        size_t num_literals;
-        
-        size_t min_ref_len;
-        size_t max_ref_len;
-        double avg_ref_len;
-        
-        size_t min_ref_dist;
-        size_t max_ref_dist;
-        double avg_ref_dist;
-
-        Stats() : input_size(0),
-                  num_refs(0),
-                  num_literals(0),
-                  min_ref_len(SIZE_MAX),
-                  max_ref_len(0),
-                  avg_ref_len(0.0),
-                  min_ref_dist(SIZE_MAX),
-                  max_ref_dist(0),
-                  avg_ref_dist(0.0) {
-        }
-    };
-
-    inline FactorBuffer() {
+public:
+    inline FactorBuffer(bool track_stats = false) : track_stats_(track_stats) {
     }
 
     FactorBuffer(const FactorBuffer&) = default;
@@ -136,19 +108,23 @@ public:
     FactorBuffer& operator=(FactorBuffer&&) = default;
 
     void emplace_back(const char_t literal) {
+        if(track_stats_) FactorStatsOutput::emplace_back(literal);
         factors_.emplace_back(literal);
     }
 
     void emplace_back(const index_t src, const index_t len) {
+        if(track_stats_) FactorStatsOutput::emplace_back(src, len);
         factors_.emplace_back(src, len);
     }
 
     void emplace_back(Factor&& f) {
+        if(track_stats_) FactorStatsOutput::emplace_back(f.src, f.len);
         factors_.emplace_back(std::move(f));
     }
 
     void emplace_back(const Factor& f) {
-        factors_.emplace_back(std::move(f));
+        if(track_stats_) FactorStatsOutput::emplace_back(f);
+        factors_.emplace_back(f);
     }
 
     const Factor* factors() const {
@@ -156,46 +132,8 @@ public:
     }
 
     size_t size() const {
+        assert(!track_stats_ || FactorStatsOutput::size() == factors_.size());
         return factors_.size();
-    }
-
-    Stats gather_stats() const {
-        Stats stats;
-        size_t i = 0;
-        size_t total_ref_len = 0;
-        size_t total_ref_dist = 0;
-        
-        for(const auto& f : factors_) {
-            if(f.is_reference()) {
-                ++stats.num_refs;
-                
-                stats.min_ref_len = std::min(stats.min_ref_len, (size_t)f.len);
-                stats.max_ref_len = std::max(stats.max_ref_len, (size_t)f.len);
-                total_ref_len += f.len;
-
-                assert(i > f.src);
-                const size_t dist = i - f.src;
-                stats.min_ref_dist = std::min(stats.min_ref_dist, dist);
-                stats.max_ref_dist = std::max(stats.max_ref_dist, dist);
-                total_ref_dist += dist;
-                
-                i += f.len;
-            } else {
-                ++stats.num_literals;
-                ++i;
-            }
-        }
-
-        if(stats.num_refs > 0) {
-            stats.avg_ref_len  = (double)total_ref_len  / (double)stats.num_refs;
-            stats.avg_ref_dist = (double)total_ref_dist / (double)stats.num_refs;
-        } else {
-            stats.min_ref_len  = 0;
-            stats.min_ref_dist = 0;
-        }
-        
-        stats.input_size = i;
-        return stats;
     }
 };
 

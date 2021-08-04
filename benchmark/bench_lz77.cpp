@@ -50,7 +50,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
     
     {
         tdc::stat::Phase phase("compress");
-        FactorBuffer factors;
+        FactorStatsOutput factors;
 
         {
             auto c = ctor();
@@ -61,7 +61,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         }
 
         auto guard = phase.suppress();
-        auto stats = factors.gather_stats();
+        const auto& stats = factors.stats();
 
         phase.log("input_size", stats.input_size);
         phase.log("num_literals", stats.num_literals);
@@ -69,10 +69,10 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         phase.log("num_factors", factors.size());
         phase.log("min_ref_len", stats.min_ref_len);
         phase.log("max_ref_len", stats.max_ref_len);
-        phase.log("avg_ref_len", std::lround(stats.avg_ref_len));
+        phase.log("avg_ref_len", std::lround((double)stats.total_ref_len / (double)stats.num_refs));
         phase.log("min_ref_dist", stats.min_ref_dist);
         phase.log("max_ref_dist", stats.max_ref_dist);
-        phase.log("avg_ref_dist", std::lround(stats.avg_ref_dist));
+        phase.log("avg_ref_dist", std::lround((double)stats.total_ref_dist / (double)stats.num_refs));
         
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " " << phase.to_keyval() << std::endl;
     }
@@ -88,7 +88,8 @@ public:
     inline Merge(ctor_a construct_a, ctor_b construct_b) : construct_a_(construct_a), construct_b_(construct_b) {
     }
 
-    inline void compress(std::istream& in, FactorBuffer& out) {
+    template<typename FactorOutput>
+    inline void compress(std::istream& in, FactorOutput& out) {
         FactorBuffer factors_a, factors_b;
         
         // first compress using A
@@ -108,7 +109,7 @@ public:
         }
 
         // merge factors
-        out = FactorBuffer::merge(factors_a, factors_b);
+        FactorBuffer::merge(factors_a, factors_b, out);
     }
 
     template<typename StatLogger>

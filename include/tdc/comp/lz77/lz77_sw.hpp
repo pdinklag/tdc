@@ -14,7 +14,6 @@
 
 #include "long_term_trie.hpp"
 #include "sliding_window_trie.hpp"
-#include "factor_buffer.hpp"
 
 namespace tdc {
 namespace comp {
@@ -25,13 +24,15 @@ class LZ77SlidingWindow {
 private:
     static constexpr bool m_long_term = m_long_term_q > 0;
     static constexpr bool verbose = false; // use for debugging
-    
-    void output_ref(FactorBuffer& out, const size_t src, const size_t len) {
+
+    template<typename FactorOutput>
+    void output_ref(FactorOutput& out, const size_t src, const size_t len) {
         out.emplace_back(src, len);
         if constexpr(verbose) std::cout << "-> (" << src << "," << len << ")" << std::endl;
     }
     
-    void output_character(FactorBuffer& out, const char_t c) {
+    template<typename FactorOutput>
+    void output_character(FactorOutput& out, const char_t c) {
         out.emplace_back(c);
         if constexpr(verbose) std::cout << "-> " << c << std::endl;
     }
@@ -45,7 +46,8 @@ public:
         }
     }
 
-    void compress(std::istream& in, FactorBuffer& out) {
+    template<typename FactorOutput>
+    void compress(std::istream& in, FactorOutput& out) {
         index_t window_offset = 0;
         
         const auto bufsize = 2 * m_window;

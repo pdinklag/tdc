@@ -17,8 +17,6 @@
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "factor_buffer.hpp"
-
 namespace tdc {
 namespace comp {
 namespace lz77 {
@@ -48,7 +46,8 @@ private:
     RingBuffer m_window;
     std::vector<Layer> m_layers;
 
-    inline void process(const char_t c, FactorBuffer& out) {
+    template<typename FactorOutput>
+    inline void process(const char_t c, FactorOutput& out) {
         // update
         if(m_num_layers > 0) {
             index_t mask = m_layers[0].tau - 1;
@@ -121,7 +120,8 @@ public:
         }
     }
 
-    inline void compress(std::istream& in, FactorBuffer& out) {
+    template<typename FactorOutput>
+    inline void compress(std::istream& in, FactorOutput& out) {
         // init
         m_next_factor = 0;
         m_pos = 0;

@@ -10,8 +10,6 @@
 #include <tdc/util/lcp.hpp>
 #include <tdc/util/literals.hpp>
 
-#include "factor_buffer.hpp"
-
 namespace tdc {
 namespace comp {
 namespace lz77 {
@@ -23,8 +21,9 @@ private:
 public:
     LZ77SA(size_t threshold = 2) : m_threshold(threshold) {
     }
-    
-    void compress(std::istream& in, FactorBuffer& out) {
+
+    template<typename FactorOutput>
+    void compress(std::istream& in, FactorOutput& out) {
         // read input fully
         std::string text(std::istreambuf_iterator<char>(in), {});
         

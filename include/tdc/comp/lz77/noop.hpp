@@ -12,8 +12,9 @@ class Noop {
 public:
     Noop() {
     }
-    
-    void compress(std::istream& in, FactorBuffer& out) {
+
+    template<typename FactorOutput>
+    void compress(std::istream& in, FactorOutput& out) {
         // simply echo input
         constexpr size_t bufsize = 1_Mi;
         char* buffer = new char[bufsize];
