@@ -43,12 +43,6 @@ private:
     static constexpr size_t q_ = sizeof(QGram) / sizeof(char_t);
     static constexpr size_t QGRAM_BITS = std::numeric_limits<QGram>::digits;
 
-    struct FilterEntry {
-        index_t prev;      // previous occurrence
-        index_t count;     // frequency
-        index_t old_count; // frequency when entered into filter
-    } __attribute__((__packed__));
-
     class TrieFilter {
     public:
         static constexpr index_t CHILD_ARRAY_MASK = INDEX_MAX >> 1;
