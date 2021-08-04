@@ -31,7 +31,7 @@ struct {
     size_t tau_min = 5;
     size_t tau_max = 5;
     size_t filter_size = 1_Ki;
-    size_t cm_width = 1_Ki;
+    size_t cm_width = 10;
     size_t cm_height = 2;
     
     std::string ds;
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
     cp.add_bytes("tau-min", options.tau_min, "The minimum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
     cp.add_bytes("tau-max", options.tau_max, "The maximum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
     cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
-    cp.add_bytes("cm-width", options.cm_width, "The width of the count-min sketch if used (default: 1024).");
+    cp.add_bytes("cm-width", options.cm_width, "The width exponent of the count-min sketch if used (default: 10).");
     cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
     if(!cp.process(argc, argv)) {
         return -1;
@@ -139,9 +139,9 @@ int main(int argc, char** argv) {
     auto lz77_sw     = [](){ return LZ77SlidingWindow<false>(options.window); };
     auto lz77_sw_ext = [](){ return LZ77SlidingWindow<true>(options.window); };
     auto lz_fp       = [](){ return LZFingerprinting(options.tau_min, options.tau_max); };
-    auto lz_sketch8  = [](){ return LZSketch<uint64_t>(options.filter_size, options.cm_width, options.cm_height); };
-    auto lz_sketch16 = [](){ return LZSketch<uint128_t>(options.filter_size, options.cm_width, options.cm_height); };
-    auto lz_sketch32 = [](){ return LZSketch<uint256_t>(options.filter_size, options.cm_width, options.cm_height); };
+    auto lz_sketch8  = [](){ return LZSketch<uint64_t>(options.filter_size, 1ULL << options.cm_width, options.cm_height); };
+    auto lz_sketch16 = [](){ return LZSketch<uint128_t>(options.filter_size, 1ULL << options.cm_width, options.cm_height); };
+    auto lz_sketch32 = [](){ return LZSketch<uint256_t>(options.filter_size, 1ULL << options.cm_width, options.cm_height); };
     auto merge_fp_sw = [&](){ return Merge(lz_fp, lz77_sw); };
     auto merge_sw_fp = [&](){ return Merge(lz77_sw, lz_fp); };
     
