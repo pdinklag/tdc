@@ -49,7 +49,8 @@ struct {
 template<typename ctor_t>
 void bench(const std::string& group, std::string&& name, ctor_t ctor) {
     if(!options.do_bench(group)) return;
-    
+
+    const size_t file_size = std::filesystem::file_size(options.filename);
     std::ifstream input(options.filename);
     tdc::io::NullOStream devnull;
     
@@ -97,8 +98,9 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
         phase.log("min_ref_dist", stats.min_ref_dist);
         phase.log("max_ref_dist", stats.max_ref_dist);
         phase.log("avg_ref_dist", std::lround((double)stats.total_ref_dist / (double)stats.num_refs));
-        
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " " << phase.to_keyval() << std::endl;
+
+        assert(stats.input_size == file_size);
     }
 }
 
