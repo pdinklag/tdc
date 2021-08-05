@@ -70,35 +70,44 @@ private:
         }
 
         // advance window
+        char_t out_c = 0;
         if(m_window.size() == m_window.max_size()) {
+            out_c = m_window.front();
             m_window.pop_front();
         }
         m_window.push_back(c);
 
+        //
+        bool emit = (m_pos >= m_window.max_size()) && (m_pos - m_window.max_size() >= m_next_factor);
+
         // process layers greedily - longest tau first
-        if(m_pos >= m_next_factor) {
+        if(emit) {
             for(size_t i = 0; i < m_num_layers; i++) {
                 const auto& layer = m_layers[i];
 
                 // test for each layer if current fingerprint was seen before (greedy, i.e., longest tau first)
                 auto it = layer.refs.find(layer.fp);
                 if(it != layer.refs.end()) {
+                    // output shifted literal
+                    out.emplace_back(out_c);
+                    
                     // output reference
-                    const size_t fsrc = it->second;
+                    const size_t fsrc = it->second << layer.tau_exp;
                     const size_t flen = layer.tau;
                     
-                    m_next_factor = m_pos + flen;
+                    m_next_factor += flen + 1; // also count emitted literal
                     out.emplace_back(fsrc, flen);
-                    //~ std::cout << "reference at pos=" << m_pos << " to src=" << fsrc << " and len=" << flen << ", fp=" << fp << std::endl;
+
+                    emit = false;
                     break; // don't consider shorter layers
                 }
             }
         }
 
-        if(m_pos >= m_next_factor) {
+        if(emit) {
             // output literal
-            m_next_factor = m_pos + 1;
-            out.emplace_back(c);
+            ++m_next_factor;
+            out.emplace_back(out_c);
         }
         
         // advance
@@ -132,6 +141,18 @@ public:
             while(reader) {
                 process(reader.read(), out);
             }
+        }
+
+        // output remaining literals
+        while(m_window.size() > 0) {
+            const bool emit = (m_pos >= m_window.max_size()) && (m_pos - m_window.max_size() >= m_next_factor);
+            if(emit) {
+                ++m_next_factor;
+                out.emplace_back(m_window.front());
+            }
+
+            m_window.pop_front();
+            ++m_pos;
         }
     }
     
