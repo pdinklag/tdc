@@ -2,18 +2,22 @@
 
 #include <algorithm>
 #include <cassert>
+#include <string>
+#include <type_traits>
 #include <vector>
 
-#include "factor_stats_output.hpp"
+#include "factor.hpp"
 
 namespace tdc {
 namespace comp {
 namespace lz77 {
 
-class FactorBuffer : public FactorStatsOutput {
+class FactorBuffer {
 public:
     template<typename FactorOutput>
     static void merge(const FactorBuffer& a, const FactorBuffer& b, FactorOutput& out) {
+        assert(a.input_size_ == b.input_size_);
+        
         auto a_next = a.factors_.begin();
         auto a_end  = a.factors_.end();
         auto b_next = b.factors_.begin();
@@ -80,26 +84,20 @@ public:
             }
         }
 
-        // handle remainder (if any)
-        if(a_cur.is_valid()) assert(!b_cur.is_valid()); // either one can be valid
-        if(b_cur.is_valid()) assert(!a_cur.is_valid()); // not both
-        
-        while(a_cur.is_valid() && a_next != a_end) {
-            out.emplace_back(a_cur);
-            a_cur = *a_next++;
-        }
-        while(b_cur.is_valid() && b_next != b_end) {
-            out.emplace_back(b_cur);
-            b_cur = *b_next++;
-        }
+        // done!
+        assert(i == a.input_size_);
     }
 
 private:
+    using DecodedString = std::conditional<sizeof(char_t) == 1, std::string,
+                            std::conditional<sizeof(char_t) == 2, std::u16string, std::u32string>::type>
+                            ::type;
+
+    size_t              input_size_;
     std::vector<Factor> factors_;
-    bool track_stats_;
 
 public:
-    inline FactorBuffer(bool track_stats = false) : track_stats_(track_stats) {
+    inline FactorBuffer() : input_size_(0) {
     }
 
     FactorBuffer(const FactorBuffer&) = default;
@@ -108,22 +106,22 @@ public:
     FactorBuffer& operator=(FactorBuffer&&) = default;
 
     void emplace_back(const char_t literal) {
-        if(track_stats_) FactorStatsOutput::emplace_back(literal);
+        input_size_ += 1;
         factors_.emplace_back(literal);
     }
 
     void emplace_back(const index_t src, const index_t len) {
-        if(track_stats_) FactorStatsOutput::emplace_back(src, len);
+        input_size_ += len;
         factors_.emplace_back(src, len);
     }
 
     void emplace_back(Factor&& f) {
-        if(track_stats_) FactorStatsOutput::emplace_back(f.src, f.len);
+        input_size_ += f.decoded_length();
         factors_.emplace_back(std::move(f));
     }
 
     void emplace_back(const Factor& f) {
-        if(track_stats_) FactorStatsOutput::emplace_back(f);
+        input_size_ += f.decoded_length();
         factors_.emplace_back(f);
     }
 
@@ -131,8 +129,29 @@ public:
         return factors_.data();
     }
 
+    DecodedString decode() const {
+        DecodedString s;
+        s.reserve(input_size_);
+
+        for(const auto& f : factors_) {
+            if(f.is_reference()) {
+                assert(f.src < s.length());
+                for(size_t j = 0; j < f.len; j++) {
+                    s.push_back(s[f.src + j]);
+                }
+            } else {
+                s.push_back(f.literal());
+            }
+        }
+        assert(s.length() == input_size_);
+        return s;
+    }
+
+    size_t input_size() const {
+        return input_size_;
+    }
+
     size_t size() const {
-        assert(!track_stats_ || FactorStatsOutput::size() == factors_.size());
         return factors_.size();
     }
 };

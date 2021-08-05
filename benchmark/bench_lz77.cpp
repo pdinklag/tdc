@@ -5,6 +5,9 @@
 #include <sstream>
 
 #include <tdc/comp/lz77/factor_buffer.hpp>
+#include <tdc/comp/lz77/factor_multi_output.hpp>
+#include <tdc/comp/lz77/factor_readable_output.hpp>
+#include <tdc/comp/lz77/factor_stats_output.hpp>
 
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
@@ -33,6 +36,8 @@ struct {
     size_t filter_size = 1_Ki;
     size_t cm_width = 10;
     size_t cm_height = 2;
+
+    std::string roundtrip;
     
     std::string ds;
     
@@ -50,12 +55,31 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor) {
     
     {
         tdc::stat::Phase phase("compress");
+
         FactorStatsOutput factors;
 
         {
             auto c = ctor();
-            c.compress(input, factors);        
-            
+            if(options.roundtrip.length() > 0) {
+                
+                FactorBuffer buf;
+
+                {
+                    std::ofstream fout(options.roundtrip);
+                    FactorReadableOutput file_output(fout);
+                    FactorMultiOutput multi(factors, buf, file_output);
+                    c.compress(input, multi);
+                }
+
+                // decode
+                {
+                    std::ofstream fdec(options.roundtrip + ".dec");
+                    fdec << buf.decode();
+                }
+            } else {
+                c.compress(input, factors);
+            }
+
             auto guard = phase.suppress();
             c.log_stats(phase);
         }
@@ -128,6 +152,8 @@ int main(int argc, char** argv) {
     cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
     cp.add_bytes("cm-width", options.cm_width, "The width exponent of the count-min sketch if used (default: 10).");
     cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
+    cp.add_string("roundtrip", options.roundtrip, "Outputs the factorization to the specified file and decodes it afterwards.");
+    
     if(!cp.process(argc, argv)) {
         return -1;
     }
@@ -158,26 +184,26 @@ int main(int argc, char** argv) {
         bench("sketch", "Sketch(q=8)", lz_sketch8);
 
         auto merge_fp_sketch8 = [&](){ return Merge(lz_fp, lz_sketch8); };
-        bench("merge", "Merge(Sliding, Sketch(q=8))", [&](){ return Merge(lz77_sw, lz_sketch8); });
-        bench("merge", "Merge(FP, Sketch(q=8))", merge_fp_sketch8);
-        bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=8)))", [&](){ return Merge(lz77_sw, merge_fp_sketch8); });
+        //~ bench("merge", "Merge(Sliding, Sketch(q=8))", [&](){ return Merge(lz77_sw, lz_sketch8); });
+        //~ bench("merge", "Merge(FP, Sketch(q=8))", merge_fp_sketch8);
+        //~ bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=8)))", [&](){ return Merge(lz77_sw, merge_fp_sketch8); });
     }
     
     if(options.q == 0 || options.q == 16) {
         bench("sketch", "Sketch(q=16)", lz_sketch16);
         
         auto merge_fp_sketch16 = [&](){ return Merge(lz_fp, lz_sketch16); };
-        bench("merge", "Merge(Sliding, Sketch(q=16))", [&](){ return Merge(lz77_sw, lz_sketch16); });
-        bench("merge", "Merge(FP, Sketch(q=16))", merge_fp_sketch16);
-        bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=16)))", [&](){ return Merge(lz77_sw, merge_fp_sketch16); });
+        //~ bench("merge", "Merge(Sliding, Sketch(q=16))", [&](){ return Merge(lz77_sw, lz_sketch16); });
+        //~ bench("merge", "Merge(FP, Sketch(q=16))", merge_fp_sketch16);
+        //~ bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=16)))", [&](){ return Merge(lz77_sw, merge_fp_sketch16); });
     }
 
     if(options.q == 0 || options.q == 32) {
         bench("sketch", "Sketch(q=32)", lz_sketch32);
 
         auto merge_fp_sketch32 = [&](){ return Merge(lz_fp, lz_sketch32); };
-        bench("merge", "Merge(Sliding, Sketch(q=32))", [&](){ return Merge(lz77_sw, lz_sketch32); });
-        bench("merge", "Merge(FP, Sketch(q=32))", merge_fp_sketch32);
-        bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=32)))", [&](){ return Merge(lz77_sw, merge_fp_sketch32); });
+        //~ bench("merge", "Merge(Sliding, Sketch(q=32))", [&](){ return Merge(lz77_sw, lz_sketch32); });
+        //~ bench("merge", "Merge(FP, Sketch(q=32))", merge_fp_sketch32);
+        //~ bench("merge", "Merge(Sliding, Merge(FP, Sketch(q=32)))", [&](){ return Merge(lz77_sw, merge_fp_sketch32); });
     }
 }
