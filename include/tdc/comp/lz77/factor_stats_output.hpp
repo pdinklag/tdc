@@ -44,7 +44,6 @@ protected:
         if(f.is_reference()) {
             ++stats_.num_refs;
 
-            assert(f.src < stats_.input_size);
             const size_t dist = stats_.input_size - f.src;
             stats_.min_ref_dist = std::min(stats_.min_ref_dist, dist);
             stats_.max_ref_dist = std::max(stats_.max_ref_dist, dist);
