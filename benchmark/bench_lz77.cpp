@@ -150,7 +150,7 @@ void merge(const std::string& file1, const std::string& file2) {
             FactorBuffer::merge(f1, f2, factors);
         }
         
-        std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << ")";
+        std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << ") input=" << options.filename;
         print_merge_result(factors);
         std::cout << std::endl;
     }
@@ -171,7 +171,7 @@ void merge(const std::string& file1, const std::string& file2, const std::string
             FactorBuffer::merge(f1, temp, factors);
         }
         
-        std::cout << "RESULT algo=Merge(" << file1 << ",Merge(" << file2 << "," << file3 << "))";
+        std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << "," << file3 << ") input=" << options.filename;
         print_merge_result(factors);
         std::cout << std::endl;
     }
