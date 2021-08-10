@@ -26,11 +26,13 @@ public:
     void compress(std::istream& in, FactorOutput& out) {
         // read input fully
         std::string text(std::istreambuf_iterator<char>(in), {});
+        text.push_back(0); // append sentinel
         
         // construct suffix and LCP array
         const size_t n = text.length();
         
         auto* sa = new saidx_t[n];
+        
         auto result = divsufsort((const sauchar_t*)text.data(), sa, (saidx_t)n);
         
         auto* lcp = new saidx_t[n];
@@ -44,7 +46,7 @@ public:
         }
         
         // factorize
-        for(size_t i = 0; i+1 < n;) {
+        for(size_t i = 0; i + 1 < n;) {
             // get SA position for suffix i
             const size_t cur_pos = isa[i];
             // assert(cur_pos > 0); // isa[i] == 0 <=> T[i] = 0
