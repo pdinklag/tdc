@@ -13,79 +13,120 @@ namespace comp {
 namespace lz77 {
 
 class FactorBuffer {
+private:
+    class FactorIterator {
+    private:
+        std::vector<Factor>::const_iterator it_;
+        std::vector<Factor>::const_iterator end_;
+        size_t pos_;
+        Factor current_;
+
+    public:
+        FactorIterator(const FactorBuffer& buffer) : it_(buffer.factors_.begin()), end_(buffer.factors_.end()), pos_(0) {
+            if(it_ != end_) {
+                current_ = *it_++;
+            }
+        }
+        
+        operator bool() const {
+            return current_.is_valid();
+        }
+        
+        bool operator>(const FactorIterator& other) const {
+            return current_.len > other.current_.len || (current_.len == other.current_.len && (current_.src > other.current_.src || current_.is_reference() && other.current_.is_literal()));
+        }
+        
+        bool operator>(const Factor& f) const {
+            return current_.len > f.len || (current_.len == f.len && (current_.src > f.src || current_.is_reference() && f.is_literal()));
+        }
+        
+        bool advance_to(const size_t target) {
+            while(pos_ < target) {
+                if(current_.len <= 1) {
+                    // reference of length 1 or literal, advance to next
+                    if(it_ != end_) {
+                        current_ = *it_++;
+                    } else {
+                        current_ = Factor();
+                        return false;
+                    }
+                } else {
+                    // reference, increment
+                    ++current_.src;
+                    --current_.len;
+                }
+                ++pos_;
+            }
+            return true;
+        }
+        
+        const Factor& operator*() {
+            return current_;
+        }
+    };
+
 public:
     template<typename FactorOutput>
-    static void merge(const FactorBuffer& a, const FactorBuffer& b, FactorOutput& out) {
-        assert(a.input_size_ == b.input_size_);
+    static void merge(const FactorBuffer& buffer_a, const FactorBuffer& buffer_b, FactorOutput& out) {
+        assert(buffer_a.input_size_ == buffer_b.input_size_);
         
-        auto a_next = a.factors_.begin();
-        auto a_end  = a.factors_.end();
-        auto b_next = b.factors_.begin();
-        auto b_end  = b.factors_.end();
-
-        Factor a_cur = a_next != a_end ? *a_next++ : Factor();
-        size_t a_pos = 0;
-        
-        Factor b_cur = b_next != b_end ? *b_next++ : Factor();
-        size_t b_pos = 0;
+        FactorIterator a(buffer_a);
+        FactorIterator b(buffer_b);
         
         size_t i = 0;
+        size_t num_factors = 0;
         
-        while(a_cur.is_valid() && b_cur.is_valid()) {
-            // invariant: a_pos == b_pos == i
-            assert(a_pos == i);
-            assert(b_pos == i);
-
+        while(a && b) {
             // greedily select next factor
-            Factor f;
-            {
-                const auto a_len = a_cur.decoded_length();
-                const auto b_len = b_cur.decoded_length();
-
-                // pick longer factor, or the rightmost if both are equally long
-                const bool pick_a = (a_len > b_len) || (a_len == b_len && a_cur.src >= b_cur.src);
-                f = pick_a ? a_cur : b_cur;
-
-                // try and avoid references of length 1
-                if(f.is_reference() && f.len == 1) {
-                    f = pick_a ? b_cur : a_cur; // the other one must be a literal
-                    assert(f.is_literal());
-                }
-            }
+            Factor f = a > b ? *a : *b;
 
             // emit factor
             i += f.decoded_length();
             out.emplace_back(f);
+            ++num_factors;
 
             // advance
-            static auto advance = [](Factor& cur, auto& next, const auto& end){
-                if(cur.len <= 1) {
-                    // reference of length 1 or literal, advance to next
-                    if(next != end) {
-                        cur = *next++;
-                    } else {
-                        cur = Factor();
-                    }
-                } else {
-                    // reference of length >1, increment position and reduce length
-                    --cur.len;
-                    ++cur.src;
-                }
-            };
-
-            // advance A
-            for(; a_pos < i && a_cur.is_valid(); a_pos++) {
-                advance(a_cur, a_next, a_end);
-            }
-
-            // advance B
-            for(; b_pos < i && b_cur.is_valid(); b_pos++) {
-                advance(b_cur, b_next, b_end);
-            }
+            a.advance_to(i);
+            b.advance_to(i);
         }
 
         // done!
-        assert(i == a.input_size_);
+        assert(i == buffer_a.input_size_);
+        assert(num_factors <= std::min(buffer_a.size(), buffer_b.size()));
+    }
+    
+    template<typename FactorOutput>
+    static void merge(const FactorBuffer& buffer_a, const FactorBuffer& buffer_b, const FactorBuffer& buffer_c, FactorOutput& out) {
+        assert(buffer_a.input_size_ == buffer_b.input_size_);
+        assert(buffer_a.input_size_ == buffer_c.input_size_);
+        
+        FactorIterator a(buffer_a);
+        FactorIterator b(buffer_b);
+        FactorIterator c(buffer_c);
+        
+        size_t i = 0;
+        size_t num_factors = 0;
+        
+        while(a && b && c) {
+            // greedily select next factor
+            Factor f = *a;
+            if(b > f) f = *b;
+            if(c > f) f = *c;
+
+            // emit factor
+            i += f.decoded_length();
+            out.emplace_back(f);
+            ++num_factors;
+
+            // advance
+            a.advance_to(i);
+            b.advance_to(i);
+            c.advance_to(i);
+        }
+
+        // done!
+        assert(i == buffer_a.input_size_);
+        assert(num_factors <= std::min(buffer_a.size(), std::min(buffer_b.size(), buffer_c.size())));
     }
 
 private:

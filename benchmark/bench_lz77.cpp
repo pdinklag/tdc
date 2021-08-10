@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <unordered_set>
 
 #include <tdc/comp/lz77/factor_buffer.hpp>
 #include <tdc/comp/lz77/factor_file_output.hpp>
@@ -43,10 +45,10 @@ struct {
     std::vector<std::string> merge_files;
     
     std::string roundtrip;
-    std::string ds;
+    std::unordered_set<std::string> groups;
     
     bool do_bench(const std::string& group) {
-        return ds.length() == 0 || ds == group;
+        return groups.empty() || groups.contains(group);
     }
 } options;
 
@@ -160,15 +162,10 @@ void merge(const std::string& file1, const std::string& file2, const std::string
     if(std::filesystem::is_regular_file(file1) && std::filesystem::is_regular_file(file2) && std::filesystem::is_regular_file(file3)) {
         FactorStatsOutput factors;
         {
-            FactorBuffer temp;
-            {
-                auto f2 = read_factors(file2);
-                auto f3 = read_factors(file3);
-                FactorBuffer::merge(f2, f3, temp);
-            }
-
             auto f1 = read_factors(file1);
-            FactorBuffer::merge(f1, temp, factors);
+            auto f2 = read_factors(file2);
+            auto f3 = read_factors(file3);
+            FactorBuffer::merge(f1, f2, f3, factors);
         }
         
         std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << "," << file3 << ") input=" << options.filename;
@@ -178,29 +175,35 @@ void merge(const std::string& file1, const std::string& file2, const std::string
 }
 
 int main(int argc, char** argv) {
-    tlx::CmdlineParser cp;
-    cp.add_param_string("file", options.filename, "The input file.");
-    cp.add_string('a', "group", options.ds, "The algorithm group to benchmark.");
-    cp.add_size_t('q', "min-qgram", options.q, "The minimum q-gram length.");
-    cp.add_bytes('w', "window", options.window, "The window length for sliding window algorithms (default: 1024).");
-    cp.add_bytes("tau-min", options.tau_min, "The minimum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
-    cp.add_bytes("tau-max", options.tau_max, "The maximum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
-    cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
-    cp.add_bytes("cm-width", options.cm_width, "The width exponent of the count-min sketch if used (default: 10).");
-    cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
-    cp.add_flag("merge", options.merge, "Simulates merging of factorizations.");
-    cp.add_string("roundtrip", options.roundtrip, "Outputs the factorization to the specified file and decodes it afterwards.");
-    
-    if(!cp.process(argc, argv)) {
-        return -1;
-    }
+    {
+        std::vector<std::string> groups;
+        
+        tlx::CmdlineParser cp;
+        cp.add_param_string("file", options.filename, "The input file.");
+        cp.add_stringlist('a', "groups", groups, "The algorithm groups to benchmark.");
+        cp.add_size_t('q', "min-qgram", options.q, "The minimum q-gram length.");
+        cp.add_bytes('w', "window", options.window, "The window length for sliding window algorithms (default: 1024).");
+        cp.add_bytes("tau-min", options.tau_min, "The minimum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
+        cp.add_bytes("tau-max", options.tau_max, "The maximum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
+        cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
+        cp.add_bytes("cm-width", options.cm_width, "The width exponent of the count-min sketch if used (default: 10).");
+        cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
+        cp.add_flag("merge", options.merge, "Simulates merging of factorizations.");
+        cp.add_string("roundtrip", options.roundtrip, "Outputs the factorization to the specified file and decodes it afterwards.");
+        
+        if(!cp.process(argc, argv)) {
+            return -1;
+        }
 
-    if(options.merge && options.roundtrip.length() > 0) {
-        std::cerr << "Roundtrip not supported in combination with merge" << std::endl;
-        return -1;
-    }
+        options.groups = std::unordered_set<std::string>(groups.begin(), groups.end());
 
-    options.tau_max = std::max(options.tau_min, options.tau_max);
+        if(options.merge && options.roundtrip.length() > 0) {
+            std::cerr << "Roundtrip not supported in combination with merge" << std::endl;
+            return -1;
+        }
+
+        options.tau_max = std::max(options.tau_min, options.tau_max);
+    }
 
     //~ bench("base", "Noop", [](){ return Noop(); });
     bench("base", "SA", [](){ return LZ77SA(); }, false);
