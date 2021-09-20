@@ -17,7 +17,6 @@ namespace tdc {
 /// This can be used to optimize the memory footprint for applications if it is known that inputs never exceed a certain size.
 using char_t = CHAR_T;
 
-constexpr char_t CHAR_MAX = std::numeric_limits<char_t>::max();
 constexpr size_t CHAR_BITS = std::numeric_limits<char_t>::digits;
 
 } // namespace tdc

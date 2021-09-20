@@ -6,6 +6,11 @@
 #include <vector>
 #include <unordered_set>
 
+#include <tdc/code/binary_coder.hpp>
+#include <tdc/code/delta_coder.hpp>
+#include <tdc/code/rice_coder.hpp>
+#include <tdc/code/huff/knuth_coder.hpp>
+
 #include <tdc/comp/lz77/factor_buffer.hpp>
 #include <tdc/comp/lz77/factor_file_output.hpp>
 #include <tdc/comp/lz77/factor_multi_output.hpp>
@@ -47,12 +52,34 @@ struct {
     std::vector<std::string> merge_files;
     
     std::string roundtrip;
+    std::string encode;
     std::unordered_set<std::string> groups;
     
     bool do_bench(const std::string& group) {
         return groups.empty() || groups.contains(group);
     }
 } options;
+
+void encode(const FactorBuffer& buf, const std::string& filename) {
+    std::ofstream fenc(filename);
+    tdc::io::BitOStream enc(fenc);
+
+    tdc::code::KnuthCoder<tdc::code::BinaryCoder<tdc::CHAR_BITS>> knuth;
+    size_t pos = 0;
+    for(size_t i = 0; i < buf.size(); i++) {
+        const auto& f = buf.factors()[i];
+        if(f.is_literal()) {
+            enc.write_bit(0);
+            knuth.encode(enc, f.literal());
+        } else {
+            assert(pos > f.src);
+            enc.write_bit(1);
+            enc.write_delta(pos - f.src);
+            enc.write_rice(f.len, 4);
+        }
+        pos += f.decoded_length();
+    }
+}
 
 template<typename ctor_t>
 void bench(const std::string& group, std::string&& name, ctor_t ctor, bool can_merge = true) {
@@ -83,6 +110,10 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor, bool can_m
                     std::ofstream fdec(options.roundtrip + ".dec");
                     fdec << buf.decode();
                 }
+            } else if(!options.merge && options.encode.length() > 0) {
+                FactorBuffer buf;
+                c.compress(input, buf);
+                encode(buf, options.encode + "." + name);
             } else if(options.merge && can_merge) {
                 std::ofstream fout(name);
                 tdc::io::BufferedWriter<Factor> factors_writer(fout, 10_Ki);
@@ -152,6 +183,12 @@ void merge(const std::string& file1, const std::string& file2) {
             auto f1 = read_factors(file1);
             auto f2 = read_factors(file2);
             FactorBuffer::merge(f1, f2, factors);
+
+            if(options.encode.length() > 0) {
+                FactorBuffer buf;
+                FactorBuffer::merge(f1, f2, buf);
+                encode(buf, options.encode + ".Merge(" + file1 + "," + file2 + ")");
+            }
         }
         
         std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << ") input=" << options.filename;
@@ -193,6 +230,7 @@ int main(int argc, char** argv) {
         cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
         cp.add_flag("merge", options.merge, "Simulates merging of factorizations.");
         cp.add_string("roundtrip", options.roundtrip, "Outputs the factorization to the specified file and decodes it afterwards.");
+        cp.add_string("encode", options.encode, "Encodes the factorization to the specified file.");
         
         if(!cp.process(argc, argv)) {
             return -1;
@@ -202,6 +240,11 @@ int main(int argc, char** argv) {
 
         if(options.merge && options.roundtrip.length() > 0) {
             std::cerr << "Roundtrip not supported in combination with merge" << std::endl;
+            return -1;
+        }
+
+        if(options.roundtrip.length() > 0 && options.encode.length() > 0) {
+            std::cerr << "Encoding not supported in combination with roundtrip" << std::endl;
             return -1;
         }
 

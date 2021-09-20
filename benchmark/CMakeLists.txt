@@ -29,7 +29,7 @@ target_link_libraries(bench_int_vector tlx tdc-stat tdc-vec)
 add_executable(bench_lz77 bench_lz77.cpp)
 set_target_properties(bench_lz77 PROPERTIES OUTPUT_NAME lz77)
 target_include_directories(bench_lz77 PUBLIC ${TDC_EXTLIB_BINARY_DIR}/libdivsufsort/include)
-target_link_libraries(bench_lz77 tlx divsufsort tdc-stat tdc-random)
+target_link_libraries(bench_lz77 tlx divsufsort tdc-io tdc-stat tdc-random)
 
 add_executable(bench_lz78 bench_lz78.cpp)
 set_target_properties(bench_lz78 PROPERTIES OUTPUT_NAME lz78)
