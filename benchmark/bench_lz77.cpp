@@ -39,6 +39,7 @@ struct {
     size_t tau_min = 5;
     size_t tau_max = 5;
     size_t filter_size = 1_Ki;
+    size_t filter_min_size = 256;
     size_t cm_width = 10;
     size_t cm_height = 2;
     
@@ -187,6 +188,7 @@ int main(int argc, char** argv) {
         cp.add_bytes("tau-min", options.tau_min, "The minimum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
         cp.add_bytes("tau-max", options.tau_max, "The maximum window length exponent for fingerprinting algorithms (default: 5, pertaining to 32).");
         cp.add_bytes("filter", options.filter_size, "The size of the sketch filter if used (default: 1024).");
+        cp.add_bytes("filter-min", options.filter_min_size, "The minimum size of the sketch filter if used (default: 256).");
         cp.add_bytes("cm-width", options.cm_width, "The width exponent of the count-min sketch if used (default: 10).");
         cp.add_bytes("cm-height", options.cm_height, "The height of the count-min sketch if used (default: 4).");
         cp.add_flag("merge", options.merge, "Simulates merging of factorizations.");
@@ -210,7 +212,7 @@ int main(int argc, char** argv) {
     bench("base", "SA", [](){ return LZ77SA(); }, false);
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false>(options.window); });
     bench("fp", "FP", [](){ return LZFingerprinting(options.tau_min, options.tau_max); });
-    bench("fptop", "FPTop", [](){ return LZFingerprintingTop(options.filter_size, 1ULL << options.cm_width, options.cm_height, options.tau_min, options.tau_max); });
+    bench("fptop", "FPTop", [](){ return LZFingerprintingTop(options.filter_min_size, options.filter_size, 1ULL << options.cm_width, options.cm_height, options.tau_min, options.tau_max); });
 
     if(options.q == 0 || options.q == 8) {
         bench("sketch", "Sketch(q=8)", [](){ return LZSketch<uint64_t>(options.filter_size, 1ULL << options.cm_width, options.cm_height); });

@@ -33,7 +33,7 @@ class LZFingerprintingTop {
     };
 
     index_t tau_min_, tau_max_;
-    size_t max_filter_size_;
+    size_t min_filter_size_, max_filter_size_;
     size_t cm_width_, cm_height_;
 
     index_t pos_;
@@ -108,12 +108,14 @@ class LZFingerprintingTop {
 
 public:
     inline LZFingerprintingTop(
+        const size_t min_filter_size,
         const size_t max_filter_size,
         const size_t cm_width,
         const size_t cm_height,
         const index_t tau_exp_min,
         const index_t tau_exp_max)
-        : max_filter_size_(max_filter_size),
+        : min_filter_size_(min_filter_size),
+          max_filter_size_(max_filter_size),
           cm_width_(cm_width),
           cm_height_(cm_height),
           tau_min_(1ULL << tau_exp_min),
@@ -124,11 +126,15 @@ public:
         assert(num_layers > 0);
         layers_.reserve(num_layers);
 
+        size_t filter_shr = num_layers;
         index_t tau_exp = tau_exp_max;
         for(size_t i = 0; i < num_layers; i++) {
             const index_t tau = 1ULL << tau_exp;
-            layers_.emplace_back(Layer{ tau_exp, tau, RollingFP(tau), 0, Sketch(max_filter_size, cm_width, cm_height) });
+
+            const size_t filter_size = std::max(min_filter_size, max_filter_size >> filter_shr);
+            layers_.emplace_back(Layer{ tau_exp, tau, RollingFP(tau), 0, Sketch(filter_size, cm_width, cm_height) });
             --tau_exp;
+            --filter_shr;
         }
     }
 
@@ -173,7 +179,8 @@ public:
     void log_stats(StatLogger& logger) {
         logger.log("tau_min", tau_min_);
         logger.log("tau_max", tau_max_);
-        logger.log("filter", max_filter_size_);
+        logger.log("filter_min", min_filter_size_);
+        logger.log("filter_max", max_filter_size_);
         logger.log("cm_width", cm_width_);
         logger.log("cm_height", cm_height_);
     }
