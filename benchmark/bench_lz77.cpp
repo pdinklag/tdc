@@ -16,6 +16,7 @@
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lz77_sw.hpp>
 #include <tdc/comp/lz77/lzfp.hpp>
+#include <tdc/comp/lz77/lzfptop.hpp>
 #include <tdc/comp/lz77/lzsketch.hpp>
 
 #include <tdc/uint/uint128.hpp>
@@ -209,6 +210,7 @@ int main(int argc, char** argv) {
     bench("base", "SA", [](){ return LZ77SA(); }, false);
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false>(options.window); });
     bench("fp", "FP", [](){ return LZFingerprinting(options.tau_min, options.tau_max); });
+    bench("fptop", "FPTop", [](){ return LZFingerprintingTop(options.filter_size, 1ULL << options.cm_width, options.cm_height, options.tau_min, options.tau_max); });
 
     if(options.q == 0 || options.q == 8) {
         bench("sketch", "Sketch(q=8)", [](){ return LZSketch<uint64_t>(options.filter_size, 1ULL << options.cm_width, options.cm_height); });
@@ -224,6 +226,7 @@ int main(int argc, char** argv) {
 
     if(options.merge) {
         merge("Sliding", "FP");
+        merge("Sliding", "FPTop");
         merge("Sliding", "Sketch(q=8)");
         merge("Sliding", "Sketch(q=16)");
         merge("Sliding", "Sketch(q=32)");
