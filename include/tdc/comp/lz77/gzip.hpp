@@ -8,7 +8,7 @@
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 
-#include <tlx/container/ring_buffer.hpp>
+#include <tdc/util/ring_buffer_pow2.hpp>
 
 namespace tdc {
 namespace comp {
@@ -20,9 +20,10 @@ private:
 
     static constexpr size_t m1_ = 3;                  // reference threshold
     static constexpr size_t m2_ = 258;                // maximum reference length
-    static constexpr size_t dsiz_ = 1ULL << 15;       // window size
+    static constexpr size_t wexp_ = 15;               // window size exponent
+    static constexpr size_t dsiz_ = 1ULL << wexp_;    // window size
     static constexpr size_t dmask_ = dsiz_ - 1;       // mask of lowest 15 bits
-    static constexpr size_t hsiz_ = 1ULL << 15;       // size of hash table
+    static constexpr size_t hsiz_ = 1ULL << wexp_;    // size of hash table
     static constexpr size_t hmask_ = hsiz_ - 1;       // mask of lowest 15 bits
     static constexpr size_t d_ = 15ULL / m1_;         // = 3, shift parameter in hashing function
 
@@ -34,7 +35,7 @@ private:
         return h;
     }
 
-    tlx::RingBuffer<char_t> buf_;
+    RingBufferPow2<char_t> buf_;
     index_t buf_offs_; // text position of first entry in buffer
     index_t r_; // current read position in buffer
 
@@ -102,7 +103,7 @@ private:
     }
 
 public:
-    inline GZip() : buf_(2 * dsiz_) {
+    inline GZip() : buf_(wexp_ + 1) {
         head_ = new index_t[hsiz_];
         for(size_t i = 0; i < hsiz_; i++) head_[i] = INDEX_MAX;
         

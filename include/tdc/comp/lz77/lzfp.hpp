@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include <tlx/container/ring_buffer.hpp>
 #include <robin_hood.h>
 
 #include <tdc/io/buffered_reader.hpp>
@@ -16,6 +15,7 @@
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
+#include <tdc/util/ring_buffer_pow2.hpp>
 
 namespace tdc {
 namespace comp {
@@ -25,7 +25,6 @@ class LZFingerprinting {
 private:
     using RollingFP = hash::RollingKarpRabinFingerprint;
     using RefMap = robin_hood::unordered_map<uint64_t, index_t>;
-    using RingBuffer = tlx::RingBuffer<char_t>;
 
     index_t tau_min_, tau_max_;
 
@@ -40,7 +39,7 @@ private:
         RefMap    refs;
     };
 
-    RingBuffer window_;
+    RingBufferPow2<char_t> window_;
     std::vector<Layer> layers_;
 
     size_t window_size() const {
@@ -111,7 +110,7 @@ public:
     inline LZFingerprinting(const index_t tau_exp_min, const index_t tau_exp_max)
         : tau_min_(1ULL << tau_exp_min),
           tau_max_(1ULL << tau_exp_max),
-          window_(tau_max_) {
+          window_(tau_exp_max) {
 
         const size_t num_layers = (tau_exp_max >= tau_exp_min) ? tau_exp_max - tau_exp_min + 1 : 0;
         assert(num_layers > 0);
@@ -135,7 +134,7 @@ public:
 
         // read
         {
-            io::BufferedReader<char_t> reader(in, 1_Mi);
+            io::BufferedReader<char_t> reader(in, w);
 
             // prepare initial window
             {

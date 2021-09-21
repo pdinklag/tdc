@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-#include <tlx/container/ring_buffer.hpp>
 #include <robin_hood.h>
 
 #include <tdc/io/buffered_reader.hpp>
@@ -11,6 +10,7 @@
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
 #include <tdc/util/literals.hpp>
+#include <tdc/util/ring_buffer_pow2.hpp>
 
 namespace tdc {
 namespace comp {
@@ -21,7 +21,6 @@ class LZFingerprintingTop {
     static constexpr bool verbose_ = true;
     
     using RollingFP = hash::RollingKarpRabinFingerprint;
-    using RingBuffer = tlx::RingBuffer<char_t>;
     using Sketch = AugmentedSketch<uint64_t, index_t>;
 
     struct Layer {
@@ -39,7 +38,7 @@ class LZFingerprintingTop {
     index_t pos_;
     index_t next_factor_;
 
-    RingBuffer window_;
+    RingBufferPow2<char_t> window_;
     std::vector<Layer> layers_;
 
     size_t window_size() const {
@@ -120,7 +119,7 @@ public:
           cm_height_(cm_height),
           tau_min_(1ULL << tau_exp_min),
           tau_max_(1ULL << tau_exp_max),
-          window_(tau_max_) {
+          window_(tau_exp_max) {
 
         const size_t num_layers = (tau_exp_max >= tau_exp_min) ? tau_exp_max - tau_exp_min + 1 : 0;
         assert(num_layers > 0);
