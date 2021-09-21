@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <iostream>
@@ -16,8 +17,6 @@ namespace lz77 {
 
 class GZip {
 private:
-    static constexpr bool verbose_ = false;
-
     static constexpr size_t m1_ = 3;                  // reference threshold
     static constexpr size_t m2_ = 258;                // maximum reference length
     static constexpr size_t wexp_ = 15;               // window size exponent
@@ -25,7 +24,7 @@ private:
     static constexpr size_t dmask_ = dsiz_ - 1;       // mask of lowest 15 bits
     static constexpr size_t hsiz_ = 1ULL << wexp_;    // size of hash table
     static constexpr size_t hmask_ = hsiz_ - 1;       // mask of lowest 15 bits
-    static constexpr size_t d_ = 15ULL / m1_;         // = 3, shift parameter in hashing function
+    static constexpr size_t d_ = 5;
 
     inline size_t hash(size_t p) {
         size_t h = 0;
@@ -49,16 +48,14 @@ private:
     inline void process(FactorOutput& out) {
         // compute hash
         const size_t h = hash(r_);
-        if constexpr(verbose_) std::cout << "\th = 0x" << std::hex << h << std::dec << std::endl;
 
         // find longest match
         if(pos_ >= next_factor_) {
             size_t longest = 0;
             size_t longest_src = 0;
 
-            size_t k = 0;
             auto src = head_[h];
-            while(src + 1 > buf_offs_ && k < dsiz_) { // src >= buf_offs_, also considering -1 being a possible value
+            while(src + 1 > buf_offs_) { // src >= buf_offs_, also considering -1 being a possible value
                 assert(src < pos_);
                 
                 // match starting at this position
@@ -76,25 +73,26 @@ private:
                     longest = match;
                     longest_src = src;
                 } else if(match < m1_) {
-                    // outdated entry?
+                    // collision?
                     break;
                 }
 
                 // advance in list
-                src = prev_[src & dmask_];
-                ++k;
+                const auto prev = prev_[src & dmask_];
+                if(prev >= src) break;
+                src = prev;
             }
 
-            // emit factor
+            // emit
             if(longest >= m1_) {
-                if constexpr(verbose_) std::cout << "\t-> (" << longest_src << "," << longest << ")" << std::endl;
                 out.emplace_back(longest_src, longest);
-                next_factor_ += longest;
             } else {
-                if constexpr(verbose_) std::cout << "\t-> 0x" << std::hex << (size_t)buf_[r_] << std::dec << std::endl;
-                out.emplace_back(buf_[r_]);
-                ++next_factor_;
+                longest = std::max(longest, size_t(1));
+                for(size_t i = 0; i < longest; i++) {
+                    out.emplace_back(buf_[r_ + i]);
+                }
             }
+            next_factor_ += longest;
         }
 
         // update list
@@ -136,7 +134,6 @@ public:
 
         // process and read
         while(reader) {
-            if constexpr(verbose_) std::cout << "[READING] process pos_=" << pos_ << ", r_=" << r_ << std::endl;
             assert(buf_.size() >= dsiz_);
             process(out);
 
@@ -156,7 +153,6 @@ public:
 
         // process final window
         while(r_ + m1_ < buf_.size()) {
-            //~ if constexpr(verbose_) std::cout << "[REMAIN] process pos_=" << pos_ << ", r_=" << r_ << std::endl;
             process(out);
             
             ++pos_;
@@ -166,7 +162,6 @@ public:
         // emit remaining literals
         while(r_ < buf_.size()) {
             if(pos_ >= next_factor_) {
-                //~ if constexpr(verbose_) std::cout << "[REMAIN] output remaining literal 0x" << std::hex << (size_t)buf_[r_] << std::dec << " at pos_=" << pos_ << ", r_=" << r_ << std::endl;
                 out.emplace_back(buf_[r_]);
                 ++next_factor_;
             }
