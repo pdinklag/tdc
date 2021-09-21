@@ -148,7 +148,7 @@ public:
 
         // read
         {
-            io::BufferedReader<char_t> reader(in, 1_Mi);
+            io::BufferedReader<char_t> reader(in, max_filter_size_);
 
             // prepare initial window
             {
