@@ -17,6 +17,7 @@
 #include <tdc/comp/lz77/factor_readable_output.hpp>
 #include <tdc/comp/lz77/factor_stats_output.hpp>
 
+#include <tdc/comp/lz77/gzip.hpp>
 #include <tdc/comp/lz77/noop.hpp>
 #include <tdc/comp/lz77/lz77_sa.hpp>
 #include <tdc/comp/lz77/lz77_sw.hpp>
@@ -253,6 +254,7 @@ int main(int argc, char** argv) {
 
     //~ bench("base", "Noop", [](){ return Noop(); });
     bench("base", "SA", [](){ return LZ77SA(); }, false);
+    bench("gzip", "gzip", [](){ return GZip(); });
     bench("sliding", "Sliding", [](){ return LZ77SlidingWindow<false>(options.window); });
     bench("fp", "FP", [](){ return LZFingerprinting(options.tau_min, options.tau_max); });
     bench("fptop", "FPTop", [](){ return LZFingerprintingTop(options.filter_min_size, options.filter_size, 1ULL << options.cm_width, options.cm_height, options.tau_min, options.tau_max); });
@@ -270,17 +272,18 @@ int main(int argc, char** argv) {
     }
 
     if(options.merge) {
-        merge("Sliding", "FP");
+        //~ merge("Sliding", "FP");
         merge("Sliding", "FPTop");
-        merge("Sliding", "Sketch(q=8)");
-        merge("Sliding", "Sketch(q=16)");
-        merge("Sliding", "Sketch(q=32)");
-        merge("FP", "Sketch(q=8)");
-        merge("FP", "Sketch(q=16)");
-        merge("FP", "Sketch(q=32)");
-        merge("Sliding", "FP", "Sketch(q=8)");
-        merge("Sliding", "FP", "Sketch(q=16)");
-        merge("Sliding", "FP", "Sketch(q=32)");
+        merge("gzip", "FPTop");
+        //~ merge("Sliding", "Sketch(q=8)");
+        //~ merge("Sliding", "Sketch(q=16)");
+        //~ merge("Sliding", "Sketch(q=32)");
+        //~ merge("FP", "Sketch(q=8)");
+        //~ merge("FP", "Sketch(q=16)");
+        //~ merge("FP", "Sketch(q=32)");
+        //~ merge("Sliding", "FP", "Sketch(q=8)");
+        //~ merge("Sliding", "FP", "Sketch(q=16)");
+        //~ merge("Sliding", "FP", "Sketch(q=32)");
 
         for(const auto& file : options.merge_files) {
             std::filesystem::remove(file);
