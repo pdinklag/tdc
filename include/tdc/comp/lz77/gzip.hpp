@@ -3,13 +3,12 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <iostream>
 
 #include <tdc/io/buffered_reader.hpp>
 #include <tdc/util/char.hpp>
 #include <tdc/util/index.hpp>
-
-#include <tdc/util/ring_buffer_pow2.hpp>
 
 namespace tdc {
 namespace comp {
@@ -21,6 +20,7 @@ private:
     static constexpr size_t m2_ = 258;                // maximum reference length
     static constexpr size_t wexp_ = 15;               // window size exponent
     static constexpr size_t dsiz_ = 1ULL << wexp_;    // window size
+    static constexpr size_t buf_capacity_ = 2 * dsiz_;
     static constexpr size_t dmask_ = dsiz_ - 1;       // mask of lowest 15 bits
     static constexpr size_t hsiz_ = 1ULL << wexp_;    // size of hash table
     static constexpr size_t hmask_ = hsiz_ - 1;       // mask of lowest 15 bits
@@ -34,8 +34,9 @@ private:
         return h;
     }
 
-    RingBufferPow2<char_t> buf_;
-    index_t buf_offs_; // text position of first entry in buffer
+    char_t* buf_;
+    index_t buf_offs_;  // text position of first entry in buffer
+    index_t buf_avail_; // available bytes in buffer
     index_t r_; // current read position in buffer
 
     index_t pos_; // next text position to encode
@@ -63,7 +64,7 @@ private:
                 size_t i = r_;
                 size_t j = src - buf_offs_;
                 assert(j < i);
-                while(i < buf_.size() && match < m2_ && buf_[i] == buf_[j]) {
+                while(i < buf_avail_ && match < m2_ && buf_[i] == buf_[j]) {
                     ++i;
                     ++j;
                     ++match;
@@ -101,7 +102,9 @@ private:
     }
 
 public:
-    inline GZip() : buf_(wexp_ + 1) {
+    inline GZip() {
+        buf_ = new char_t[buf_capacity_];
+        
         head_ = new index_t[hsiz_];
         for(size_t i = 0; i < hsiz_; i++) head_[i] = INDEX_MAX;
         
@@ -110,6 +113,7 @@ public:
     }
 
     inline ~GZip() {
+        delete[] buf_;
         delete[] head_;
         delete[] prev_;
     }
@@ -117,8 +121,8 @@ public:
     template<typename FactorOutput>
     inline void compress(std::istream& in, FactorOutput& out) {
         // initialize
-        buf_.clear();
         buf_offs_ = 0;
+        buf_avail_ = 0;
         r_ = 0;
         
         pos_ = 0;
@@ -127,32 +131,40 @@ public:
         // open file
         io::BufferedReader<char_t> reader(in, dsiz_);
 
-        // read first dsiz_ bytes into  buffer
-        while(reader && buf_.size() < dsiz_) {
-            buf_.push_back(reader.read());
-        }
-
-        // process and read
+        // fill buffer
+        buf_avail_ = reader.read(buf_, buf_capacity_);
         while(reader) {
-            assert(buf_.size() >= dsiz_);
-            process(out);
-
-            if(buf_.size() == buf_.max_size()) {
-                // buffer is full
-                buf_.pop_front();
-                ++buf_offs_;
-                assert(r_ == dsiz_);
-            } else {
-                // still filling up buffer
+            // process while buffer is full enough
+            while(r_ + m2_ < buf_avail_) {
+                process(out);
+                
                 ++r_;
+                ++pos_;
             }
 
-            buf_.push_back(reader.read());
-            ++pos_;
+            // buffer ran short of maximum reference length, slide
+            {
+                assert(r_ >= dsiz_);
+                
+                const size_t ahead = buf_avail_ - r_;
+                const size_t discard = r_ - dsiz_;
+                const size_t retain = buf_avail_ - discard;
+
+                std::memcpy(buf_, buf_ + discard, retain);
+
+                // read more
+                const size_t num_read = reader.read(buf_ + retain, discard);
+                //~ std::cout << "Slide: buf_offs_=" << buf_offs_ << ", avail=" << buf_avail_ << ", r=" << r_ << ", ahead=" << ahead << ", discard=" << discard << ", retain=" << retain << ", num_read=" << num_read << std::endl;
+                
+                buf_avail_ = retain + num_read;
+                assert(buf_avail_ <= buf_capacity_);
+                buf_offs_ += discard;
+                r_ = dsiz_;
+            }
         }
 
         // process final window
-        while(r_ + m1_ < buf_.size()) {
+        while(r_ + m1_ < buf_avail_) {
             process(out);
             
             ++pos_;
@@ -160,7 +172,7 @@ public:
         }
 
         // emit remaining literals
-        while(r_ < buf_.size()) {
+        while(r_ < buf_avail_) {
             if(pos_ >= next_factor_) {
                 out.emplace_back(buf_[r_]);
                 ++next_factor_;
