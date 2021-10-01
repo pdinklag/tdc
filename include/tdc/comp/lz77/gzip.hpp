@@ -16,20 +16,20 @@ namespace lz77 {
 
 class GZip {
 private:
-    static constexpr size_t m1_ = 3;                  // reference threshold
-    static constexpr size_t m2_ = 258;                // maximum reference length
-    static constexpr size_t wexp_ = 15;               // window size exponent
-    static constexpr size_t dsiz_ = 1ULL << wexp_;    // window size
-    static constexpr size_t buf_capacity_ = 2 * dsiz_;
-    static constexpr size_t dmask_ = dsiz_ - 1;       // mask of lowest 15 bits
-    static constexpr size_t hsiz_ = 1ULL << wexp_;    // size of hash table
-    static constexpr size_t hmask_ = hsiz_ - 1;       // mask of lowest 15 bits
-    static constexpr size_t d_ = 5;
+    static constexpr size_t min_match_ = 3;
+    static constexpr size_t max_match_ = 258;
+    static constexpr size_t window_bits_ = 15;
+    static constexpr size_t window_size_ = 1ULL << window_bits_;
+    static constexpr size_t buf_capacity_ = 2 * window_size_;
+    static constexpr size_t window_mask_ = window_size_ - 1;
+    static constexpr size_t num_chains_ = 1ULL << window_bits_;
+    static constexpr size_t chain_mask_ = num_chains_ - 1;
+    static constexpr size_t hash_shift_ = 5; // if configured to window_bits_ / min_match_, hash function becomes rolling (but isn't used as such)
 
     inline size_t hash(size_t p) {
         size_t h = 0;
-        for(size_t i = 0; i < m1_; i++) {
-            h = ((h << d_) ^ buf_[p + i]) & hmask_;
+        for(size_t i = 0; i < min_match_; i++) {
+            h = ((h << hash_shift_) ^ buf_[p + i]) & chain_mask_;
         }
         return h;
     }
@@ -37,18 +37,18 @@ private:
     char_t* buf_;
     index_t buf_offs_;  // text position of first entry in buffer
     index_t buf_avail_; // available bytes in buffer
-    index_t r_; // current read position in buffer
+    index_t buf_pos_; // current read position in buffer
 
-    index_t pos_; // next text position to encode
-    index_t next_factor_;
+    index_t pos_;         // next text position to encode
+    index_t next_factor_; // next text position at which we will encode something
 
-    index_t* head_;
-    index_t* prev_;
+    index_t* head_; // head of hash chains
+    index_t* prev_; // chains
 
     template<typename FactorOutput>
     inline void process(FactorOutput& out) {
         // compute hash
-        const size_t h = hash(r_);
+        const size_t h = hash(buf_pos_);
 
         // find longest match
         if(pos_ >= next_factor_) {
@@ -61,10 +61,10 @@ private:
                 
                 // match starting at this position
                 size_t match = 0;
-                size_t i = r_;
+                size_t i = buf_pos_;
                 size_t j = src - buf_offs_;
                 assert(j < i);
-                while(i < buf_avail_ && match < m2_ && buf_[i] == buf_[j]) {
+                while(i < buf_avail_ && match < max_match_ && buf_[i] == buf_[j]) {
                     ++i;
                     ++j;
                     ++match;
@@ -73,31 +73,31 @@ private:
                 if(match > longest) {
                     longest = match;
                     longest_src = src;
-                } else if(match < m1_) {
+                } else if(match < min_match_) {
                     // collision?
                     break;
                 }
 
                 // advance in list
-                const auto prev = prev_[src & dmask_];
+                const auto prev = prev_[src & window_mask_];
                 if(prev >= src) break;
                 src = prev;
             }
 
             // emit
-            if(longest >= m1_) {
+            if(longest >= min_match_) {
                 out.emplace_back(longest_src, longest);
             } else {
                 longest = std::max(longest, size_t(1));
                 for(size_t i = 0; i < longest; i++) {
-                    out.emplace_back(buf_[r_ + i]);
+                    out.emplace_back(buf_[buf_pos_ + i]);
                 }
             }
             next_factor_ += longest;
         }
 
         // update list
-        prev_[pos_ & dmask_] = head_[h];
+        prev_[pos_ & window_mask_] = head_[h];
         head_[h] = pos_;
     }
 
@@ -105,11 +105,11 @@ public:
     inline GZip() {
         buf_ = new char_t[buf_capacity_];
         
-        head_ = new index_t[hsiz_];
-        for(size_t i = 0; i < hsiz_; i++) head_[i] = INDEX_MAX;
+        head_ = new index_t[num_chains_];
+        for(size_t i = 0; i < num_chains_; i++) head_[i] = INDEX_MAX;
         
-        prev_ = new index_t[dsiz_];
-        for(size_t i = 0; i < dsiz_; i++) prev_[i] = INDEX_MAX;
+        prev_ = new index_t[window_size_];
+        for(size_t i = 0; i < window_size_; i++) prev_[i] = INDEX_MAX;
     }
 
     inline ~GZip() {
@@ -123,31 +123,31 @@ public:
         // initialize
         buf_offs_ = 0;
         buf_avail_ = 0;
-        r_ = 0;
+        buf_pos_ = 0;
         
         pos_ = 0;
         next_factor_ = 0;
         
         // open file
-        io::BufferedReader<char_t> reader(in, dsiz_);
+        io::BufferedReader<char_t> reader(in, window_size_);
 
         // fill buffer
         buf_avail_ = reader.read(buf_, buf_capacity_);
         while(reader) {
             // process while buffer is full enough
-            while(r_ + m2_ < buf_avail_) {
+            while(buf_pos_ + max_match_ < buf_avail_) {
                 process(out);
                 
-                ++r_;
+                ++buf_pos_;
                 ++pos_;
             }
 
             // buffer ran short of maximum reference length, slide
             {
-                assert(r_ >= dsiz_);
+                assert(buf_pos_ >= window_size_);
                 
-                const size_t ahead = buf_avail_ - r_;
-                const size_t discard = r_ - dsiz_;
+                const size_t ahead = buf_avail_ - buf_pos_;
+                const size_t discard = buf_pos_ - window_size_;
                 const size_t retain = buf_avail_ - discard;
 
                 std::memcpy(buf_, buf_ + discard, retain);
@@ -159,26 +159,26 @@ public:
                 buf_avail_ = retain + num_read;
                 assert(buf_avail_ <= buf_capacity_);
                 buf_offs_ += discard;
-                r_ = dsiz_;
+                buf_pos_ = window_size_;
             }
         }
 
         // process final window
-        while(r_ + m1_ < buf_avail_) {
+        while(buf_pos_ + min_match_ < buf_avail_) {
             process(out);
             
             ++pos_;
-            ++r_;
+            ++buf_pos_;
         }
 
         // emit remaining literals
-        while(r_ < buf_avail_) {
+        while(buf_pos_ < buf_avail_) {
             if(pos_ >= next_factor_) {
-                out.emplace_back(buf_[r_]);
+                out.emplace_back(buf_[buf_pos_]);
                 ++next_factor_;
             }
 
-            ++r_;
+            ++buf_pos_;
             ++pos_;
         }
     }
