@@ -25,6 +25,7 @@ private:
     static constexpr size_t num_chains_ = 1ULL << window_bits_;
     static constexpr size_t chain_mask_ = num_chains_ - 1;
     static constexpr size_t hash_shift_ = 5; // if configured to window_bits_ / min_match_, hash function becomes rolling (but isn't used as such)
+    static constexpr size_t max_chain_length_ = 4096;
 
     inline size_t hash(size_t p) {
         size_t h = 0;
@@ -56,7 +57,8 @@ private:
             size_t longest_src = 0;
 
             auto src = head_[h];
-            while(src + 1 > buf_offs_) { // src >= buf_offs_, also considering -1 being a possible value
+            auto chain = max_chain_length_;
+            while(chain && src + 1 > buf_offs_) { // src >= buf_offs_, also considering -1 being a possible value
                 assert(src < pos_);
                 
                 // match starting at this position
@@ -73,15 +75,13 @@ private:
                 if(match > longest) {
                     longest = match;
                     longest_src = src;
-                } else if(match < min_match_) {
-                    // collision?
-                    break;
                 }
 
                 // advance in list
                 const auto prev = prev_[src & window_mask_];
                 if(prev >= src) break;
                 src = prev;
+                --chain;
             }
 
             // emit
