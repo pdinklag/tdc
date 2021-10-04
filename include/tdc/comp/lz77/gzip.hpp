@@ -26,6 +26,7 @@ private:
     static constexpr size_t chain_mask_ = num_chains_ - 1;
     static constexpr size_t hash_shift_ = 5; // if configured to window_bits_ / min_match_, hash function becomes rolling (but isn't used as such)
     static constexpr size_t max_chain_length_ = 4096;
+    static constexpr size_t nice_match_ = 258;
 
     inline size_t hash(size_t p) {
         size_t h = 0;
@@ -75,6 +76,10 @@ private:
                 if(match > longest) {
                     longest = match;
                     longest_src = src;
+
+                    if(match >= nice_match_) {
+                        break; // immediately stop when hitting a nice match
+                    }
                 }
 
                 // advance in list
