@@ -16,6 +16,8 @@ namespace lz77 {
 
 class GZip {
 private:
+    static constexpr bool track_stats_ = true;
+
     static constexpr size_t min_match_ = 3;
     static constexpr size_t max_match_ = 258;
     static constexpr size_t window_bits_ = 15;
@@ -47,6 +49,11 @@ private:
     index_t* head_; // head of hash chains
     index_t* prev_; // chains
 
+    // stats
+    size_t stat_chain_length_max_;
+    size_t stat_chain_length_total_;
+    size_t stat_chain_num_;
+
     template<typename FactorOutput>
     inline void process(FactorOutput& out) {
         // compute hash
@@ -58,8 +65,8 @@ private:
             size_t longest_src = 0;
 
             auto src = head_[h];
-            auto chain = max_chain_length_;
-            while(chain && src + 1 > buf_offs_) { // src >= buf_offs_, also considering -1 being a possible value
+            size_t chain = 0;
+            while(chain < max_chain_length_ && src + 1 > buf_offs_) { // src >= buf_offs_, also considering -1 being a possible value
                 assert(src < pos_);
                 
                 // match starting at this position
@@ -86,7 +93,14 @@ private:
                 const auto prev = prev_[src & window_mask_];
                 if(prev >= src) break;
                 src = prev;
-                --chain;
+                ++chain;
+
+                // stats
+                if constexpr(track_stats_) {
+                    stat_chain_length_max_ = std::max(stat_chain_length_max_, chain);
+                    stat_chain_length_total_ += chain;
+                    ++stat_chain_num_;
+                }
             }
 
             // emit
@@ -133,6 +147,12 @@ public:
         pos_ = 0;
         next_factor_ = 0;
         
+        if constexpr(track_stats_) {
+            stat_chain_length_max_ = 0;
+            stat_chain_length_total_ = 0;
+            stat_chain_num_ = 0;
+        }
+
         // open file
         io::BufferedReader<char_t> reader(in, window_size_);
 
@@ -190,6 +210,10 @@ public:
 
     template<typename StatLogger>
     void log_stats(StatLogger& logger) {
+        if constexpr(track_stats_) {
+            logger.log("chain_max", stat_chain_length_max_);
+            logger.log("chain_avg", (double)stat_chain_length_total_ / (double)stat_chain_num_);
+        }
     }
 };
 
