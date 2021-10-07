@@ -15,7 +15,7 @@ namespace lz77 {
 
 class GZip {
 private:
-    static constexpr bool track_stats_ = true;
+    static constexpr bool track_stats_ = false;
 
     static constexpr size_t min_match_ = 3;
     static constexpr size_t max_match_ = 258;
@@ -94,17 +94,17 @@ private:
 
             // find the longest match
             if(src != NIL && prev_length_ < lazy_match_ && relative_pos - src <= max_dist_) {
-                {
-                    const uint8_t* buf_end = buf_ + buf_avail_;
-                    const size_t max_chain_length = (prev_length_ >= good_match_) ? max_chain_length_ / good_laziness_ : max_chain_length_;
-
+                {   
                     if constexpr(track_stats_) {
                         if(prev_length_ >= good_match_) ++stat_good_num_;
                     }
 
-                    size_t chain = 0;
+                    size_t chain = (prev_length_ >= good_match_) ? (max_chain_length_ / good_laziness_) : max_chain_length_;
+                    size_t chain_length = 0; // for stats only
+
                     match_length_ = prev_length_; // we want to beat the previous match at least
 
+                    const uint8_t* const buf_end = buf_ + buf_avail_;
                     const uint16_t scan_start = *(const uint16_t*)(buf_ + buf_pos_);
                     uint8_t scan_end = buf_[buf_pos_ + match_length_];
 
@@ -150,13 +150,14 @@ private:
 
                         // advance in chain
                         src = prev_[src & window_mask_];
-                        ++chain;
-                    } while(chain < max_chain_length_ && src != NIL && relative_pos - src <= max_dist_);
+                        if constexpr(track_stats_) ++chain_length;
+                        --chain;
+                    } while(chain && relative_pos - src <= max_dist_);
 
                     // stats
                     if constexpr(track_stats_) {
-                        stat_chain_length_max_ = std::max(stat_chain_length_max_, chain);
-                        stat_chain_length_total_ += chain;
+                        stat_chain_length_max_ = std::max(stat_chain_length_max_, chain_length);
+                        stat_chain_length_total_ += chain_length;
                         ++stat_chain_num_;
                     }
                 }
