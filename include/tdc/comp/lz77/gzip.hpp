@@ -45,15 +45,6 @@ private:
         return h;
     }
 
-    // insert string and return head of hash chain
-    inline size_t insert_current_string() {
-        const auto h = hash(buf_pos_);
-        const auto head = head_[h];
-        prev_[pos_ & window_mask_] = head;
-        head_[h] = pos_;
-        return head;
-    }
-
     uint8_t* buf_;
     index_t buf_offs_;  // text position of first entry in buffer
     index_t buf_avail_; // available bytes in buffer
@@ -82,8 +73,17 @@ private:
 
     template<typename FactorOutput>
     inline void process(FactorOutput& out) {
+        const size_t relative_pos = pos_ - buf_offs_;
+
         // insert current string
-        auto src = insert_current_string();
+        index_t src;
+        {
+            const auto h = hash(buf_pos_);
+            src = head_[h];
+            prev_[relative_pos & window_mask_] = src;
+            head_[h] = relative_pos;
+        }
+        
         if(hash_only_) {
             --hash_only_;
         } else {
@@ -93,7 +93,7 @@ private:
             match_length_ = min_match_ - 1; // init to horrible
 
             // find the longest match
-            if(src + 1 > buf_offs_ && prev_length_ < lazy_match_ && pos_ - src <= max_dist_) {
+            if(src != NIL && prev_length_ < lazy_match_ && relative_pos - src <= max_dist_) {
                 {
                     const uint8_t* buf_end = buf_ + buf_avail_;
                     const size_t max_chain_length = (prev_length_ >= good_match_) ? max_chain_length_ / good_laziness_ : max_chain_length_;
@@ -111,7 +111,7 @@ private:
                     do {
                         // prepare match
                         const uint8_t* p = buf_ + buf_pos_;
-                        const uint8_t* q = buf_ + src - buf_offs_;
+                        const uint8_t* q = buf_ + src;
                         assert(q < p);
 
                         // if first two characters don't match OR we cannot become better, then don't even bother
@@ -151,7 +151,7 @@ private:
                         // advance in chain
                         src = prev_[src & window_mask_];
                         ++chain;
-                    } while(chain < max_chain_length_ && pos_ - src <= max_dist_);
+                    } while(chain < max_chain_length_ && src != NIL && relative_pos - src <= max_dist_);
 
                     // stats
                     if constexpr(track_stats_) {
@@ -160,6 +160,9 @@ private:
                         ++stat_chain_num_;
                     }
                 }
+
+                // make match source global
+                match_src_ += buf_offs_;
 
                 // ignore a minimum match if it is too distant
                 if(match_length_ == min_match_ && pos_ - match_src_ > too_far_) {
@@ -271,11 +274,13 @@ public:
             // clean up hash chains
             {
                 for(size_t i = 0; i < num_chains_; i++) {
-                    if(head_[i] < buf_offs_) head_[i] = NIL;
+                    const auto m = head_[i];
+                    head_[i] = (m >= window_size_) ? m - window_size_ : NIL;
                 }
 
                 for(size_t i = 0; i < window_size_; i++) {
-                    if(prev_[i] < buf_offs_) prev_[i] = NIL;
+                    const auto m = prev_[i];
+                    prev_[i] = (m >= window_size_) ? m - window_size_ : NIL;
                 }
             }
         }
