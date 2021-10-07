@@ -106,7 +106,7 @@ private:
 
                     const uint8_t* const buf_end = buf_ + buf_avail_;
                     const uint16_t scan_start = *(const uint16_t*)(buf_ + buf_pos_);
-                    uint8_t scan_end = buf_[buf_pos_ + match_length_];
+                    uint16_t scan_end = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
 
                     do {
                         // prepare match
@@ -115,7 +115,7 @@ private:
                         assert(q < p);
 
                         // if first two characters don't match OR we cannot become better, then don't even bother
-                        if(scan_start == *(const uint16_t*)q && scan_end == *(q + match_length_)) {
+                        if(scan_end == *(const uint16_t*)(q + match_length_ - 1) && scan_start == *(const uint16_t*)q) {
                             // already matched first two
                             size_t length = 2;
                             p += 2;
@@ -127,14 +127,11 @@ private:
                                 length += 2;
                             }
 
-                            while(p < buf_end && length < max_match_ && *p == *q) {
-                                ++p;
-                                ++q;
-                                ++length;
-                            }
-
                             // check match
-                            if(length > match_length_) {
+                            if(length >= match_length_) {
+                                // do final comparison
+                                if(length < max_match_ && *p == *q) ++length;
+
                                 match_src_ = src;
                                 match_length_ = length;
 
@@ -144,7 +141,7 @@ private:
                                     break;
                                 }
 
-                                scan_end = buf_[buf_pos_ + match_length_];
+                                scan_end = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
                             }
                         }
 
