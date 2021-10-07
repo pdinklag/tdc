@@ -267,6 +267,17 @@ public:
                 const size_t num_read = reader.read(buf_ + window_size_, window_size_);
                 buf_avail_ = window_size_ + num_read;
             }
+
+            // clean up hash chains
+            {
+                for(size_t i = 0; i < num_chains_; i++) {
+                    if(head_[i] < buf_offs_) head_[i] = NIL;
+                }
+
+                for(size_t i = 0; i < window_size_; i++) {
+                    if(prev_[i] < buf_offs_) prev_[i] = NIL;
+                }
+            }
         }
 
         // process final window
