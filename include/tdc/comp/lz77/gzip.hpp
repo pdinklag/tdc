@@ -243,32 +243,29 @@ public:
         // fill buffer
         buf_avail_ = reader.read(buf_, buf_capacity_);
         while(reader) {
-            // process while buffer is full enough
-            while(buf_pos_ + max_match_ <= buf_avail_) {
-                process(out);
-                
-                ++buf_pos_;
-                ++pos_;
+            // process while buffer has enough bytes left
+            assert(buf_avail_ > min_lookahead_);
+            {
+                const size_t buf_border = buf_avail_ - min_lookahead_;
+                while(buf_pos_ < buf_border) {
+                    process(out);
+                    
+                    ++buf_pos_;
+                    ++pos_;
+                }
             }
 
-            // buffer ran short of maximum reference length, slide
+            // buffer ran short of min lookahead, slide
             {
                 assert(buf_pos_ >= window_size_);
-                
-                const size_t ahead = buf_avail_ - buf_pos_;
-                const size_t discard = buf_pos_ - window_size_;
-                const size_t retain = buf_avail_ - discard;
 
-                std::memcpy(buf_, buf_ + discard, retain);
+                std::memcpy(buf_, buf_ + window_size_, window_size_);
+                buf_pos_ -= window_size_;
+                buf_offs_ += window_size_;
 
                 // read more
-                const size_t num_read = reader.read(buf_ + retain, discard);
-                //~ std::cout << "Slide: buf_offs_=" << buf_offs_ << ", avail=" << buf_avail_ << ", r=" << r_ << ", ahead=" << ahead << ", discard=" << discard << ", retain=" << retain << ", num_read=" << num_read << std::endl;
-                
-                buf_avail_ = retain + num_read;
-                assert(buf_avail_ <= buf_capacity_);
-                buf_offs_ += discard;
-                buf_pos_ = window_size_;
+                const size_t num_read = reader.read(buf_ + window_size_, window_size_);
+                buf_avail_ = window_size_ + num_read;
             }
         }
 
