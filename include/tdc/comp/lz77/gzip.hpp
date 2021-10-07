@@ -60,6 +60,7 @@ private:
     index_t match_length_;
     index_t match_src_;
 
+    index_t* hashtable_; // memory
     index_t* head_; // head of hash chains
     index_t* prev_; // chains
 
@@ -198,17 +199,18 @@ public:
         buf_ = new uint8_t[buf_capacity_ + min_match_];
         for(size_t i = 0; i < min_match_; i++) buf_[buf_capacity_ + i] = 0;
         
-        head_ = new index_t[num_chains_];
+        hashtable_ = new index_t[num_chains_ + window_size_];
+
+        head_ = hashtable_;
         for(size_t i = 0; i < num_chains_; i++) head_[i] = NIL;
         
-        prev_ = new index_t[window_size_];
+        prev_ = hashtable_ + num_chains_;
         for(size_t i = 0; i < window_size_; i++) prev_[i] = NIL;
     }
 
     inline ~GZip() {
         delete[] buf_;
-        delete[] head_;
-        delete[] prev_;
+        delete[] hashtable_;
     }
 
     template<typename FactorOutput>
