@@ -71,6 +71,8 @@ private:
     size_t stat_nice_breaks_;
     size_t stat_greedy_skips_;
     size_t stat_good_num_;
+    size_t stat_match_ops_;
+    size_t stat_comparisons_;
 
     template<typename FactorOutput>
     inline void process(FactorOutput& out) {
@@ -110,13 +112,23 @@ private:
                     uint16_t scan_end = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
 
                     do {
+                        if constexpr(track_stats_) ++stat_match_ops_;
+
                         // prepare match
                         const uint8_t* p = buf_ + buf_pos_;
                         const uint8_t* q = buf_ + src;
                         assert(q < p);
 
                         // if first two characters don't match OR we cannot become better, then don't even bother
-                        if(scan_end == *(const uint16_t*)(q + match_length_ - 1) && scan_start == *(const uint16_t*)q) {
+                        if constexpr(track_stats_) ++stat_comparisons_;
+
+                        const bool can_improve = (scan_end == *(const uint16_t*)(q + match_length_ - 1));
+
+                        if constexpr(track_stats_) {
+                            if(can_improve) ++stat_comparisons_;
+                        }
+
+                        if(can_improve && scan_start == *(const uint16_t*)q) {
                             // already matched first two
                             size_t length = 2;
                             p += 2;
@@ -126,11 +138,14 @@ private:
                                 p += 2;
                                 q += 2;
                                 length += 2;
+
+                                if constexpr(track_stats_) ++stat_comparisons_;
                             }
 
                             // check match
                             if(length >= match_length_) {
                                 // do final comparison
+                                if constexpr(track_stats_) ++stat_comparisons_;
                                 if(length < max_match_ && *p == *q) ++length;
 
                                 match_src_ = src;
@@ -238,6 +253,8 @@ public:
             stat_nice_breaks_ = 0;
             stat_greedy_skips_ = 0;
             stat_good_num_ = 0;
+            stat_comparisons_ = 0;
+            stat_match_ops_ = 0;
         }
 
         // open file
@@ -314,6 +331,8 @@ public:
             logger.log("nice_breaks", stat_nice_breaks_);
             logger.log("greedy_skips", stat_greedy_skips_);
             logger.log("good_num", stat_good_num_);
+            logger.log("comparisons", stat_comparisons_);
+            logger.log("match_ops", stat_match_ops_);
         }
     }
 };
