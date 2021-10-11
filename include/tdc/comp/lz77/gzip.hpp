@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <type_traits>
 
 #include <tdc/io/buffered_reader.hpp>
 #include <tdc/util/index.hpp>
@@ -35,6 +36,7 @@ private:
     static constexpr size_t good_laziness_ = 4;
     static constexpr size_t too_far_ = 4096;
 
+    using window_index_t = std::conditional<window_bits_ <= 15, uint16_t, uint32_t>::type;
     static constexpr index_t NIL = 0;
 
     inline size_t hash(const size_t p) const {
@@ -60,9 +62,9 @@ private:
     index_t match_length_;
     index_t match_src_;
 
-    index_t* hashtable_; // memory
-    index_t* head_; // head of hash chains
-    index_t* prev_; // chains
+    window_index_t* hashtable_; // memory
+    window_index_t* head_; // head of hash chains
+    window_index_t* prev_; // chains
 
     // stats
     size_t stat_chain_length_max_;
@@ -83,6 +85,8 @@ private:
             const auto h = hash(buf_pos_);
             src = head_[h];
             prev_[relative_pos & window_mask_] = src;
+
+            assert(relative_pos < buf_capacity_);
             head_[h] = relative_pos;
         }
         
@@ -212,7 +216,7 @@ public:
         buf_ = new uint8_t[bufsize];
         for(size_t i = 0; i < bufsize; i++) buf_[i] = 0;
         
-        hashtable_ = new index_t[num_chains_ + window_size_];
+        hashtable_ = new window_index_t[num_chains_ + window_size_];
 
         head_ = hashtable_;
         for(size_t i = 0; i < num_chains_; i++) head_[i] = NIL;
