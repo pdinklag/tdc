@@ -72,7 +72,6 @@ private:
     size_t stat_greedy_skips_;
     size_t stat_good_num_;
     size_t stat_match_ops_;
-    size_t stat_comparisons_;
 
     template<typename FactorOutput>
     inline void process(FactorOutput& out) {
@@ -123,15 +122,7 @@ private:
                         assert(q < p);
 
                         // if first two characters don't match OR we cannot become better, then don't even bother
-                        if constexpr(track_stats_) ++stat_comparisons_;
-
-                        const bool can_improve = (suffix == *(const uint16_t*)(q + match_length_ - 1));
-
-                        if constexpr(track_stats_) {
-                            if(can_improve) ++stat_comparisons_;
-                        }
-
-                        if(can_improve && prefix == *(const uint16_t*)q) {
+                        if(prefix == *(const uint16_t*)q && suffix == *(const uint16_t*)(q + match_length_ - 1)) {
                             // already matched first two, so skipping the first two by using the += operator below is safe
                             // the next bytes up to min_match_ must also match because we are in the corresponding hash chain
                             ++p;
@@ -147,8 +138,7 @@ private:
                                 *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
                                 *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
                                 p + 1 < match_end
-                            ) {
-                            }
+                            );
 
                             if(p < match_end && *p == *q) ++p; // final comparison
 
@@ -171,10 +161,8 @@ private:
                         }
 
                         // advance in chain
-                        src = prev_[src & window_mask_];
                         if constexpr(track_stats_) ++chain_length;
-                        --chain;
-                    } while(chain && src > limit);
+                    } while(--chain && (src = prev_[src & window_mask_]) > limit);
 
                     // stats
                     if constexpr(track_stats_) {
@@ -263,7 +251,6 @@ public:
             stat_nice_breaks_ = 0;
             stat_greedy_skips_ = 0;
             stat_good_num_ = 0;
-            stat_comparisons_ = 0;
             stat_match_ops_ = 0;
         }
 
@@ -341,7 +328,6 @@ public:
             logger.log("nice_breaks", stat_nice_breaks_);
             logger.log("greedy_skips", stat_greedy_skips_);
             logger.log("good_num", stat_good_num_);
-            logger.log("comparisons", stat_comparisons_);
             logger.log("match_ops", stat_match_ops_);
         }
     }
