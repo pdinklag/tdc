@@ -142,12 +142,12 @@ private:
                                 if constexpr(track_stats_) ++stat_comparisons_;
                             }
 
-                            // check match
-                            if(length >= match_length_) {
-                                // do final comparison
-                                if constexpr(track_stats_) ++stat_comparisons_;
-                                if(length < max_match_ && *p == *q) ++length;
+                            // do final comparison
+                            if constexpr(track_stats_) ++stat_comparisons_;
+                            if(length < max_match_ && *p == *q) ++length;
 
+                            // check match
+                            if(length > match_length_) {
                                 match_src_ = src;
                                 match_length_ = length;
 
