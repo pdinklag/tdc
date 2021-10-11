@@ -107,44 +107,51 @@ private:
 
                     match_length_ = prev_length_; // we want to beat the previous match at least
 
-                    const uint8_t* const buf_end = buf_ + buf_avail_;
-                    const uint16_t scan_start = *(const uint16_t*)(buf_ + buf_pos_);
-                    uint16_t scan_end = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
+                    const uint8_t* const match_begin = buf_ + buf_pos_;
+                    const uint8_t* const match_end = ((buf_pos_ + max_match_ <= buf_avail_) ? match_begin + max_match_ : buf_ + buf_avail_);
+                    const uint16_t prefix = *(const uint16_t*)match_begin;
+                    uint16_t suffix = *(const uint16_t*)(match_begin + match_length_ - 1);
 
                     do {
                         if constexpr(track_stats_) ++stat_match_ops_;
 
                         // prepare match
-                        const uint8_t* p = buf_ + buf_pos_;
+                        const uint8_t* p = match_begin;
                         const uint8_t* q = buf_ + src;
                         assert(q < p);
 
                         // if first two characters don't match OR we cannot become better, then don't even bother
                         if constexpr(track_stats_) ++stat_comparisons_;
 
-                        const bool can_improve = (scan_end == *(const uint16_t*)(q + match_length_ - 1));
+                        const bool can_improve = (suffix == *(const uint16_t*)(q + match_length_ - 1));
 
                         if constexpr(track_stats_) {
                             if(can_improve) ++stat_comparisons_;
                         }
 
-                        if(can_improve && scan_start == *(const uint16_t*)q) {
-                            // already matched first two
-                            size_t length = 2;
-                            p += 2;
-                            q += 2;
+                        if(can_improve && prefix == *(const uint16_t*)q) {
+                            // already matched first two, so skipping the first two by using the += operator below is safe
+                            // the next bytes up to min_match_ must also match because we are in the corresponding hash chain
+                            ++p;
+                            ++q;
 
-                            while(p + 1 < buf_end && length < max_match_ && *(const uint16_t*)p == *(const uint16_t*)q) {
-                                p += 2;
-                                q += 2;
-                                length += 2;
+                            // there are at most 256 bytes left to match
+                            // we only test for crossing the boundary every 8 bytes
+                            static_assert((max_match_ - 2) % 8 == 0, "the funny tricks only work for max_match_ = 8k + 2 for some k");
 
-                                if constexpr(track_stats_) ++stat_comparisons_;
+                            while(
+                                *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
+                                *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
+                                *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
+                                *(const uint16_t*)(p+=2) == *(const uint16_t*)(q+=2) &&
+                                p + 1 < match_end
+                            ) {
                             }
 
-                            // do final comparison
-                            if constexpr(track_stats_) ++stat_comparisons_;
-                            if(length < max_match_ && *p == *q) ++length;
+                            if(p < match_end && *p == *q) ++p; // final comparison
+
+                            //const size_t length = std::min((size_t)(p - match_begin), max_match_);
+                            const size_t length = (size_t)(p - match_begin);
 
                             // check match
                             if(length > match_length_) {
@@ -157,7 +164,7 @@ private:
                                     break;
                                 }
 
-                                scan_end = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
+                                suffix = *(const uint16_t*)(buf_ + buf_pos_ + match_length_ - 1);
                             }
                         }
 
@@ -211,8 +218,9 @@ private:
 
 public:
     inline GZip() {
-        buf_ = new uint8_t[buf_capacity_ + min_match_];
-        for(size_t i = 0; i < min_match_; i++) buf_[buf_capacity_ + i] = 0;
+        const size_t bufsize = buf_capacity_ + min_lookahead_;
+        buf_ = new uint8_t[bufsize];
+        for(size_t i = 0; i < bufsize; i++) buf_[i] = 0;
         
         hashtable_ = new index_t[num_chains_ + window_size_];
 
