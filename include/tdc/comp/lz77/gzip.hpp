@@ -97,7 +97,9 @@ private:
 
             // find the longest match
             if(src != NIL && prev_length_ < lazy_match_ && relative_pos - src <= max_dist_) {
-                {   
+                {
+                    const auto limit = relative_pos > max_dist_ ? relative_pos - max_dist_ : NIL;
+
                     if constexpr(track_stats_) {
                         if(prev_length_ >= good_match_) ++stat_good_num_;
                     }
@@ -172,7 +174,7 @@ private:
                         src = prev_[src & window_mask_];
                         if constexpr(track_stats_) ++chain_length;
                         --chain;
-                    } while(chain && relative_pos - src <= max_dist_);
+                    } while(chain && src > limit);
 
                     // stats
                     if constexpr(track_stats_) {
