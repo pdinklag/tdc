@@ -35,7 +35,7 @@ private:
     static constexpr size_t good_laziness_ = 4;
     static constexpr size_t too_far_ = 4096;
 
-    static constexpr index_t NIL = INDEX_MAX;
+    static constexpr index_t NIL = 0;
 
     inline size_t hash(const size_t p) const {
         size_t h = 0;
