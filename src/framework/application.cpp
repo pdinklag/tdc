@@ -7,7 +7,7 @@ namespace tdc::framework {
 const char* Application::ARG_FREE    = "__args";
 const char* Application::ARG_OBJNAME = "__name";
 
-nlohmann::json Application::cmdline_to_json(int argc, char** argv) {
+nlohmann::json Application::parse_cmdline(int argc, char** argv) {
     // prepare
     nlohmann::json obj;
 
@@ -89,6 +89,55 @@ nlohmann::json Application::cmdline_to_json(int argc, char** argv) {
 
     // done
     return obj;
+}
+
+bool Application::match_signature(const nlohmann::json& signature, const nlohmann::json& config) {
+    // try to match each item in the signature
+    for(const auto& p : signature.items()) {
+        // make sure subject contains this key
+        if(!config.contains(p.key())) {
+            return false;
+        }
+
+        // attempt to match the value
+        const auto& pv = p.value();
+        const auto& cv = config[p.key()];
+
+        if(pv.is_object() && pv.contains(ARG_OBJNAME)) {
+            // we are trying to match a sub-algorithm entry
+            if(pv.size() == 1) {
+                const auto& pname = pv[ARG_OBJNAME];
+
+                // there is no further nesting, so in the config we expect either an object containing the correct name, or a string that represents this name
+                if(cv.is_object()) {
+                    // the config must either contain an object containing the correct name...
+                    if(!cv.contains(ARG_OBJNAME) || cv[ARG_OBJNAME] != pname) {
+                        return false;
+                    }
+                } else if(cv.is_string()) {
+                    // ... or it can be just the object name as a string
+                    if(cv != pname) {
+                        return false;
+                    }
+                } else {
+                    // it's not even an object
+                    return false;
+                }
+            } else {
+                // there is further nesting - recurse
+                if(!match_signature(pv, cv)) {
+                    // recursive match failed
+                    return false;
+                }
+            }
+        } else if(pv != cv) {
+            // primitive value match failed
+            return false;
+        }
+    }
+
+    // all elements have successfully matched
+    return true;
 }
 
 }

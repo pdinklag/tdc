@@ -21,7 +21,8 @@ private:
     static const char* ARG_OBJNAME;
     static const char* ARG_FREE;
 
-    static nlohmann::json cmdline_to_json(int argc, char** argv);
+    static nlohmann::json parse_cmdline(int argc, char** argv);
+    static bool match_signature(const nlohmann::json& signature, const nlohmann::json& config);
 
     Executable* exe_;
 
@@ -31,10 +32,31 @@ public:
 
     void run(int argc, char** argv) {
         // parse command line into json
-        auto config = cmdline_to_json(argc, argv);
+        auto config = parse_cmdline(argc, argv);
         std::cout << std::setw(4) << config << std::endl;
 
-        // TODO: determine signature and instantiate executable
+        auto demo = R"({
+            "code": {
+                "__name": "BidirectionalLZ",
+                "refCode": {
+                    "__name": "Binary"
+                },
+                "lenCode": {
+                    "__name": "Rice"
+                },
+                "charCode": {
+                    "__name": "Huffman"
+                }
+            },
+            "strategy": {
+                "__name": "Arrays"
+            }
+        })"_json;
+
+        // TODO: find matching signature and instantiate executable
+        std::cout << std::setw(4) << demo << std::endl;
+
+        std::cout << "match: " << match_signature(demo, config) << std::endl;
 
         // TODO: configure executable
         
