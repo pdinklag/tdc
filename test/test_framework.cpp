@@ -2,7 +2,8 @@
 #include <sstream>
 #include <type_traits>
 
-#include <tdc/framework/registry.hpp>
+#include <tdc/framework/executable.hpp>
+#include <tdc/framework/application.hpp>
 
 #include <tdc/util/type_list.hpp>
 
@@ -81,7 +82,7 @@ namespace lz78 {
 } // namespace lz78
 
 template<LZ78Code Code, LZ78Trie Trie>
-class LZ78 : public framework::Algorithm {
+class LZ78 : public framework::Executable {
 private:
     Code code_;
     Trie trie_;
@@ -92,6 +93,10 @@ public:
         s << "LZ78<" << code_.id() << ", " << trie_.id() << ">";
         return s.str();
     }
+
+    virtual void execute(int& in, int& out) override {
+        // ...
+    }
 };
 
 } // namespace tdc
@@ -99,6 +104,7 @@ public:
 using namespace tdc;
 
 int main(int argc, char** argv) {
+    /*
     using UniversalCodes = tl::list<code::Binary, code::EliasDelta>;
     using OfflineCodes = tl::list<code::Huffman>;
     using AllCodes = tl::concat<UniversalCodes, OfflineCodes>;
@@ -113,4 +119,9 @@ int main(int argc, char** argv) {
 
     framework::Registry r;
     r.register_algorithms(Types());
+    */
+   LZ78<lz78::RefCharArrays<code::Binary, code::Huffman>, lz78::BinaryTrieMTF> lz78;
+   framework::Application app(lz78);
+   // TODO: register algorithms
+   app.run(argc, argv);
 }

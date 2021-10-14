@@ -14,7 +14,7 @@ add_test(mmap mmap)
 
 add_executable(test_framework test_framework.cpp)
 set_target_properties(test_framework PROPERTIES OUTPUT_NAME framework)
-target_link_libraries(test_framework)
+target_link_libraries(test_framework tdc-framework)
 add_test(framework framework)
 
 add_executable(test_rolling_hash test_rolling_hash.cpp)
