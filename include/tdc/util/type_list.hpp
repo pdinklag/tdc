@@ -289,4 +289,31 @@ struct _check_get<I, list<Ts...>> {
 template<size_t I, typename Tl>
 using check_get = typename _check_get<I, Tl>::type;
 
+template<template<typename...> typename A, typename ParamsTl, typename... Tls>
+struct _template_instances;
+
+template<template<typename...> typename A, typename... Params>
+struct _template_instances<A, tl::list<Params...>> {
+    using type_list = tl::list<A<Params...>>;
+};
+
+template<template<typename...> typename A, typename ParamsTl, typename... RemainingTls>
+struct _template_instances<A, ParamsTl, tl::empty, RemainingTls...> {
+    using type_list = tl::empty; // cross product of nothing with something
+};
+
+template<template<typename...> typename A, typename... Params, typename Head, typename... Tail, typename... RemainingTls>
+struct _template_instances<A, tl::list<Params...>, tl::list<Head, Tail...>, RemainingTls...> {
+    using TakeHead    = _template_instances<A, tl::list<Params..., Head>, RemainingTls...>::type_list;
+    using ProcessTail = _template_instances<A, tl::list<Params...>, tl::list<Tail...>, RemainingTls...>::type_list;
+    using type_list = tl::concat<TakeHead, ProcessTail>;
+};
+
+/// \brief Generates a type list of template instances.
+///
+/// \tparam A the root template type
+/// \tparam Tls a list of type lists, each containing types to be inserted as the corresponding template parameters of \ref A
+template<template<typename...> typename A, typename... Tls>
+using template_instances = _template_instances<A, tl::empty, Tls...>::type_list;
+
 }} //ns

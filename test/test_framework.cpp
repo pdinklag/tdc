@@ -2,7 +2,6 @@
 #include <sstream>
 #include <type_traits>
 
-#include <tdc/framework/crossproduct.hpp>
 #include <tdc/framework/registry.hpp>
 
 #include <tdc/util/type_list.hpp>
@@ -105,12 +104,12 @@ int main(int argc, char** argv) {
     using AllCodes = tl::concat<UniversalCodes, OfflineCodes>;
     
     using LZ78Codes = tl::concat<
-        framework::crossproduct<lz78::RefCharTuples, UniversalCodes, AllCodes>,
-        framework::crossproduct<lz78::RefCharArrays, UniversalCodes, AllCodes>
+        tl::template_instances<lz78::RefCharTuples, UniversalCodes, AllCodes>,
+        tl::template_instances<lz78::RefCharArrays, UniversalCodes, AllCodes>
     >;
     using LZ78Tries = tl::list<lz78::BinaryTrie, lz78::BinaryTrieMTF>;
     
-    using Types = framework::crossproduct<LZ78, LZ78Codes, LZ78Tries>;
+    using Types = tl::template_instances<LZ78, LZ78Codes, LZ78Tries>;
 
     framework::Registry r;
     r.register_algorithms(Types());
