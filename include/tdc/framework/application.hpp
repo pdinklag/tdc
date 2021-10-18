@@ -19,9 +19,6 @@ namespace tdc::framework {
 
 class Application {
 private:
-    static constexpr char SYM_ASSIGN = '=';
-    static constexpr char SYM_DEREF  = '.';
-
     static const char* ARG_OBJNAME;
     static const char* ARG_FREE;
 

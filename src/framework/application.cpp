@@ -35,12 +35,12 @@ nlohmann::json Application::parse_cmdline(int argc, char** argv) const {
                 char* current_arg = arg;
                 char* value = nullptr;
                 for(size_t j = 0; j < arglen; j++) {
-                    if(arg[j] == SYM_ASSIGN) {
+                    if(arg[j] == '=') {
                         // we found the assignment operator - stop parsing
                         arg[j] = 0;
                         value = arg + j + 1;
                         break;
-                    } else if(arg[j] == SYM_DEREF) {
+                    } else if(arg[j] == '.') {
                         // we found a dereferencing operator - create new subobject of current object
                         arg[j] = 0;
                         if(current_obj->contains(current_arg)) {
