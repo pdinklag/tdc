@@ -7,7 +7,7 @@ namespace tdc::framework {
 class Executable : public Algorithm {
 public:
     // execute algorithm as a standalone application
-	virtual void execute(int& in, int& out) = 0;
+	virtual int execute(int& in, int& out) = 0;
 };
 
 }

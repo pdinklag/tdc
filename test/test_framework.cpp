@@ -18,15 +18,24 @@ namespace code {
     concept Code = std::is_base_of<Code, T>::value;
 
     class Binary : public Code {
-    public: virtual std::string id() const override { return "Binary"; }
+    public:
+        static inline framework::AlgorithmInfo info() {
+            return framework::AlgorithmInfo("Binary");
+        }
     };
 
     class EliasDelta : public Code {
-    public: virtual std::string id() const override { return "EliasDelta"; }
+    public:
+        static inline framework::AlgorithmInfo info() {
+            return framework::AlgorithmInfo("EliasDelta");
+        }
     };
 
     class Huffman : public Code {
-    public: virtual std::string id() const override { return "Huffman"; }
+    public:
+        static inline framework::AlgorithmInfo info() {
+            return framework::AlgorithmInfo("Huffman");
+        }
     };
 
 } // namespace code
@@ -45,11 +54,17 @@ concept LZ78Code = std::is_base_of<LZ78Code, T>::value;
 
 namespace lz78 {
     class BinaryTrie : public LZ78Trie {
-    public: virtual std::string id() const override { return "Binary"; }
+    public:
+        static inline framework::AlgorithmInfo info() {
+            return framework::AlgorithmInfo("BinaryTrie");
+        }
     };
 
     class BinaryTrieMTF : public LZ78Trie {
-    public: virtual std::string id() const override { return "BinaryMTF"; }
+    public:
+        static inline framework::AlgorithmInfo info() {
+            return framework::AlgorithmInfo("BinaryTrieMTF");
+        }
     };
 
     template<code::Code RefCode, code::Code CharCode>
@@ -57,12 +72,13 @@ namespace lz78 {
     private:
         RefCode ref_code_;
         CharCode char_code_;
-        
+
     public:
-        virtual std::string id() const override {
-            std::ostringstream s;
-            s << "RefCharTuples<" << ref_code_.id() << ", " << char_code_.id() << ">";
-            return s.str();
+        static inline framework::AlgorithmInfo info() {
+            framework::AlgorithmInfo info("RefCharTuples");
+            info.add_sub_algorithm<RefCode>("ref");
+            info.add_sub_algorithm<CharCode>("char");
+            return info;
         }
     };
 
@@ -73,10 +89,11 @@ namespace lz78 {
         CharCode char_code_;
         
     public:
-        virtual std::string id() const override {
-            std::ostringstream s;
-            s << "RefCharArrays<" << ref_code_.id() << ", " << char_code_.id() << ">";
-            return s.str();
+        static inline framework::AlgorithmInfo info() {
+            framework::AlgorithmInfo info("RefCharArrays");
+            info.add_sub_algorithm<RefCode>("ref");
+            info.add_sub_algorithm<CharCode>("char");
+            return info;
         }
     };
 } // namespace lz78
@@ -88,14 +105,16 @@ private:
     Trie trie_;
 
 public:
-    virtual std::string id() const override {
-        std::ostringstream s;
-        s << "LZ78<" << code_.id() << ", " << trie_.id() << ">";
-        return s.str();
+    static inline framework::AlgorithmInfo info() {
+        framework::AlgorithmInfo info("LZ78");
+        info.add_sub_algorithm<Code>("code");
+        info.add_sub_algorithm<Trie>("trie");
+        return info;
     }
 
-    virtual void execute(int& in, int& out) override {
-        // ...
+    virtual int execute(int& in, int& out) override {
+        std::cout << "Hello, world!" << std::endl;
+        return 0;
     }
 };
 
@@ -104,7 +123,7 @@ public:
 using namespace tdc;
 
 int main(int argc, char** argv) {
-    /*
+    
     using UniversalCodes = tl::list<code::Binary, code::EliasDelta>;
     using OfflineCodes = tl::list<code::Huffman>;
     using AllCodes = tl::concat<UniversalCodes, OfflineCodes>;
@@ -117,11 +136,8 @@ int main(int argc, char** argv) {
     
     using Types = tl::template_instances<LZ78, LZ78Codes, LZ78Tries>;
 
-    framework::Registry r;
-    r.register_algorithms(Types());
-    */
-   LZ78<lz78::RefCharArrays<code::Binary, code::Huffman>, lz78::BinaryTrieMTF> lz78;
-   framework::Application app(lz78);
-   // TODO: register algorithms
-   app.run(argc, argv);
+   framework::Application app("LZ78");
+   //app.register_executable<LZ78<lz78::RefCharArrays<code::Binary, code::Huffman>, lz78::BinaryTrieMTF>>();
+   app.register_executables(Types());
+   return app.run(argc, argv);
 }

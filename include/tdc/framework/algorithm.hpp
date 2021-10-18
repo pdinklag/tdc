@@ -1,16 +1,17 @@
 #pragma once
 
-#include <string>
+#include <tdc/framework/algorithm_info.hpp>
 
 namespace tdc {
 namespace framework {
 
 class Algorithm {
-public:
-    virtual std::string id() const = 0;
 };
 
 template<typename T>
-concept Algorithm = std::is_base_of<Algorithm, T>::value;
+concept Algorithm = 
+    std::derived_from<T, Algorithm> &&
+    std::default_initializable<T> &&
+    ProvidesAlgorithmInfo<T>;
 
 }} // namespace tdc::framework
