@@ -21,9 +21,7 @@ public:
 };
 
 /**
- * @brief Constrains a type to algorithms.
- * 
- * In order to satisfy this concept, types must inherit from @ref Algorithm, provide a default constructor as well as an @ref AlgorithmInfo.
+ * @brief Constraint for @ref Algorithm "Algorithms".
  * 
  * @tparam T the type in question
  */

@@ -12,7 +12,7 @@ namespace tdc::framework {
 class AlgorithmInfo;
 
 /**
- * @brief Constraint for types that provide an @refitem AlgorithmInfo.
+ * @brief Constraint for types that provide an @ref AlgorithmInfo.
  * 
  * In order to satisfy this concept, the type must define a static method named @c info that returns an @ref AlgorithmInfo.
  * 
