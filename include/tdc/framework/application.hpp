@@ -27,7 +27,6 @@ private:
 
     static constexpr size_t NIL = SIZE_MAX;
 
-    static nlohmann::json parse_cmdline(int argc, char** argv);
     static bool match_signature(const nlohmann::json& signature, const nlohmann::json& config);
 
     using ExecutableConstructor = std::function<std::unique_ptr<Executable>()>;
@@ -38,21 +37,33 @@ private:
         ExecutableConstructor construct;
     };
 
-    std::string root_name_;
+    template<typename E>
+    requires std::derived_from<E, Executable>
+    RegisteredExecutable make_registry_entry() {
+        auto info = E::info();
+        auto sig = info.signature();
+        return { std::move(info), std::move(sig), [](){ return std::make_unique<E>(); } };
+    }
+
     std::vector<RegisteredExecutable> registry_;
+    RegisteredExecutable default_;
+
+    nlohmann::json parse_cmdline(int argc, char** argv) const;
 
 public:
-    Application(std::string&& root_name) : root_name_(std::move(root_name)) {
+    Application() : default_( { AlgorithmInfo(), nlohmann::json::object(), [](){ return std::unique_ptr<Executable>(); } }) {
+    }
+
+    template<typename E>
+    requires std::derived_from<E, Executable> && Algorithm<E>
+    void default_executable() {
+        default_ = make_registry_entry<E>();
     }
 
     template<typename E>
     requires std::derived_from<E, Executable> && Algorithm<E>
     void register_executable() {
-        auto info = E::info();
-        auto sig = info.signature();
-
-        std::cout << "[" << registry_.size() << "] = " << sig << std::endl;
-        registry_.emplace_back(std::move(info), std::move(sig), [](){ return std::make_unique<E>(); });
+        registry_.emplace_back(make_registry_entry<E>());
     }
 
     inline void register_executables(tl::empty) {
@@ -65,36 +76,7 @@ public:
         register_executables(tl::list<Es...>());
     }
 
-    int run(int argc, char** argv) {
-        // parse command line into json
-        auto config = parse_cmdline(argc, argv);
-        if(!config.contains(ARG_OBJNAME)) {
-            config[ARG_OBJNAME] = root_name_;
-        }
-
-        // find a matching configuration and instantiate executable
-        std::unique_ptr<Executable> exe;
-        for(auto& r : registry_) {
-            if(match_signature(r.signature, config)) {
-                std::cout << "found matching configuration: " << r.signature << std::endl;
-                exe = r.construct();
-                break;
-            }
-        }
-
-        if(!exe) {
-            std::cerr << "failed to find a matching configuration: " << config << std::endl;
-            return -1;
-        }
-
-        // TODO: configure executable
-        
-        // TODO: construct input and output
-        int in, out;
-
-        // TODO: run executable
-        return exe->execute(in, out);
-    }
+    int run(int argc, char** argv) const;
 };
 
 }

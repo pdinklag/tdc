@@ -123,7 +123,6 @@ public:
 using namespace tdc;
 
 int main(int argc, char** argv) {
-    
     using UniversalCodes = tl::list<code::Binary, code::EliasDelta>;
     using OfflineCodes = tl::list<code::Huffman>;
     using AllCodes = tl::concat<UniversalCodes, OfflineCodes>;
@@ -136,8 +135,8 @@ int main(int argc, char** argv) {
     
     using Types = tl::template_instances<LZ78, LZ78Codes, LZ78Tries>;
 
-   framework::Application app("LZ78");
-   //app.register_executable<LZ78<lz78::RefCharArrays<code::Binary, code::Huffman>, lz78::BinaryTrieMTF>>();
+   framework::Application app;
+   app.default_executable<LZ78<lz78::RefCharArrays<code::Binary, code::Huffman>, lz78::BinaryTrieMTF>>();
    app.register_executables(Types());
    return app.run(argc, argv);
 }

@@ -7,9 +7,9 @@ namespace tdc::framework {
 const char* Application::ARG_FREE    = "__args";
 const char* Application::ARG_OBJNAME = "__name";
 
-nlohmann::json Application::parse_cmdline(int argc, char** argv) {
+nlohmann::json Application::parse_cmdline(int argc, char** argv) const {
     // prepare
-    nlohmann::json obj;
+    auto obj = default_.signature;
 
     // walk arguments, skip first
     for(int i = 1; i < argc; i++) {
@@ -138,6 +138,34 @@ bool Application::match_signature(const nlohmann::json& signature, const nlohman
 
     // all elements have successfully matched
     return true;
+}
+
+int Application::run(int argc, char** argv) const {
+    // parse command line into json
+    auto config = parse_cmdline(argc, argv);
+
+    // find a matching configuration and instantiate executable
+    std::unique_ptr<Executable> exe;
+    for(auto& r : registry_) {
+        if(match_signature(r.signature, config)) {
+            std::cout << "found matching configuration: " << r.signature << std::endl;
+            exe = r.construct();
+            break;
+        }
+    }
+
+    if(!exe) {
+        std::cerr << "failed to find a matching configuration: " << config << std::endl;
+        return -1;
+    }
+
+    // TODO: configure executable
+    
+    // TODO: construct input and output
+    int in, out;
+
+    // TODO: run executable
+    return exe->execute(in, out);
 }
 
 }

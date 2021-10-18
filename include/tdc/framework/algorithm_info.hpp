@@ -28,6 +28,9 @@ private:
     std::vector<SubAlgorithm> sub_algorithms_;
 
 public:
+    AlgorithmInfo() : name_("") {
+    }
+
     AlgorithmInfo(std::string&& name) : name_(std::move(name)) {
     }
 
@@ -45,7 +48,9 @@ public:
 
     nlohmann::json signature() const;
 
-    const std::string& name = name_;
+    inline const std::string& name() const {
+        return name_;
+    }
 };
 
 }
