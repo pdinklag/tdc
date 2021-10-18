@@ -289,6 +289,8 @@ struct _check_get<I, list<Ts...>> {
 template<size_t I, typename Tl>
 using check_get = typename _check_get<I, Tl>::type;
 
+/// \cond INTERNAL
+
 template<template<typename...> typename A, typename ParamsTl, typename... Tls>
 struct _template_instances;
 
@@ -308,6 +310,8 @@ struct _template_instances<A, tl::list<Params...>, tl::list<Head, Tail...>, Rema
     using ProcessTail = _template_instances<A, tl::list<Params...>, tl::list<Tail...>, RemainingTls...>::type_list;
     using type_list = tl::concat<TakeHead, ProcessTail>;
 };
+
+/// \endcond
 
 /// \brief Generates a type list of template instances.
 ///
