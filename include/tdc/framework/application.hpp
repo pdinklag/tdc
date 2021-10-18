@@ -49,6 +49,7 @@ private:
     RegisteredExecutable default_;
 
     nlohmann::json parse_cmdline(int argc, char** argv) const;
+    void configure(const Config& cfg);
 
 public:
     Application() : default_( { AlgorithmInfo(), nlohmann::json::object(), [](){ return std::unique_ptr<Executable>(); } }) {

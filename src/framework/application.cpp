@@ -141,25 +141,30 @@ bool Application::match_signature(const nlohmann::json& signature, const nlohman
 }
 
 int Application::run(int argc, char** argv) const {
-    // parse command line into json
-    auto config = parse_cmdline(argc, argv);
-
-    // find a matching configuration and instantiate executable
     std::unique_ptr<Executable> exe;
-    for(auto& r : registry_) {
-        if(match_signature(r.signature, config)) {
-            std::cout << "found matching configuration: " << r.signature << std::endl;
-            exe = r.construct();
-            break;
+    {
+        // parse command line into json
+        auto config_json = parse_cmdline(argc, argv);
+        std::cout << "config: " << config_json << std::endl;
+
+        // find a matching configuration and instantiate executable
+        for(auto& r : registry_) {
+            if(match_signature(r.signature, config_json)) {
+                std::cout << "found matching configuration: " << r.signature << std::endl;
+                exe = r.construct();
+                break;
+            }
         }
-    }
 
-    if(!exe) {
-        std::cerr << "failed to find a matching configuration: " << config << std::endl;
-        return -1;
-    }
+        if(!exe) {
+            std::cerr << "failed to find a matching configuration: " << config_json << std::endl;
+            return -1;
+        }
 
-    // TODO: configure executable
+        // configure executable
+        Config config(config_json);
+        exe->configure(config);
+    }
     
     // TODO: construct input and output
     int in, out;

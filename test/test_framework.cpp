@@ -112,6 +112,11 @@ public:
         return info;
     }
 
+    virtual void configure(const framework::Config& cfg) override {
+        code_.configure(cfg.sub_config("code"));
+        trie_.configure(cfg.sub_config("trie"));
+    }
+
     virtual int execute(int& in, int& out) override {
         std::cout << "Hello, world!" << std::endl;
         return 0;
