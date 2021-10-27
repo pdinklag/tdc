@@ -34,6 +34,11 @@
 
 #include <tlx/cmdline_parser.hpp>
 
+#ifdef BZIP2_FOUND
+#include <cstdio>
+#include <bzlib.h>
+#endif
+
 using namespace tdc::comp::lz77;
 
 using char_t = unsigned char;
@@ -54,6 +59,7 @@ struct {
     
     std::string roundtrip;
     std::string encode;
+    bool bzip2 = false;
     std::unordered_set<std::string> groups;
     
     bool do_bench(const std::string& group) {
@@ -61,7 +67,53 @@ struct {
     }
 } options;
 
+#ifdef BZIP2_FOUND
+void encode_bz2(const FactorBuffer& buf, const std::string& filename) {
+    // open bz2 file
+    int bzerror;
+
+    auto file   = std::fopen(filename.c_str(), "w");
+    auto bzfile = BZ2_bzWriteOpen(&bzerror, file, 9, 0, 0);
+
+    // write string of literals
+    {
+        for(auto& f : buf.factors()) {
+            if(f.is_literal()) {
+                auto lit = f.literal();
+                BZ2_bzWrite(&bzerror, bzfile, &lit, sizeof(char_t));
+            }
+        }
+    }
+
+    // write sequence of reference triples
+    {
+        size_t i = 0;
+        tdc::index_t ref[3];
+        for(auto& f : buf.factors()) {
+            if(f.is_reference()) {
+                ref[0] = i;
+                ref[1] = f.src;
+                ref[2] = f.len;
+                BZ2_bzWrite(&bzerror, bzfile, ref, 3 * sizeof(tdc::index_t));
+            }
+            i += f.decoded_length();
+        }
+    }
+
+    // close
+    BZ2_bzWriteClose(&bzerror, bzfile, 0, nullptr, nullptr);
+    std::fclose(file);
+}
+#endif
+
 void encode(const FactorBuffer& buf, const std::string& filename) {
+    #ifdef BZIP2_FOUND
+    if(options.bzip2) {
+        encode_bz2(buf, filename);
+        return;
+    }
+    #endif
+
     std::ofstream fenc(filename);
     tdc::io::BitOStream enc(fenc);
 
@@ -232,6 +284,7 @@ int main(int argc, char** argv) {
         cp.add_flag("merge", options.merge, "Simulates merging of factorizations.");
         cp.add_string("roundtrip", options.roundtrip, "Outputs the factorization to the specified file and decodes it afterwards.");
         cp.add_string("encode", options.encode, "Encodes the factorization to the specified file.");
+        cp.add_flag("bzip2", options.bzip2, "Encoding is done using bzip2 (if available).");
         
         if(!cp.process(argc, argv)) {
             return -1;

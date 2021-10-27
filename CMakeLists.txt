@@ -61,6 +61,11 @@ add_subdirectory(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 include_directories(${TDC_EXTLIB_SOURCE_DIR}/tlx)
 
 # find optional packages
+find_package(BZip2)
+if(BZIP2_FOUND)
+    add_definitions(-DBZIP2_FOUND)
+endif()
+
 find_package(MPFR)
 find_package(LEDA)
 find_package(Plads)

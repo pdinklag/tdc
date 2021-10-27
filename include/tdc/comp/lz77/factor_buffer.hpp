@@ -166,8 +166,8 @@ public:
         factors_.emplace_back(f);
     }
 
-    const Factor* factors() const {
-        return factors_.data();
+    const std::vector<Factor>& factors() const {
+        return factors_;
     }
 
     DecodedString decode() const {
