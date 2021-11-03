@@ -271,3 +271,11 @@ std::string Phase::subphases_keyval(const std::string& value_stat, const std::st
         return "";
     }
 }
+
+Phase::TimeInfo Phase::time_info() const {
+    return TimeInfo { m_time.start, time_millis(), m_time.paused };
+}
+
+Phase::MemoryInfo Phase::memory_info() const {
+    return MemoryInfo { m_mem.off, m_mem.current, m_mem.peak, m_num_allocs, m_num_frees };
+}

@@ -34,6 +34,21 @@ public:
     /// \brief The stat key used for a phase's number of frees.
     static const std::string STAT_NUM_FREE;
     
+    /// \brief Contains information about the phase time measurement.
+    struct TimeInfo {
+        /// \brief The timestamp of the start of the phase.
+        double start;
+
+        /// \brief The timestamp at which this information was polled.
+        double current;
+
+        /// \brief The number of milliseconds the phase was paused.
+        double paused;
+
+        /// \brief Computes the time elapsed between polling and the start of the phase, excluding any pause times.
+        inline double elapsed() { return (current - start) - paused; }
+    };
+
     /// \brief Contains information about the phase memory measurements.
     struct MemoryInfo {
         /// \brief The number of bytes allocated at the start of the phase.
@@ -316,10 +331,11 @@ public:
         return m_title;
     }
 
+    /// \brief Gets the current \ref TimeInfo for the phase.
+    TimeInfo time_info() const;
+
     /// \brief Gets the current \ref MemoryInfo for the phase.
-    inline MemoryInfo memory_info() const {
-        return MemoryInfo { m_mem.off, m_mem.current, m_mem.peak, m_num_allocs, m_num_frees };
-    }
+    MemoryInfo memory_info() const;
 
     /// \brief Constructs the JSON representation of the measured data.
     ///
