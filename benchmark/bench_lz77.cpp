@@ -106,14 +106,16 @@ void encode_bz2(const FactorBuffer& buf, const std::string& filename) {
 }
 #endif
 
-void encode(const FactorBuffer& buf, const std::string& filename) {
+double encode(const FactorBuffer& buf, const std::string& filename) {
     #ifdef BZIP2_FOUND
     if(options.bzip2) {
+        tdc::stat::Phase bzphase("bzip");
         encode_bz2(buf, filename);
-        return;
+        return bzphase.time_info().elapsed();
     }
     #endif
 
+    tdc::stat::Phase phase("encode");
     std::ofstream fenc(filename);
     tdc::io::BitOStream enc(fenc);
 
@@ -132,6 +134,7 @@ void encode(const FactorBuffer& buf, const std::string& filename) {
         }
         pos += f.decoded_length();
     }
+    return phase.time_info().elapsed();
 }
 
 template<typename ctor_t>
@@ -146,6 +149,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor, bool can_m
         tdc::stat::Phase phase("compress");
 
         FactorStatsOutput factors;
+        double encode_time = 0.0;
 
         {
             auto c = ctor();
@@ -166,7 +170,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor, bool can_m
             } else if(!options.merge && options.encode.length() > 0) {
                 FactorBuffer buf;
                 c.compress(input, buf);
-                encode(buf, options.encode + "." + name);
+                encode_time = encode(buf, options.encode + "." + name);
             } else if(options.merge && can_merge) {
                 std::ofstream fout(name);
                 tdc::io::BufferedWriter<Factor> factors_writer(fout, 10_Ki);
@@ -194,6 +198,7 @@ void bench(const std::string& group, std::string&& name, ctor_t ctor, bool can_m
         phase.log("min_ref_dist", stats.min_ref_dist);
         phase.log("max_ref_dist", stats.max_ref_dist);
         phase.log("avg_ref_dist", std::lround((double)stats.total_ref_dist / (double)stats.num_refs));
+        if(encode_time > 0.0) phase.log("encode_time", encode_time);
         std::cout << "RESULT algo=" << name << " group=" << group << " input=" << options.filename << " " << phase.to_keyval() << std::endl;
 
         assert(stats.input_size == file_size);
@@ -231,6 +236,7 @@ void print_merge_result(const FactorStatsOutput& factors) {
 
 void merge(const std::string& file1, const std::string& file2) {
     if(std::filesystem::is_regular_file(file1) && std::filesystem::is_regular_file(file2)) {
+        double encode_time = 0.0;
         FactorStatsOutput factors;
         {
             auto f1 = read_factors(file1);
@@ -240,11 +246,12 @@ void merge(const std::string& file1, const std::string& file2) {
             if(options.encode.length() > 0) {
                 FactorBuffer buf;
                 FactorBuffer::merge(f1, f2, buf);
-                encode(buf, options.encode + ".Merge(" + file1 + "," + file2 + ")");
+                encode_time = encode(buf, options.encode + ".Merge(" + file1 + "," + file2 + ")");
             }
         }
         
         std::cout << "RESULT algo=Merge(" << file1 << "," << file2 << ") input=" << options.filename;
+        if(encode_time > 0.0) std::cout << " encode_time=" << encode_time;
         print_merge_result(factors);
         std::cout << std::endl;
     }
